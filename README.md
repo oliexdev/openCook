@@ -1,4 +1,4 @@
-# openCook
+# <img src="docs/icon.png" alt="openCook icon" height="60" align="top"> openCook
 
 Open-source recipe app that turns cookbook photos into recipes, plans your week and shares the shopping list
 
@@ -23,21 +23,21 @@ A recipe and meal-planning app that:
 
 # Features :sparkles:
 
-* **Snap a recipe** :camera: — photograph a cookbook page and openCook reads it for you: title,
+* **Snap a recipe** — photograph a cookbook page and openCook reads it for you: title,
   ingredients, amounts, steps, cooking time and servings. Several recipes on one page are split
   apart automatically, each with its own picture. (Nutrition is only kept when it's actually printed
   — never made up.)
-* **Plan your week** :calendar: — get sensible meal suggestions that avoid repeats, reuse ingredients
+* **Plan your week** — get sensible meal suggestions that avoid repeats, reuse ingredients
   across days, and turn big meals into leftover days — and you can always see *why* a dish was picked.
-* **One shared shopping list** :shopping_cart: — a weekly list the whole household can tick off
+* **One shared shopping list** — a weekly list the whole household can tick off
   together. It knows what's already in your pantry, and everyday staples (salt, pepper, oil…) stay
   off the list.
-* **Find anything** :mag: — recipes group into cookbooks and are fully searchable.
-* **Scan to add** :round_pushpin: — add pantry or shopping items by scanning a barcode (with Open
+* **Find anything** — recipes group into cookbooks and are fully searchable.
+* **Scan to add** — add pantry or shopping items by scanning a barcode (with Open
   Food Facts lookup).
-* **Import from the web** :globe_with_meridians: — a small browser extension grabs recipes from
+* **Import from the web** — a small browser extension grabs recipes from
   sites like Chefkoch and sends them straight into openCook. See [`extension/`](extension/README.md).
-* **Stay in sync** :arrows_counterclockwise: — every family member's phone stays up to date through
+* **Stay in sync** — every family member's phone stays up to date through
   your own server; changes merge automatically, even after someone's been offline.
 
 # How it works :gear:
