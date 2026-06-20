@@ -53,11 +53,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.food.opencook.R
+import com.food.opencook.util.RecipeCategories
 import com.food.opencook.ui.theme.Spacing
 
 /* ------------------------------------------------------------------------- */
@@ -101,10 +103,9 @@ fun BasicsStep(
         )
         Spacer(Modifier.height(Spacing.md))
 
-        WizardTextField(
-            label = stringResource(R.string.review_category),
-            value = recipe.category,
-            onValueChange = { v -> viewModel.updateRecipe(index) { it.copy(category = v) } },
+        CategoryChips(
+            current = recipe.category,
+            onPick = { v -> viewModel.updateRecipe(index) { it.copy(category = v) } },
         )
         Spacer(Modifier.height(Spacing.md))
 
@@ -615,8 +616,10 @@ fun SummaryStep(
         }
         if (recipe.category.isNotBlank() || recipe.cookbook.isNotBlank()) {
             Spacer(Modifier.height(Spacing.xs))
+            val context = LocalContext.current
+            val catLabel = recipe.category.takeIf { it.isNotBlank() }?.let { RecipeCategories.displayLabel(context, it) }
             Text(
-                listOf(recipe.category, recipe.cookbook).filter { it.isNotBlank() }.joinToString(" · "),
+                listOfNotNull(catLabel, recipe.cookbook.takeIf { it.isNotBlank() }).joinToString(" · "),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -697,4 +700,28 @@ private fun EmptyHint(text: String) {
         enabled = false,
         label = { Text(text) },
     )
+}
+
+/** Coarse-category picker: the fixed [RecipeCategories.KEYS] as toggleable chips (stores the key). */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CategoryChips(current: String, onPick: (String) -> Unit) {
+    val selected = current.takeIf { it.isNotBlank() }?.let { RecipeCategories.normalizeKey(it) }
+    Column {
+        Text(
+            stringResource(R.string.review_category),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(Spacing.xs))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            RecipeCategories.KEYS.forEach { key ->
+                FilterChip(
+                    selected = selected == key,
+                    onClick = { onPick(if (selected == key) "" else key) },
+                    label = { Text(stringResource(RecipeCategories.labelRes(key))) },
+                )
+            }
+        }
+    }
 }

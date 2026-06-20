@@ -67,7 +67,7 @@ class RecipeMapperTest {
         assertEquals("Test Rezept", mapped.recipe.name)
         assertEquals("2 Portionen", mapped.recipe.recipeYield)
         assertEquals(2, mapped.recipe.servings)
-        assertEquals("Pasta", mapped.recipe.category)
+        assertEquals("pasta", mapped.recipe.category)
         assertEquals("PT25M", mapped.recipe.prepTime)
         assertEquals("photo-1", mapped.recipe.sourcePhotoId)
 

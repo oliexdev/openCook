@@ -40,6 +40,24 @@ def init_db() -> None:
     from app import models  # noqa: F401
 
     Base.metadata.create_all(engine)
+    _ensure_columns()
+
+
+# Columns added after a table was first created. SQLite's create_all() never alters
+# existing tables, so we add any missing ones here — idempotent and data-preserving
+# (the project has no migration framework on purpose; keep self-hosting trivial).
+_ADDED_COLUMNS: dict[str, list[tuple[str, str]]] = {
+    "jobs": [("language", "VARCHAR")],
+}
+
+
+def _ensure_columns() -> None:
+    with engine.begin() as conn:
+        for table, cols in _ADDED_COLUMNS.items():
+            existing = {row[1] for row in conn.exec_driver_sql(f"PRAGMA table_info({table})")}
+            for name, decl in cols:
+                if name not in existing:
+                    conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
 
 
 def get_session() -> Iterator[Session]:

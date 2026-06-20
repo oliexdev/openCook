@@ -19,6 +19,7 @@ import re
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import lru_cache
 from io import BytesIO
 from pathlib import Path
 
@@ -30,76 +31,64 @@ logger = logging.getLogger(__name__)
 
 SENT_LONG_SIDE = 1008  # multiple of 28, within qwen2.5vl's pixel budget
 
-TEXT_PROMPT = """Du bist ein Extraktionssystem für Kochbuch-Rezepte. Analysiere das \
-Foto einer Kochbuchseite und gib AUSSCHLIESSLICH gültiges JSON zurück.
 
-Regeln:
-- Erfasse jedes Rezept, das vollständig oder überwiegend sichtbar ist. Manche Seiten \
-zeigen ZWEI vollständige Rezepte nebeneinander — dann beide erfassen. Ein Rezept aber \
-NUR übernehmen, wenn Titel, Zutatenliste UND Zubereitung erkennbar sind. Am Seitenrand \
-angeschnittene Fragmente (nur ein Titel, eine halbe Zutatenspalte, kein Schritt-Text) \
-IGNORIEREN.
-- Halte die Rezepte getrennt: ordne jede Zutat NUR ihrem eigenen Rezept zu; übertrage \
-keine Zutat von einem Rezept in ein anderes auf derselben Seite.
-- Erfinde KEINE Werte. Was nicht auf der Seite steht, auf null setzen. Das gilt \
-besonders für Nährwerte: nur übernehmen, wenn sie gedruckt sind.
-- "title" = Rezeptname in normaler Groß-/Kleinschreibung. Ist die Überschrift komplett \
-in Großbuchstaben gedruckt, in korrekte deutsche Schreibweise umwandeln (z.B. \
-"GEMÜSEPAELLA MIT GELBEN LINSEN" → "Gemüsepaella mit gelben Linsen").
-- Zutaten AUSSCHLIESSLICH aus der separaten Zutatenliste übernehmen, NICHT aus dem \
-Zubereitungs-/Schritt-für-Schritt-Text. Die Zutatenliste ist vollständig; im \
-Anleitungstext erneut genannte Zutaten NICHT zusätzlich erfassen.
-- Jede Zutat GENAU EINMAL. Keine Duplikate in der Zutatenliste.
-- Über einen Zeilenumbruch getrennte Wörter zu EINEM Namen zusammenführen. Niemals \
-abgeschnittene Fragmente mit "-" am Ende ausgeben (z.B. "Gemüse-" + "brühe" → \
-"Gemüsebrühe", "Prinzess-" + "bohnen" → "Prinzessbohnen").
-- Zutaten STRUKTURIERT: "quantity" = die Zahl als number (z.B. 400, 1.5; "½"→0.5; \
-fehlt/​unklar → null), "unit" = die Einheit als Text, "name" = die Zutat.
-- "unit" ist AUSSCHLIESSLICH eine echte Maß-/Mengeneinheit (g, kg, ml, l, EL, TL, Msp., \
-Bund, Dose, Packung, Scheibe, Zehe, Prise, Stück). Zählbare ganze Dinge OHNE solche \
-Einheit: "unit": null, das Substantiv gehört in "name" (z.B. "4 Barschfilets" → \
-quantity 4, unit null, name "Barschfilets"; "1 weiße Zwiebel" → quantity 1, unit null, \
-name "weiße Zwiebel"). Wiederhole NIEMALS den Zutatennamen im unit-Feld.
-- Keine erfundenen Mengen: nicht quantifizierbare Zutaten (Salz, Pfeffer, "etwas …", \
-"nach Geschmack") bekommen "quantity": null UND "unit": null. Niemals eine Menge wie \
-"1 g" oder eine Einheit wie "Stück" für Salz/Pfeffer raten.
-- "steps" = die Zubereitungsschritte als Liste, jeweils OHNE führende Schrittnummer \
-(kein "1.", "2)" am Anfang) — die App nummeriert die Schritte selbst.
-- "servings" = Anzahl Portionen als number (aus z.B. "für 4 Personen" → 4; sonst null).
-- "category" = grobe Kategorie, GENAU einer aus: Pasta, Fleisch, Fisch, Suppe, \
-Vegetarisch, Salat, Dessert, Sonstiges.
-- "tags" = 2-5 kurze Schlagworte für die Suche (z.B. "vegetarisch", "schnell", \
-"asiatisch", "Ofen", "Auflauf"), kleingeschrieben, ohne Duplikate, NICHT die category \
-wiederholen. Leere Liste, wenn nichts Sinnvolles ableitbar ist.
-- Nährwert-Kürzel: EW oder E = Eiweiß (Protein), F = Fett, KH = Kohlenhydrate, \
-kcal = Kalorien. Basis angeben ("pro Portion" oder "pro 100 g").
+# Stable category keys (universal across languages; mirror of the app's RecipeCategories).
+_CATEGORY_KEYS = {"pasta", "meat", "fish", "soup", "vegetarian", "salad", "dessert", "other"}
 
-Antworte mit diesem JSON:
-{"recipes": [{
-  "title": string,
-  "servings": number|null,
-  "category": string,
-  "tags": [string],
-  "prep_time": string|null,
-  "cook_time": string|null,
-  "ingredients": [{"quantity": number|null, "unit": string|null, "name": string}],
-  "steps": [string],
-  "nutrition": {"basis": string|null, "calories_kcal": number|null,
-                "protein_g": number|null, "fat_g": number|null,
-                "carbs_g": number|null} | null,
-  "notes": [string]
-}]}
-Gib nur das JSON-Objekt zurück, ohne Erklärungen."""
+_I18N_DIR = Path(__file__).parent / "i18n"
 
-BOX_PROMPT = """Auf diesem Foto einer Kochbuchseite sind ein oder mehrere FOTOS VON \
-FERTIGEN GERICHTEN abgebildet (echte Speisefotos, KEIN Text, KEINE Symbole).
 
-Finde jedes Gerichtsfoto und gib AUSSCHLIESSLICH dieses JSON zurück:
-{"dish_photos": [{"recipe_title": "<Titel des zugehörigen Rezepts>", \
-"box": [x1, y1, x2, y2]}]}
-Die Box-Koordinaten sind absolute Pixel in DIESEM Bild: x1,y1 = linke obere Ecke, \
-x2,y2 = rechte untere Ecke. Gib nur tatsächlich vorhandene Gerichtsfotos zurück, \
-erfinde keine Boxen. Nur das JSON."""
+@dataclass(frozen=True)
+class I18n:
+    """Localized extraction resources for one content language (see app/i18n/*.json)."""
+
+    text_prompt: str
+    box_prompt: str
+    duration_hours: tuple[str, ...]
+    duration_minutes: tuple[str, ...]
+    units: frozenset[str]
+    category_aliases: dict[str, str]
+
+
+def _read_catalog(lang: str) -> dict:
+    path = _I18N_DIR / f"{lang}.json"
+    if not path.is_file():
+        path = _I18N_DIR / "en.json"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+@lru_cache(maxsize=None)
+def load_i18n(language: str | None) -> I18n:
+    """Load extraction resources for ``language`` (e.g. "de"/"en"); unknown → English.
+    Units/durations/aliases are unioned with English so universal tokens always match."""
+    lang = (language or "en").strip().lower()[:2]
+    base = _read_catalog("en")
+    data = base if lang == "en" else _read_catalog(lang)
+
+    def merged(key: str) -> list:
+        return list(dict.fromkeys([*base.get(key, []), *data.get(key, [])]))
+
+    return I18n(
+        text_prompt=data.get("text_prompt") or base["text_prompt"],
+        box_prompt=data.get("box_prompt") or base["box_prompt"],
+        duration_hours=tuple(merged("duration_hours")),
+        duration_minutes=tuple(merged("duration_minutes")),
+        units=frozenset(u.lower() for u in merged("units")),
+        category_aliases={
+            **{k.lower(): v for k, v in base.get("category_aliases", {}).items()},
+            **{k.lower(): v for k, v in data.get("category_aliases", {}).items()},
+        },
+    )
+
+
+def _normalize_category(raw: object, aliases: dict[str, str]) -> str | None:
+    """Map a model category (any language/case) to a stable key; unknown → "other"."""
+    if not isinstance(raw, str) or not raw.strip():
+        return None
+    t = raw.strip().lower()
+    if t in _CATEGORY_KEYS:
+        return t
+    return aliases.get(t, "other")
 
 
 def parse_json_lenient(text: str) -> dict:
@@ -122,14 +111,20 @@ def _smart_resize(img: Image.Image, long_side: int = SENT_LONG_SIDE) -> Image.Im
     return img.resize((nw, nh))
 
 
-def _iso_duration(text: str | None) -> str | None:
-    """Best-effort 'PT..' duration from German time strings like '25 Min.' / '1 Std'."""
+def _duration_re(words: tuple[str, ...]) -> re.Pattern:
+    # Longest-first so e.g. "hours" matches before the bare "h".
+    alts = "|".join(re.escape(w) for w in sorted(set(words), key=len, reverse=True))
+    return re.compile(rf"(\d+)\s*(?:{alts})\b", re.I)
+
+
+def _iso_duration(text: str | None, i18n: "I18n") -> str | None:
+    """Best-effort 'PT..' duration using the language's hour/minute words."""
     if not text:
         return None
     minutes = 0
-    if m := re.search(r"(\d+)\s*(?:Std|Stunde|h)", text, re.I):
+    if m := _duration_re(i18n.duration_hours).search(text):
         minutes += int(m.group(1)) * 60
-    if m := re.search(r"(\d+)\s*(?:Min|min)", text, re.I):
+    if m := _duration_re(i18n.duration_minutes).search(text):
         minutes += int(m.group(1))
     return f"PT{minutes}M" if minutes else None
 
@@ -184,9 +179,11 @@ class RecipeExtractor:
         self,
         image_path: Path,
         on_stage: Callable[[str], None] | None = None,
+        language: str | None = None,
     ) -> list[dict]:
         """Extract recipes. ``on_stage`` (if given) is called with a coarse stage
-        key before each model call, so callers can surface progress."""
+        key before each model call, so callers can surface progress. ``language``
+        (e.g. "de"/"en") selects the extraction prompt."""
         def stage(name: str) -> None:
             if on_stage is not None:
                 on_stage(name)
@@ -199,14 +196,15 @@ class RecipeExtractor:
         sent = _smart_resize(original)
         sent_bytes = _to_jpeg(sent)
 
+        i18n = load_i18n(language)
         stage("reading_text")
-        text_raw = await self._client.generate(TEXT_PROMPT, sent_bytes)
+        text_raw = await self._client.generate(i18n.text_prompt, sent_bytes)
         recipes = parse_json_lenient(text_raw).get("recipes", [])
 
         boxes: list[_Box] = []
         try:
             stage("detecting_photos")
-            box_raw = await self._client.generate(BOX_PROMPT, sent_bytes)
+            box_raw = await self._client.generate(i18n.box_prompt, sent_bytes)
             boxes = _parse_boxes(box_raw, sent.size)
         except Exception:  # noqa: BLE001 - cropping is best-effort, never fatal
             logger.warning("Dish-photo detection failed; recipes saved without images.")
@@ -224,7 +222,7 @@ class RecipeExtractor:
                 if crop_path is not None:
                     image_paths.append(crop_path)
             results.append(
-                to_schema_org(recipe, image_paths, source_photo=image_path.name)
+                to_schema_org(recipe, image_paths, source_photo=image_path.name, i18n=i18n)
             )
         return results
 
@@ -309,22 +307,7 @@ def _num(value: object) -> float | int | None:
     return value if isinstance(value, (int, float)) else None
 
 
-# Real German measurement/packaging units the model may legitimately put in
-# ``unit``. Anything else that also appears in the ingredient name is the model
-# shoving the noun into ``unit`` (e.g. unit="Zucchini" name="Zucchininudeln"),
-# which flatten() would render as a duplicated "8 Zucchini Zucchininudeln".
-_KNOWN_UNITS = {
-    "g", "kg", "mg", "ml", "l", "cl", "dl", "el", "tl", "msp", "msp.", "prise",
-    "prisen", "bund", "dose", "dosen", "packung", "pck", "pck.", "päckchen",
-    "scheibe", "scheiben", "zehe", "zehen", "stück", "stk", "stk.", "tasse",
-    "tassen", "glas", "gläser", "becher", "kugel", "kugeln", "stange", "stangen",
-    "blatt", "blätter", "tropfen", "schuss", "spritzer", "knolle", "knollen",
-    "zweig", "zweige", "stiel", "stiele", "kopf", "würfel", "beutel", "flasche",
-    "kanne", "portion", "portionen", "handvoll", "cm", "mm", "ecke", "riegel",
-}
-
-
-def _clean_unit(unit: object, name: object) -> str | None:
+def _clean_unit(unit: object, name: object, known_units: frozenset[str]) -> str | None:
     """Drop a bogus ``unit`` that is really the ingredient noun.
 
     The model sometimes puts the ingredient (or part of it) in ``unit`` rather
@@ -338,7 +321,7 @@ def _clean_unit(unit: object, name: object) -> str | None:
     if not u:
         return None
     ul, nl = u.lower(), (name or "").strip().lower() if isinstance(name, str) else ""
-    if ul in _KNOWN_UNITS:
+    if ul in known_units:
         return u
     if nl and (ul in nl or nl in ul):
         return None
@@ -346,18 +329,21 @@ def _clean_unit(unit: object, name: object) -> str | None:
 
 
 def to_schema_org(
-    recipe: dict, image_names: list[str], source_photo: str | None = None
+    recipe: dict, image_names: list[str], source_photo: str | None = None,
+    i18n: "I18n | None" = None,
 ) -> dict:
     """Map an extracted recipe to schema.org/Recipe JSON-LD (+ openCook extensions).
 
     ``source_photo`` is the filename of the original uploaded page photo (kept on
     the server, never deleted) so a recipe can be re-extracted later with a better
-    model — see openCookSourcePhoto below.
+    model — see openCookSourcePhoto below. ``i18n`` selects the language resources.
     """
+    if i18n is None:
+        i18n = load_i18n("en")
     # Coerce quantities to numbers up front so neither flatten() nor the app's
     # Double? parser ever sees a stray string.
     ingredients = [
-        {**i, "quantity": _num(i.get("quantity")), "unit": _clean_unit(i.get("unit"), i.get("name"))}
+        {**i, "quantity": _num(i.get("quantity")), "unit": _clean_unit(i.get("unit"), i.get("name"), i18n.units)}
         for i in (recipe.get("ingredients") or [])
     ]
 
@@ -371,7 +357,9 @@ def to_schema_org(
         "@context": "https://schema.org",
         "@type": "Recipe",
         "name": _fix_title_case(recipe.get("title")),
-        "recipeYield": f"{servings} Portionen" if servings is not None else None,
+        # Leave recipeYield null — the numeric openCookServings below carries the count and
+        # the app renders a localized "N servings" label (no language baked into the data).
+        "recipeYield": None,
         "recipeIngredient": [flatten(i) for i in ingredients],
         "recipeInstructions": [
             {"@type": "HowToStep", "text": cleaned}
@@ -382,15 +370,15 @@ def to_schema_org(
         # openCook extensions: structured data the app needs but schema.org flattens.
         "openCookIngredients": ingredients,
         "openCookServings": servings,
-        "openCookCategory": recipe.get("category"),
+        "openCookCategory": _normalize_category(recipe.get("category"), i18n.category_aliases),
         "openCookNotes": recipe.get("notes") or [],
         "openCookTags": recipe.get("tags") or [],
         # Pointer to the retained original page photo for later re-extraction.
         "openCookSourcePhoto": source_photo,
     }
-    if prep := _iso_duration(recipe.get("prep_time")):
+    if prep := _iso_duration(recipe.get("prep_time"), i18n):
         result["prepTime"] = prep
-    if cook := _iso_duration(recipe.get("cook_time")):
+    if cook := _iso_duration(recipe.get("cook_time"), i18n):
         result["cookTime"] = cook
 
     nutrition = recipe.get("nutrition")

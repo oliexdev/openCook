@@ -133,7 +133,10 @@ class SyncEngine @Inject constructor(
         // Adopt household-wide state (name + settings like person count) so all
         // devices converge on it without a separate poll.
         response.householdName?.let { settings.setHouseholdName(it) }
-        response.householdSettings?.let { settings.setHouseholdSize(it.householdSize) }
+        response.householdSettings?.let {
+            settings.setHouseholdSize(it.householdSize)
+            settings.setContentLanguage(it.contentLanguage)
+        }
 
         applyRemote(response.messages) { recipes, fraction ->
             onProgress(Progress(SyncStatus.Phase.APPLY, recipes, recipes, fraction))

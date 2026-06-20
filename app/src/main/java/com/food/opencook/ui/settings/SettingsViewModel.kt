@@ -63,6 +63,29 @@ class SettingsViewModel @Inject constructor(
 
     fun setDynamicColor(enabled: Boolean) = viewModelScope.launch { settings.setDynamicColor(enabled) }
 
+    /** Household-wide recipe content language (null = follow each device's system language). */
+    val contentLanguage: StateFlow<String?> =
+        settings.contentLanguage.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Persist locally + PATCH the server so the whole household converges (carries the
+     *  current size too, since the server merges the settings object as a whole). */
+    fun setContentLanguage(lang: String?) {
+        viewModelScope.launch {
+            settings.setContentLanguage(lang)
+            val id = settings.householdIdOnce()
+            val code = settings.householdCodeOnce()
+            if (id != null && code != null) {
+                val size = settings.householdSizeOnce()
+                runCatching {
+                    syncApi.patchHousehold(
+                        id, code,
+                        PatchHouseholdRequest(settings = HouseholdSettings(householdSize = size, contentLanguage = lang)),
+                    )
+                }.onFailure { _message.update { context.getString(R.string.settings_msg_size_update_failed) } }
+            }
+        }
+    }
+
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
 

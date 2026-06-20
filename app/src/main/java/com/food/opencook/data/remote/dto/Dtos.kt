@@ -67,6 +67,9 @@ data class SyncResponseDto(
 @Serializable
 data class HouseholdSettings(
     @SerialName("household_size") val householdSize: Int = 2,
+    /** ISO language code (e.g. "de"/"en") for recipe CONTENT: AI extraction, categories,
+     *  grocery keywords, staples. null = each device follows its own system language. */
+    @SerialName("content_language") val contentLanguage: String? = null,
 )
 
 /** Returned to the device that creates/joins — carries the sync credential. */

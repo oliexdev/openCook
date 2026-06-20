@@ -28,6 +28,7 @@ async def _process_one(job_id: str) -> None:
     with SessionLocal() as session:
         job = session.get(Job, job_id)
         image_path = job.image_path if job else None
+        language = job.language if job else None
     if not image_path:
         return
 
@@ -39,7 +40,7 @@ async def _process_one(job_id: str) -> None:
                 session.commit()
 
     try:
-        recipes = await extractor.extract(Path(image_path), on_stage=set_stage)
+        recipes = await extractor.extract(Path(image_path), on_stage=set_stage, language=language)
         with SessionLocal() as session:
             job = session.get(Job, job_id)
             job.result_json = json.dumps(recipes, ensure_ascii=False)

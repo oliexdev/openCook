@@ -18,6 +18,7 @@ import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Key
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Sync
@@ -28,6 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -64,6 +66,7 @@ fun SettingsScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val dynamicColor by viewModel.dynamicColor.collectAsStateWithLifecycle()
+    val contentLanguage by viewModel.contentLanguage.collectAsStateWithLifecycle()
     val appBar: AppBarViewModel = hiltViewModel()
     val syncStatus by appBar.status.collectAsStateWithLifecycle()
 
@@ -71,6 +74,15 @@ fun SettingsScreen(
     LaunchedEffect(state.serverUrl) { serverUrl = state.serverUrl }
     var serverExpanded by remember { mutableStateOf(false) }
     var showLeaveConfirm by remember { mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
+
+    if (showLanguageDialog) {
+        ContentLanguageDialog(
+            current = contentLanguage,
+            onPick = { viewModel.setContentLanguage(it); showLanguageDialog = false },
+            onDismiss = { showLanguageDialog = false },
+        )
+    }
 
     if (showLeaveConfirm) {
         AlertDialog(
@@ -152,6 +164,13 @@ fun SettingsScreen(
                     }
                 },
             )
+            SettingsRow(
+                icon = Icons.Outlined.Language,
+                title = stringResource(R.string.settings_content_language),
+                subtitle = contentLanguageLabel(contentLanguage),
+                onClick = { showLanguageDialog = true },
+                showChevron = true,
+            )
             if (joined) {
                 SettingsRow(
                     icon = Icons.Outlined.Sync,
@@ -226,6 +245,56 @@ private fun syncStatusLabel(status: SyncStatus): String = when (status) {
     is SyncStatus.Failed -> stringResource(R.string.sync_status_failed)
     SyncStatus.HouseholdMissing -> stringResource(R.string.sync_status_household_missing)
     is SyncStatus.Idle -> stringResource(R.string.sync_status_ok)
+}
+
+/** Human label for a content-language code (null = follow the device's system language). */
+@Composable
+private fun contentLanguageLabel(code: String?): String = when (code) {
+    null, "" -> stringResource(R.string.settings_content_language_system)
+    "de" -> stringResource(R.string.lang_german)
+    "en" -> stringResource(R.string.lang_english)
+    else -> code.uppercase()
+}
+
+/** Picker for the household-wide recipe content language. */
+@Composable
+private fun ContentLanguageDialog(current: String?, onPick: (String?) -> Unit, onDismiss: () -> Unit) {
+    val options: List<Pair<String?, String>> = listOf(
+        null to stringResource(R.string.settings_content_language_system),
+        "de" to stringResource(R.string.lang_german),
+        "en" to stringResource(R.string.lang_english),
+    )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_content_language)) },
+        text = {
+            Column {
+                Text(
+                    stringResource(R.string.settings_content_language_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = Spacing.sm),
+                )
+                options.forEach { (code, label) ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { onPick(code) }
+                            .padding(vertical = Spacing.xs),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    ) {
+                        RadioButton(selected = current == code, onClick = { onPick(code) })
+                        Text(label)
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss) { Text(stringResource(R.string.processing_cancel)) }
+        },
+    )
 }
 
 /** One settings entry: leading icon, title (+ optional subtitle), and either a

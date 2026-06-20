@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.food.opencook.R
 import com.food.opencook.ui.mealplan.MealPlanner.ReasonCode
 import com.food.opencook.ui.mealplan.MealPlanner.ReasonContribution
+import com.food.opencook.util.RecipeCategories
 
 /**
  * Maps a [ReasonContribution] from the scorer to the user-facing German string. Stays
@@ -30,18 +31,32 @@ object MealPlanReasons {
     /** Resolve the visible chip/sheet text for one contribution. Falls back to an
      *  empty string for codes that carry no display value (none today, but future-proof). */
     fun text(context: Context, c: ReasonContribution): String {
-        val detail = c.detail?.let(::titleCaseList).orEmpty()
+        // Ingredient-name lists get title-cased; numeric/category details are localized below.
+        val list = c.detail?.let(::titleCaseList).orEmpty()
+        val days = c.detail?.toIntOrNull() ?: 0
         return when (c.code) {
-            ReasonCode.WEEK_REUSE -> context.getString(R.string.mealplan_reason_week_reuse, detail)
-            ReasonCode.PANTRY_REUSE -> context.getString(R.string.mealplan_reason_pantry_reuse, detail)
+            ReasonCode.WEEK_REUSE -> context.getString(R.string.mealplan_reason_week_reuse, list)
+            ReasonCode.PANTRY_REUSE -> context.getString(R.string.mealplan_reason_pantry_reuse, list)
             ReasonCode.LIKED -> context.getString(R.string.mealplan_reason_liked)
-            ReasonCode.QUICK_WEEKDAY -> context.getString(R.string.mealplan_reason_quick_weekday, detail)
+            ReasonCode.QUICK_WEEKDAY -> context.getString(
+                R.string.mealplan_reason_quick_weekday,
+                context.getString(R.string.wizard_time_minutes, days),
+            )
             ReasonCode.BIG_BATCH_LEFTOVER -> context.getString(R.string.mealplan_reason_big_batch_leftover)
-            ReasonCode.NEW_INGREDIENTS_NEEDED -> context.getString(R.string.mealplan_reason_new_ingredients, detail)
-            ReasonCode.RECENTLY_PLANNED -> context.getString(R.string.mealplan_reason_recently_planned, detail)
-            ReasonCode.RECENTLY_COOKED -> context.getString(R.string.mealplan_reason_recently_cooked, detail)
-            ReasonCode.SAME_CATEGORY_NEIGHBOUR -> context.getString(R.string.mealplan_reason_same_category, detail)
-            ReasonCode.MONOTONY -> context.getString(R.string.mealplan_reason_monotony, detail)
+            ReasonCode.NEW_INGREDIENTS_NEEDED -> context.getString(R.string.mealplan_reason_new_ingredients, list)
+            ReasonCode.RECENTLY_PLANNED -> context.getString(
+                R.string.mealplan_reason_recently_planned,
+                context.getString(R.string.recipe_cooked_days_ago, days),
+            )
+            ReasonCode.RECENTLY_COOKED -> context.getString(
+                R.string.mealplan_reason_recently_cooked,
+                context.getString(R.string.recipe_cooked_days_ago, days),
+            )
+            ReasonCode.SAME_CATEGORY_NEIGHBOUR -> context.getString(
+                R.string.mealplan_reason_same_category,
+                RecipeCategories.displayLabel(context, c.detail),
+            )
+            ReasonCode.MONOTONY -> context.getString(R.string.mealplan_reason_monotony, list)
         }
     }
 

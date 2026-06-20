@@ -51,9 +51,10 @@ ORM tables (`models.py`):
 
 1. **Orient & resize** — `ImageOps.exif_transpose`, then `_smart_resize` to longest side ≤ 1008 px
    with both dimensions a multiple of 28 (qwen2.5vl's pixel budget; keeps box coords mapping 1:1).
-2. **Text call** — `TEXT_PROMPT` (German) → Ollama → `{"recipes": [{title, servings, category,
-   tags, prep_time, cook_time, ingredients[], steps[], nutrition, notes}]}` (lenient JSON parse).
-3. **Box call** — `BOX_PROMPT` → `{"dish_photos": [{recipe_title, box:[x1,y1,x2,y2]}]}` in
+2. **Text call** — the content-language prompt (`load_i18n(language).text_prompt`) → Ollama →
+   `{"recipes": [{title, servings, category, tags, prep_time, cook_time, ingredients[], steps[],
+   nutrition, notes}]}` (lenient JSON parse). `category` is a universal key (`pasta/meat/…`).
+3. **Box call** — `box_prompt` → `{"dish_photos": [{recipe_title, box:[x1,y1,x2,y2]}]}` in
    sent-image pixels (best-effort; failures are non-fatal).
 4. **Assign** — `_assign_boxes` greedily matches each photo to a recipe by title similarity (1:1).
 5. **Crop** — scale box coords back to the original image, crop, save to `images_dir` (JPEG q88).
@@ -63,6 +64,11 @@ ORM tables (`models.py`):
 
 Ollama is reached via `ollama_client.py` at `OPENCOOK_OLLAMA_BASE_URL`, model
 `OPENCOOK_OLLAMA_MODEL` (default `qwen2.5vl:7b`), with retries + backoff on transport/5xx errors.
+
+**Localization:** prompts, duration words, units and category aliases live in per-language JSON
+under `app/i18n/` (`en.json` = source/fallback), loaded by `load_i18n(language)` where `language`
+is the household content language sent with the job. Adding a language = a new `<lang>.json`
+(translatable via a second Weblate JSON component) — no code change. See `app/i18n/README.md`.
 
 ## Job worker
 

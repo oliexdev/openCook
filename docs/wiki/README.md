@@ -25,6 +25,7 @@ How openCook is built and how to run/extend it.
 - [Sync engine](developer/sync.md) — HLC, per-field LWW, Merkle diffing
 - [Self-hosting](developer/self-hosting.md) — Docker, config, backups
 - [Building from source](developer/building.md) — toolchain & commands
+- [Adding a language](developer/translating.md) — translate the UI, domain lists & extraction
 
 ---
 

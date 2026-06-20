@@ -20,8 +20,8 @@ package com.food.opencook.util
  */
 object IngredientStaples {
 
-    /** Every staple spelling we recognise. Match is plural-aware via [IngredientMatch]. */
-    val ALL: Set<String> = setOf(
+    /** German default staples (also the unit-test baseline). */
+    private val DEFAULT_ALL_DE: Set<String> = setOf(
         // Bundle A — the unstrittigen Klassiker
         "salz", "salz und pfeffer", "pfeffer", "schwarzer pfeffer", "weißer pfeffer",
         "öl", "olivenöl", "rapsöl", "sonnenblumenöl", "pflanzenöl",
@@ -35,6 +35,16 @@ object IngredientStaples {
         "backpulver", "vanillezucker", "trockenhefe",
     )
 
+    /** Active staple set. Swapped at runtime by `LocalizedLists` to the content language. */
+    @Volatile
+    var ALL: Set<String> = DEFAULT_ALL_DE
+
+    /** Replace the staple data for the active content language (called by `LocalizedLists`). */
+    fun setData(all: Set<String>, pantry: List<String>) {
+        if (all.isNotEmpty()) ALL = all
+        if (pantry.isNotEmpty()) DEFAULT_PANTRY = pantry
+    }
+
     /** True if [name] is one of [ALL] (plural-aware). */
     fun isStaple(name: String): Boolean = IngredientMatch.containsLike(ALL, name)
 
@@ -45,7 +55,8 @@ object IngredientStaples {
      * spellings of the same item are excluded so the pantry shows one clean
      * row per real product.
      */
-    val DEFAULT_PANTRY: List<String> = listOf(
+    @Volatile
+    var DEFAULT_PANTRY: List<String> = listOf(
         "Salz", "Pfeffer", "Olivenöl", "Butter", "Essig", "Zucker", "Mehl",
         "Gemüsebrühe", "Brühwürfel", "Senf", "Tomatenmark", "Sojasoße",
         "Paprikapulver", "Muskat", "Honig",

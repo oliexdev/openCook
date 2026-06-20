@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -45,6 +46,24 @@ class SettingsRepository @Inject constructor(
     suspend fun setLocalOnly(enabled: Boolean) {
         dataStore.edit { it[LOCAL_ONLY] = enabled }
     }
+
+    /**
+     * Language of recipe CONTENT (AI extraction, categories, grocery keywords, staples).
+     * Household-wide (synced); null means "follow this device's system language".
+     */
+    val contentLanguage: Flow<String?> = dataStore.data.map { it[CONTENT_LANGUAGE] }
+
+    suspend fun setContentLanguage(lang: String?) {
+        dataStore.edit {
+            if (lang.isNullOrBlank()) it.remove(CONTENT_LANGUAGE) else it[CONTENT_LANGUAGE] = lang
+        }
+    }
+
+    suspend fun contentLanguageOnce(): String? = dataStore.data.first()[CONTENT_LANGUAGE]
+
+    /** Resolve the effective content language: explicit setting, else the device language. */
+    fun effectiveContentLanguage(stored: String?): String =
+        stored?.takeIf { it.isNotBlank() } ?: Locale.getDefault().language
 
     /**
      * People to cook for — a **household-wide** setting (set on the server, shared
@@ -114,7 +133,17 @@ class SettingsRepository @Inject constructor(
         val HOUSEHOLD_SIZE = intPreferencesKey("household_size")
         val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
         val LOCAL_ONLY = booleanPreferencesKey("local_only")
+        val CONTENT_LANGUAGE = stringPreferencesKey("content_language")
         val NODE_ID = stringPreferencesKey("node_id")
         val LAST_HLC = stringPreferencesKey("last_hlc")
     }
+}
+
+/**
+ * Resolves the effective recipe content language ("de"/"en"). A tiny injectable seam so
+ * callers (e.g. RecipeRepository) don't depend on the DataStore-backed [SettingsRepository]
+ * directly and can be unit-tested with a trivial `ContentLanguageProvider { "de" }`.
+ */
+fun interface ContentLanguageProvider {
+    suspend fun effective(): String
 }

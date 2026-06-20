@@ -11,7 +11,7 @@ import com.food.opencook.data.remote.dto.IngredientDto
  */
 object IngredientLineParser {
 
-    private val UNITS = setOf(
+    private val DEFAULT_UNITS_DE = setOf(
         // metric / volume
         "g", "kg", "mg", "l", "ml", "cl", "dl", "liter", "gramm", "kilogramm",
         // spoons / tips
@@ -26,6 +26,16 @@ object IngredientLineParser {
         // common English (schema.org imports)
         "cup", "cups", "tbsp", "tsp", "oz", "lb", "clove", "cloves", "pinch", "can", "slice", "slices",
     )
+
+    /** Active unit vocabulary; swapped at runtime by `LocalizedLists` to the content language.
+     *  Defaults to the German+English set so unit tests / a fresh process still parse units. */
+    @Volatile
+    private var UNITS: Set<String> = DEFAULT_UNITS_DE
+
+    /** Replace the recognized units (called by `LocalizedLists` on language change). */
+    fun setUnits(units: Set<String>) {
+        if (units.isNotEmpty()) UNITS = units
+    }
 
     private val UNICODE_FRACTIONS = mapOf(
         '½' to 0.5, '¼' to 0.25, '¾' to 0.75, '⅓' to 1.0 / 3, '⅔' to 2.0 / 3,

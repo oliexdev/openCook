@@ -7,6 +7,7 @@ import com.food.opencook.data.local.entity.NutritionEntity
 import com.food.opencook.data.local.entity.RecipeEntity
 import com.food.opencook.data.remote.dto.NutritionDto
 import com.food.opencook.data.remote.dto.RecipeDto
+import com.food.opencook.util.RecipeCategories
 import java.util.UUID
 
 /** A recipe plus its child rows, ready to insert in one transaction. */
@@ -77,7 +78,7 @@ fun RecipeDto.toMappedRecipe(
             // and let the UI render a localized "N servings" label from the numeric servings.
             recipeYield = recipeYield,
             servings = openCookServings,
-            category = openCookCategory,
+            category = openCookCategory?.let { RecipeCategories.normalizeKey(it) },
             notes = openCookNotes.filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }?.joinToString("\n"),
             tags = openCookTags.filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }?.joinToString("\n"),
             cookbook = cookbook?.takeIf { it.isNotBlank() },

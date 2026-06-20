@@ -245,7 +245,9 @@ object MealPlanner {
         val reasons = mutableListOf<ReasonContribution>()
         // Only a real (non-default) category drives the variety penalty — two uncategorised
         // dishes ("Sonstiges") are unrelated and must not penalise each other.
-        val category = recipe.recipe.category?.takeIf { it != RecipeCategories.DEFAULT }
+        val category = recipe.recipe.category
+            ?.let { RecipeCategories.normalizeKey(it) }
+            ?.takeIf { it != RecipeCategories.DEFAULT }
         val coreIngredients = coreByRecipe[recipe.recipe.id].orEmpty()
 
         // Variety: recency penalty (closer = larger).
@@ -254,7 +256,7 @@ object MealPlanner {
             if (days < w.recencyWindowDays) {
                 val d = -w.recencyPenalty * (1.0 - days.toDouble() / w.recencyWindowDays)
                 s += d
-                reasons += ReasonContribution(ReasonCode.RECENTLY_PLANNED, d, detail = "vor $days Tagen")
+                reasons += ReasonContribution(ReasonCode.RECENTLY_PLANNED, d, detail = days.toString())
             }
         }
         // Feedback: penalise recently *cooked* dishes (decays over the window).
@@ -263,7 +265,7 @@ object MealPlanner {
             if (days < w.cookedWindowDays) {
                 val d = -w.cookedRecentlyPenalty * (1.0 - days.toDouble() / w.cookedWindowDays)
                 s += d
-                reasons += ReasonContribution(ReasonCode.RECENTLY_COOKED, d, detail = "vor $days Tagen")
+                reasons += ReasonContribution(ReasonCode.RECENTLY_COOKED, d, detail = days.toString())
             }
         }
         // Feedback: boost dishes a household member liked.
@@ -275,6 +277,7 @@ object MealPlanner {
         if (category != null) {
             listOf(date.minusDays(1), date.plusDays(1)).forEach { neighbour ->
                 val neighbourCategory = placed[neighbour]?.let { byId[it]?.recipe?.category }
+                    ?.let { RecipeCategories.normalizeKey(it) }
                 if (neighbourCategory == category) {
                     s -= w.sameCategoryPenalty
                     reasons += ReasonContribution(ReasonCode.SAME_CATEGORY_NEIGHBOUR, -w.sameCategoryPenalty, detail = category)
@@ -351,7 +354,7 @@ object MealPlanner {
                 val bonus = w.timeFitBonus * (1.0 - (mins / maxMinutes).coerceIn(0.0, 1.0))
                 if (bonus > 0) {
                     s += bonus
-                    reasons += ReasonContribution(ReasonCode.QUICK_WEEKDAY, bonus, detail = "${mins.toInt()} Min")
+                    reasons += ReasonContribution(ReasonCode.QUICK_WEEKDAY, bonus, detail = mins.toInt().toString())
                 }
             }
         }

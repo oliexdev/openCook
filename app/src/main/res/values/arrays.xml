@@ -1,0 +1,85 @@
+<resources>
+    <!-- Default (English) grocery-aisle keyword lists. Substring match, lower-case; aisle order
+         is fixed in code (first match wins). Items with spaces are quoted to keep them. -->
+    <string-array name="grocery_kw_frozen">
+        <item>frozen</item><item>"ice cream"</item><item>ice-cream</item>
+    </string-array>
+    <string-array name="grocery_kw_meat_fish">
+        <item>chicken</item><item>turkey</item><item>beef</item><item>pork</item><item>bacon</item>
+        <item>ham</item><item>sausage</item><item>salami</item><item>mince</item><item>"ground "</item>
+        <item>steak</item><item>lamb</item><item>meat</item><item>salmon</item><item>tuna</item>
+        <item>shrimp</item><item>prawn</item><item>fish</item><item>fillet</item><item>filet</item>
+        <item>cod</item><item>trout</item>
+    </string-array>
+    <string-array name="grocery_kw_produce">
+        <item>tomato</item><item>"bell pepper"</item><item>onion</item><item>garlic</item><item>carrot</item>
+        <item>potato</item><item>lettuce</item><item>salad</item><item>cucumber</item><item>zucchini</item>
+        <item>courgette</item><item>broccoli</item><item>cauliflower</item><item>spinach</item><item>leek</item>
+        <item>mushroom</item><item>apple</item><item>banana</item><item>lemon</item><item>lime</item>
+        <item>orange</item><item>berry</item><item>berries</item><item>avocado</item><item>ginger</item>
+        <item>chili</item><item>chilli</item><item>parsley</item><item>basil</item><item>chives</item>
+        <item>bean</item><item>"pea"</item><item>corn</item><item>pumpkin</item><item>eggplant</item>
+        <item>aubergine</item><item>celery</item><item>arugula</item><item>rocket</item><item>pear</item>
+        <item>grape</item><item>mango</item><item>herb</item><item>vegetable</item><item>fruit</item>
+    </string-array>
+    <string-array name="grocery_kw_bakery">
+        <item>bread</item><item>"roll"</item><item>"bun"</item><item>toast</item><item>baguette</item>
+        <item>croissant</item><item>bagel</item>
+    </string-array>
+    <string-array name="grocery_kw_drinks">
+        <item>water</item><item>juice</item><item>coffee</item><item>"tea"</item><item>cola</item>
+        <item>soda</item><item>beer</item><item>wine</item><item>smoothie</item>
+    </string-array>
+    <string-array name="grocery_kw_spices">
+        <item>salt</item><item>pepper</item><item>paprika</item><item>curry</item><item>cumin</item>
+        <item>cinnamon</item><item>nutmeg</item><item>oregano</item><item>thyme</item><item>rosemary</item>
+        <item>"soy sauce"</item><item>vinegar</item><item>mustard</item><item>ketchup</item><item>mayo</item>
+        <item>broth</item><item>stock</item><item>"tomato paste"</item><item>vanilla</item><item>spice</item>
+        <item>"olive oil"</item><item>"oil"</item><item>sauce</item>
+    </string-array>
+    <string-array name="grocery_kw_pantry">
+        <item>noodle</item><item>spaghetti</item><item>pasta</item><item>rice</item><item>flour</item>
+        <item>sugar</item><item>lentil</item><item>chickpea</item><item>couscous</item><item>oats</item>
+        <item>oatmeal</item><item>muesli</item><item>cereal</item><item>"can "</item><item>canned</item>
+        <item>"coconut milk"</item><item>"baking powder"</item><item>yeast</item><item>honey</item><item>jam</item>
+        <item>chocolate</item><item>cocoa</item><item>polenta</item><item>semolina</item>
+    </string-array>
+    <string-array name="grocery_kw_dairy">
+        <item>milk</item><item>cream</item><item>butter</item><item>yogurt</item><item>yoghurt</item>
+        <item>quark</item><item>"cream cheese"</item><item>cheese</item><item>"egg"</item><item>mozzarella</item>
+        <item>parmesan</item><item>feta</item><item>margarine</item>
+    </string-array>
+
+    <!-- Background staples the meal-planner excludes from the reuse score. -->
+    <string-array name="ingredient_staples">
+        <item>salt</item><item>"salt and pepper"</item><item>pepper</item><item>"black pepper"</item><item>"white pepper"</item>
+        <item>oil</item><item>"olive oil"</item><item>"vegetable oil"</item><item>"sunflower oil"</item><item>"canola oil"</item>
+        <item>butter</item><item>water</item><item>vinegar</item><item>sugar</item><item>flour</item>
+        <item>broth</item><item>"vegetable broth"</item><item>"chicken broth"</item><item>stock</item><item>"stock cube"</item>
+        <item>mustard</item><item>"tomato paste"</item><item>"soy sauce"</item>
+        <item>paprika</item><item>nutmeg</item><item>honey</item>
+        <item>"baking powder"</item><item>"vanilla sugar"</item><item>"dry yeast"</item><item>yeast</item>
+    </string-array>
+
+    <!-- Staples seeded into a new household's pantry (display spelling). -->
+    <string-array name="pantry_defaults">
+        <item>Salt</item><item>Pepper</item><item>Olive oil</item><item>Butter</item><item>Vinegar</item>
+        <item>Sugar</item><item>Flour</item><item>Vegetable broth</item><item>Stock cube</item><item>Mustard</item>
+        <item>Tomato paste</item><item>Soy sauce</item><item>Paprika</item><item>Nutmeg</item><item>Honey</item>
+        <item>Baking powder</item><item>Vanilla sugar</item><item>Dry yeast</item>
+    </string-array>
+
+    <!-- Recognized measuring units (kept verbatim; never converted). Metric is universal. -->
+    <string-array name="ingredient_units">
+        <item>g</item><item>kg</item><item>mg</item><item>l</item><item>ml</item><item>cl</item><item>dl</item>
+        <item>liter</item><item>litre</item><item>gram</item><item>kilogram</item>
+        <item>cup</item><item>cups</item><item>tbsp</item><item>tbsps</item><item>tablespoon</item><item>tablespoons</item>
+        <item>tsp</item><item>tsps</item><item>teaspoon</item><item>teaspoons</item><item>oz</item><item>lb</item>
+        <item>lbs</item><item>pound</item><item>pounds</item><item>clove</item><item>cloves</item><item>pinch</item>
+        <item>pinches</item><item>can</item><item>cans</item><item>slice</item><item>slices</item><item>bunch</item>
+        <item>stick</item><item>sticks</item><item>package</item><item>packet</item><item>bag</item><item>jar</item>
+        <item>handful</item><item>drop</item><item>drops</item><item>dash</item><item>pint</item><item>quart</item>
+        <item>gallon</item><item>stalk</item><item>stalks</item><item>sprig</item><item>sprigs</item><item>head</item>
+        <item>piece</item><item>pieces</item>
+    </string-array>
+</resources>

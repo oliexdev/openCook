@@ -37,6 +37,9 @@ class HouseholdSettings(BaseModel):
 
     model_config = ConfigDict(extra="allow")
     household_size: int = 2
+    # ISO language code ("de"/"en") for recipe content (AI extraction, categories). The
+    # app sends it; null/absent means each device follows its own system language.
+    content_language: str | None = None
 
 
 class HouseholdSummary(BaseModel):

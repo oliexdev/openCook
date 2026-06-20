@@ -1,5 +1,9 @@
 package com.food.opencook.util
 
+import android.content.Context
+import androidx.annotation.StringRes
+import com.food.opencook.R
+
 /** Helpers for the structured numeric quantities/servings. */
 object Numbers {
 
@@ -30,8 +34,49 @@ object Numbers {
         quantity?.let { Math.round(it * factor * 100.0) / 100.0 }
 }
 
-/** Fixed coarse categories the AI assigns; drives meal-plan variety. */
+/**
+ * Fixed coarse categories the AI assigns; drives meal-plan variety. Stored as
+ * language-independent **keys** (e.g. "meat"); the UI shows a localized label.
+ * Legacy/AI values in any language are mapped to a key on read via [normalizeKey].
+ */
 object RecipeCategories {
-    val ALL = listOf("Pasta", "Fleisch", "Fisch", "Suppe", "Vegetarisch", "Salat", "Dessert", "Sonstiges")
-    const val DEFAULT = "Sonstiges"
+    /** Stable keys persisted in the DB + sync log. */
+    val KEYS = listOf("pasta", "meat", "fish", "soup", "vegetarian", "salad", "dessert", "other")
+    const val DEFAULT = "other"
+
+    @StringRes
+    fun labelRes(key: String?): Int = when (normalizeKey(key)) {
+        "pasta" -> R.string.cat_pasta
+        "meat" -> R.string.cat_meat
+        "fish" -> R.string.cat_fish
+        "soup" -> R.string.cat_soup
+        "vegetarian" -> R.string.cat_vegetarian
+        "salad" -> R.string.cat_salad
+        "dessert" -> R.string.cat_dessert
+        else -> R.string.cat_other
+    }
+
+    /** Map a stored/legacy/AI category (any language) to a stable key; unknown → [DEFAULT]. */
+    fun normalizeKey(raw: String?): String {
+        val t = raw?.trim()?.lowercase() ?: return DEFAULT
+        return when (t) {
+            "pasta", "nudeln" -> "pasta"
+            "meat", "fleisch" -> "meat"
+            "fish", "fisch" -> "fish"
+            "soup", "suppe" -> "soup"
+            "vegetarian", "vegetarisch", "veggie" -> "vegetarian"
+            "salad", "salat" -> "salad"
+            "dessert", "nachtisch" -> "dessert"
+            "other", "sonstiges" -> "other"
+            else -> if (t in KEYS) t else DEFAULT
+        }
+    }
+
+    /** Display label: localized for known/legacy values; a custom free-text value is kept verbatim. */
+    fun displayLabel(context: Context, raw: String?): String {
+        if (raw.isNullOrBlank()) return context.getString(R.string.cat_other)
+        val key = normalizeKey(raw)
+        val isKnown = key != DEFAULT || raw.trim().lowercase() in listOf("other", "sonstiges")
+        return if (isKnown) context.getString(labelRes(key)) else raw.trim()
+    }
 }

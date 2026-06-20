@@ -129,6 +129,8 @@ class Job(Base):
         Enum(JobStatus), default=JobStatus.PENDING, nullable=False
     )
     image_path: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Content language hint ("de"/"en") for the extraction prompt; null = server default.
+    language: Mapped[str | None] = mapped_column(String, nullable=True)
     # Coarse processing stage for UI feedback (e.g. "reading_text",
     # "detecting_photos"); null when queued or finished.
     stage: Mapped[str | None] = mapped_column(String, nullable=True)

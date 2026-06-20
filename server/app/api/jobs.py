@@ -4,7 +4,7 @@ import json
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -18,15 +18,18 @@ router = APIRouter(prefix="/jobs", tags=["jobs"])
 @router.post("", response_model=JobCreatedResponse, status_code=201)
 async def create_job(
     image: UploadFile = File(...),
+    language: str | None = Form(default=None),
     session: Session = Depends(get_session),
 ) -> JobCreatedResponse:
-    """Accept a photo and enqueue it for extraction. The worker picks it up async."""
+    """Accept a photo and enqueue it for extraction. The worker picks it up async.
+    ``language`` (e.g. "de"/"en") is the recipe content language; it picks the
+    extraction prompt. Absent → the server default."""
     settings = get_settings()
     suffix = Path(image.filename or "upload.jpg").suffix or ".jpg"
     image_path = settings.images_dir / f"{uuid.uuid4()}{suffix}"
     image_path.write_bytes(await image.read())
 
-    job = Job(status=JobStatus.PENDING, image_path=str(image_path))
+    job = Job(status=JobStatus.PENDING, image_path=str(image_path), language=language)
     session.add(job)
     session.commit()
     return JobCreatedResponse(job_id=job.id, status=job.status)

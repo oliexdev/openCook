@@ -8,6 +8,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.food.opencook.data.localization.LocalizedLists
 import com.food.opencook.data.notification.JobNotifier
 import com.food.opencook.data.remote.BaseUrlInterceptor
 import com.food.opencook.data.settings.SettingsRepository
@@ -30,6 +31,7 @@ class OpenCookApplication : Application(), Configuration.Provider {
     @Inject lateinit var baseUrlInterceptor: BaseUrlInterceptor
     @Inject lateinit var jobNotifier: JobNotifier
     @Inject lateinit var syncManager: SyncManager
+    @Inject lateinit var localizedLists: LocalizedLists
 
     private val appScope = CoroutineScope(SupervisorJob())
 
@@ -44,6 +46,11 @@ class OpenCookApplication : Application(), Configuration.Provider {
         // Keep the OkHttp base URL in sync with the user-configured server address.
         settingsRepository.serverUrl
             .onEach { baseUrlInterceptor.setBaseUrl(it) }
+            .launchIn(appScope)
+        // Load the content-language domain lists (grocery keywords, staples, units) at
+        // startup and whenever the household content language changes.
+        settingsRepository.contentLanguage
+            .onEach { localizedLists.reload() }
             .launchIn(appScope)
         // Auto-sync while the app is alive: initial + periodic + after local changes.
         syncManager.start()

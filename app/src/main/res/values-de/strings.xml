@@ -459,4 +459,21 @@
     <!-- Review save: duplicate-name feedback -->
     <string name="review_duplicate_one">Ein Rezept mit diesem Namen existiert bereits.</string>
     <string name="review_duplicate_many">%1$d Rezepte mit bereits vergebenem Namen übersprungen.</string>
+
+    <!-- Recipe content language (AI extraction, categories, grocery keywords) -->
+    <string name="settings_content_language">Rezeptsprache</string>
+    <string name="settings_content_language_hint">Sprache für Foto-Scan, Kategorien und Einkaufslisten-Gruppierung.</string>
+    <string name="settings_content_language_system">Systemsprache</string>
+    <string name="lang_german">Deutsch</string>
+    <string name="lang_english">English</string>
+
+    <!-- Recipe categories (stored as keys, shown localized) -->
+    <string name="cat_pasta">Pasta</string>
+    <string name="cat_meat">Fleisch</string>
+    <string name="cat_fish">Fisch</string>
+    <string name="cat_soup">Suppe</string>
+    <string name="cat_vegetarian">Vegetarisch</string>
+    <string name="cat_salad">Salat</string>
+    <string name="cat_dessert">Dessert</string>
+    <string name="cat_other">Sonstiges</string>
 </resources>

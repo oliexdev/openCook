@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.Flow
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.util.UUID
 import javax.inject.Inject
@@ -68,6 +69,7 @@ class RecipeRepository @Inject constructor(
     private val importCorrector: ImportCorrector,
     private val shoppingRepository: ShoppingRepository,
     private val pantryRepository: PantryRepository,
+    private val contentLanguage: com.food.opencook.data.settings.ContentLanguageProvider,
 ) {
     fun observeRecipes(): Flow<List<RecipeWithDetails>> = recipeDao.observeAll()
     fun observeRecipe(id: String): Flow<RecipeWithDetails?> = recipeDao.observeById(id)
@@ -146,7 +148,9 @@ class RecipeRepository @Inject constructor(
             filename = file.name,
             body = file.asRequestBody("image/jpeg".toMediaType()),
         )
-        val created = api.createJob(part)
+        // Tell the server which language to extract in (household content language, else device).
+        val lang = contentLanguage.effective()
+        val created = api.createJob(part, lang.toRequestBody("text/plain".toMediaType()))
         jobDao.setServerJob(localJobId, created.jobId, created.status, System.currentTimeMillis())
     }
 

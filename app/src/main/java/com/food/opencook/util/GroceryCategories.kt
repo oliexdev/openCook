@@ -24,7 +24,7 @@ enum class GroceryCategory(@StringRes val labelRes: Int, val emoji: String) {
 object GroceryCategories {
 
     // Checked in order; first category with a matching keyword (substring, case-insensitive) wins.
-    private val rules: List<Pair<GroceryCategory, List<String>>> = listOf(
+    private val DEFAULT_RULES_DE: List<Pair<GroceryCategory, List<String>>> = listOf(
         GroceryCategory.FROZEN to listOf("tiefkühl", "tk ", "gefroren", " eis", "eiscreme"),
         GroceryCategory.MEAT_FISH to listOf(
             "hähnchen", "huhn", "pute", "hack", "rind", "schwein", "speck", "schinken", "wurst", "salami",
@@ -54,6 +54,16 @@ object GroceryCategories {
             "mozzarella", "parmesan", "feta", "crème", "creme", "margarine",
         ),
     )
+
+    /** Active keyword rules. Swapped at runtime by `LocalizedLists` to the content language;
+     *  defaults to German so unit tests (and a not-yet-initialized process) still work. */
+    @Volatile
+    private var rules: List<Pair<GroceryCategory, List<String>>> = DEFAULT_RULES_DE
+
+    /** Replace the aisle keyword rules (called by `LocalizedLists` on language change). */
+    fun setRules(newRules: List<Pair<GroceryCategory, List<String>>>) {
+        if (newRules.isNotEmpty()) rules = newRules
+    }
 
     fun categorize(name: String): GroceryCategory {
         val n = " ${name.lowercase().trim()} "

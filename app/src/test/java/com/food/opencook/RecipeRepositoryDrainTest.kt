@@ -170,8 +170,10 @@ private val noopShoppingDao = object : ShoppingDao {
 }
 
 private class FakeApi(private val response: JobResponseDto) : JobsApi {
-    override suspend fun createJob(image: MultipartBody.Part): CreateJobResponseDto =
-        CreateJobResponseDto("job-1", "pending")
+    override suspend fun createJob(
+        image: MultipartBody.Part,
+        language: okhttp3.RequestBody?,
+    ): CreateJobResponseDto = CreateJobResponseDto("job-1", "pending")
     override suspend fun getJob(id: String): JobResponseDto = response
 }
 
@@ -194,6 +196,7 @@ class RecipeRepositoryDrainTest {
             importCorrector = { it },
             shoppingRepository = ShoppingRepository(noopShoppingDao, recorder, pantryRepo),
             pantryRepository = pantryRepo,
+            contentLanguage = { "de" },
         )
     }
 

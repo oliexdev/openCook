@@ -10,6 +10,7 @@ from app.extraction import (
     _clean_step,
     _fix_title_case,
     _iso_duration,
+    load_i18n,
     parse_json_lenient,
     to_schema_org,
 )
@@ -19,7 +20,7 @@ class FakeClient:
     """Stand-in for OllamaClient: returns canned JSON depending on the prompt."""
 
     async def generate(self, prompt: str, image_bytes: bytes) -> str:
-        if "Gerichtsfoto" in prompt:
+        if "dish_photos" in prompt:
             return '{"dish_photos":[{"recipe_title":"Test Rezept","box":[10,10,100,80]}]}'
         return (
             '{"recipes":[{"title":"Test Rezept","servings":2,"category":"Pasta",'
@@ -36,10 +37,24 @@ def test_parse_json_lenient_handles_fences():
 
 
 def test_iso_duration():
-    assert _iso_duration("25 Min.") == "PT25M"
-    assert _iso_duration("1 Std 10 Min") == "PT70M"
-    assert _iso_duration(None) is None
-    assert _iso_duration("keine Zahl") is None
+    de = load_i18n("de")
+    assert _iso_duration("25 Min.", de) == "PT25M"
+    assert _iso_duration("1 Std 10 Min", de) == "PT70M"
+    assert _iso_duration(None, de) is None
+    assert _iso_duration("keine Zahl", de) is None
+    # English words resolve via the en catalog (and the en-merge fallback).
+    assert _iso_duration("1 hour 10 minutes", load_i18n("en")) == "PT70M"
+
+
+def test_load_i18n_unknown_language_falls_back_to_english():
+    en = load_i18n("en")
+    ja = load_i18n("ja")  # no ja.json yet → English catalog
+    assert ja.text_prompt == en.text_prompt
+    assert ja.units == en.units
+    # German is its own catalog; merged units are a superset of English.
+    de = load_i18n("de")
+    assert de.text_prompt != en.text_prompt
+    assert en.units <= de.units
 
 
 def test_to_schema_org_coerces_non_numeric_quantity():
@@ -159,9 +174,9 @@ def test_to_schema_org_maps_fields():
     assert s["openCookSourcePhoto"] == "page-uuid.jpg"
     assert s["openCookTags"] == []  # absent in input → empty list
     assert s["recipeIngredient"] == ["400 g Nudeln"]
-    assert s["recipeYield"] == "2 Portionen"
+    assert s["recipeYield"] is None
     assert s["openCookServings"] == 2
-    assert s["openCookCategory"] == "Pasta"
+    assert s["openCookCategory"] == "pasta"
     assert s["recipeInstructions"][0] == {"@type": "HowToStep", "text": "Schritt eins"}
     assert s["nutrition"]["calories"] == "560 kcal"
     assert s["nutrition"]["proteinContent"] == "17 g"
@@ -183,7 +198,7 @@ def test_extractor_applies_exif_orientation(tmp_path):
     class CapturingClient:
         async def generate(self, prompt: str, image_bytes: bytes) -> str:
             received.append(Image.open(BytesIO(image_bytes)).size)
-            return '{"dish_photos":[]}' if "Gerichtsfoto" in prompt else '{"recipes":[]}'
+            return '{"dish_photos":[]}' if "dish_photos" in prompt else '{"recipes":[]}'
 
     images_dir = tmp_path / "images"
     images_dir.mkdir()

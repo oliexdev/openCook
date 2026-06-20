@@ -1,0 +1,85 @@
+<resources>
+    <!-- Grocery-aisle keyword lists (substring match, lower-case). Order of aisles is fixed
+         in code; first matching aisle wins. Items with leading/trailing spaces are quoted. -->
+    <string-array name="grocery_kw_frozen">
+        <item>tiefkühl</item><item>"tk "</item><item>gefroren</item><item>" eis"</item><item>eiscreme</item>
+    </string-array>
+    <string-array name="grocery_kw_meat_fish">
+        <item>hähnchen</item><item>huhn</item><item>pute</item><item>hack</item><item>rind</item>
+        <item>schwein</item><item>speck</item><item>schinken</item><item>wurst</item><item>salami</item>
+        <item>lachs</item><item>thunfisch</item><item>garnele</item><item>scampi</item><item>fisch</item>
+        <item>filet</item><item>steak</item><item>lamm</item><item>fleisch</item><item>bacon</item>
+    </string-array>
+    <string-array name="grocery_kw_produce">
+        <item>tomate</item><item>paprika</item><item>zwiebel</item><item>knoblauch</item><item>karotte</item>
+        <item>möhre</item><item>kartoffel</item><item>salat</item><item>gurke</item><item>zucchini</item>
+        <item>brokkoli</item><item>blumenkohl</item><item>spinat</item><item>lauch</item><item>champignon</item>
+        <item>pilz</item><item>apfel</item><item>äpfel</item><item>banane</item><item>zitrone</item>
+        <item>limette</item><item>orange</item><item>beere</item><item>avocado</item><item>ingwer</item>
+        <item>chili</item><item>petersilie</item><item>basilikum</item><item>schnittlauch</item><item>bohne</item>
+        <item>erbse</item><item>mais</item><item>kürbis</item><item>aubergine</item><item>sellerie</item>
+        <item>rucola</item><item>birne</item><item>traube</item><item>mango</item><item>kräuter</item>
+        <item>gemüse</item><item>obst</item>
+    </string-array>
+    <string-array name="grocery_kw_bakery">
+        <item>brot</item><item>brötchen</item><item>toast</item><item>baguette</item><item>semmel</item><item>croissant</item>
+    </string-array>
+    <string-array name="grocery_kw_drinks">
+        <item>wasser</item><item>saft</item><item>kaffee</item><item>" tee"</item><item>cola</item>
+        <item>limo</item><item>bier</item><item>wein</item><item>smoothie</item>
+    </string-array>
+    <string-array name="grocery_kw_spices">
+        <item>salz</item><item>pfeffer</item><item>paprikapulver</item><item>currypaste</item><item>curry</item>
+        <item>kreuzkümmel</item><item>zimt</item><item>muskat</item><item>oregano</item><item>thymian</item>
+        <item>rosmarin</item><item>sojasauce</item><item>sojasoße</item><item>essig</item><item>senf</item>
+        <item>ketchup</item><item>mayo</item><item>brühe</item><item>tomatenmark</item><item>vanille</item>
+        <item>sambal</item><item>worcester</item><item>gewürz</item><item>olivenöl</item><item>öl</item>
+        <item>sauce</item><item>soße</item>
+    </string-array>
+    <string-array name="grocery_kw_pantry">
+        <item>nudel</item><item>spaghetti</item><item>pasta</item><item>reis</item><item>mehl</item>
+        <item>zucker</item><item>linsen</item><item>kichererbsen</item><item>couscous</item><item>haferflocken</item>
+        <item>müsli</item><item>konserve</item><item>dose</item><item>passierte tomaten</item><item>kokosmilch</item>
+        <item>backpulver</item><item>hefe</item><item>honig</item><item>marmelade</item><item>schokolade</item>
+        <item>kakao</item><item>polenta</item><item>grieß</item><item>"öl "</item><item>essig</item>
+    </string-array>
+    <string-array name="grocery_kw_dairy">
+        <item>milch</item><item>sahne</item><item>butter</item><item>joghurt</item><item>quark</item>
+        <item>schmand</item><item>frischkäse</item><item>käse</item><item>eier</item><item>"ei "</item>
+        <item>mozzarella</item><item>parmesan</item><item>feta</item><item>crème</item><item>creme</item><item>margarine</item>
+    </string-array>
+
+    <!-- Background staples the meal-planner excludes from the reuse score (plural-aware match). -->
+    <string-array name="ingredient_staples">
+        <item>salz</item><item>salz und pfeffer</item><item>pfeffer</item><item>schwarzer pfeffer</item><item>weißer pfeffer</item>
+        <item>öl</item><item>olivenöl</item><item>rapsöl</item><item>sonnenblumenöl</item><item>pflanzenöl</item>
+        <item>butter</item><item>wasser</item><item>essig</item><item>zucker</item><item>mehl</item>
+        <item>brühe</item><item>gemüsebrühe</item><item>fleischbrühe</item><item>hühnerbrühe</item><item>brühwürfel</item>
+        <item>senf</item><item>tomatenmark</item><item>sojasoße</item><item>sojasauce</item>
+        <item>paprikapulver</item><item>muskat</item><item>muskatnuss</item><item>honig</item>
+        <item>backpulver</item><item>vanillezucker</item><item>trockenhefe</item>
+    </string-array>
+
+    <!-- Staples seeded into a new household's pantry (display spelling). -->
+    <string-array name="pantry_defaults">
+        <item>Salz</item><item>Pfeffer</item><item>Olivenöl</item><item>Butter</item><item>Essig</item>
+        <item>Zucker</item><item>Mehl</item><item>Gemüsebrühe</item><item>Brühwürfel</item><item>Senf</item>
+        <item>Tomatenmark</item><item>Sojasoße</item><item>Paprikapulver</item><item>Muskat</item><item>Honig</item>
+        <item>Backpulver</item><item>Vanillezucker</item><item>Trockenhefe</item>
+    </string-array>
+
+    <!-- Recognized measuring units (kept verbatim; never converted). -->
+    <string-array name="ingredient_units">
+        <item>g</item><item>kg</item><item>mg</item><item>l</item><item>ml</item><item>cl</item><item>dl</item>
+        <item>liter</item><item>gramm</item><item>kilogramm</item>
+        <item>el</item><item>tl</item><item>msp</item><item>esslöffel</item><item>teelöffel</item><item>messerspitze</item>
+        <item>prise</item><item>prisen</item><item>stück</item><item>stk</item><item>bund</item><item>becher</item>
+        <item>dose</item><item>dosen</item><item>glas</item><item>gläser</item><item>pck</item><item>packung</item>
+        <item>päckchen</item><item>beutel</item><item>tube</item><item>flasche</item><item>kugel</item><item>kugeln</item>
+        <item>zehe</item><item>zehen</item><item>scheibe</item><item>scheiben</item><item>blatt</item><item>blätter</item>
+        <item>tasse</item><item>tassen</item><item>tropfen</item><item>cm</item><item>kopf</item><item>köpfe</item>
+        <item>knolle</item><item>knollen</item><item>stange</item><item>stangen</item><item>zweig</item><item>zweige</item>
+        <item>handvoll</item><item>schuss</item><item>spritzer</item><item>würfel</item><item>portion</item><item>portionen</item>
+        <item>ecke</item><item>ecken</item><item>riegel</item><item>topf</item>
+    </string-array>
+</resources>
