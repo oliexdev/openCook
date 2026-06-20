@@ -1,0 +1,67 @@
+package com.food.opencook.data.image
+
+import android.content.Context
+import android.net.Uri
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileNotFoundException
+import java.util.UUID
+import javax.inject.Inject
+import javax.inject.Singleton
+
+/**
+ * Owns local image files. Captured photos and gallery imports are copied into the
+ * app cache so we hold a stable, owned file (independent of the source content
+ * URI's lifetime) to upload and to keep as the recipe's source photo.
+ */
+@Singleton
+class ImageStore @Inject constructor(
+    @ApplicationContext private val context: Context,
+) {
+    private val capturesDir: File
+        get() = File(context.cacheDir, "captures").apply { mkdirs() }
+
+    /** Persistent cache of images downloaded from the server (synced from other
+     *  devices). Kept in filesDir, not cacheDir, so Android can't reclaim it under
+     *  pressure — that would re-break the offline-first guarantee for synced photos. */
+    private val downloadsDir: File
+        get() = File(context.filesDir, "images").apply { mkdirs() }
+
+    /** A fresh destination file for a CameraX capture. */
+    fun newCaptureFile(): File = File(capturesDir, "${UUID.randomUUID()}.jpg")
+
+    /** Copy a picked gallery image into the cache; returns the absolute path. */
+    suspend fun saveFromUri(uri: Uri): String = withContext(Dispatchers.IO) {
+        val dest = newCaptureFile()
+        val input = context.contentResolver.openInputStream(uri)
+            ?: throw FileNotFoundException("Cannot open $uri")
+        input.use { source -> dest.outputStream().use { source.copyTo(it) } }
+        dest.absolutePath
+    }
+
+    /** Persist raw image bytes (e.g. a decoded data-URI or a zip entry) into the cache;
+     *  returns the absolute path. */
+    suspend fun saveBytes(bytes: ByteArray): String = withContext(Dispatchers.IO) {
+        val dest = newCaptureFile()
+        dest.outputStream().use { it.write(bytes) }
+        dest.absolutePath
+    }
+
+    /** Persist a downloaded server image keyed by its server filename (already content-
+     *  addressed — sha256.jpg — so the name is collision-free). Returns the absolute
+     *  path to store as the image row's localPath. */
+    suspend fun saveDownloadedImage(serverName: String, bytes: ByteArray): String = withContext(Dispatchers.IO) {
+        val dest = File(downloadsDir, serverName)
+        dest.outputStream().use { it.write(bytes) }
+        dest.absolutePath
+    }
+
+    /** Wipe every image file this device owns (captures and downloads). Used when
+     *  leaving the household so household photos don't linger on disk. */
+    suspend fun wipeAll(): Unit = withContext(Dispatchers.IO) {
+        capturesDir.listFiles()?.forEach { it.delete() }
+        downloadsDir.listFiles()?.forEach { it.delete() }
+    }
+}

@@ -1,0 +1,6 @@
+<resources>
+    <!-- Dark launch window so the pre-Compose background matches dark mode (no white flash). -->
+    <style name="Theme.OpenCook" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/brand_window</item>
+    </style>
+</resources>

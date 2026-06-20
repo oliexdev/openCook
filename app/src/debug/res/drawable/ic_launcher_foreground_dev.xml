@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug-only adaptive-icon foreground: the unchanged main utensils glyph
+  (@drawable/ic_launcher_foreground, from src/main) with the DEV badge layered on top.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/ic_launcher_foreground" />
+    <item android:drawable="@drawable/ic_dev_badge" />
+</layer-list>

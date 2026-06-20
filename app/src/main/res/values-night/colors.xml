@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark warm background so the pre-Compose window doesn't flash white at launch. -->
+    <color name="brand_window">#1A1613</color>
+</resources>

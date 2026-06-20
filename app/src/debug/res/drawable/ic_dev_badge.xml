@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DEV badge overlaid on the launcher icon for the debug (.dev) build only.
+  A full-width black band across the lower third (spans edge to edge; the adaptive mask
+  trims the corners to the icon shape) with small white "DEV" lettering (stroked block
+  letters, since VectorDrawable has no text element), centred in the band.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Full-width black band -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M0,66 L108,66 L108,86 L0,86 Z" />
+
+    <!-- "D" -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M41,70 L41,78 M41,70 C45,70 47,72 47,74 C47,76 45,78 41,78" />
+    <!-- "E" -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M57,70 L51,70 L51,78 L57,78 M51,74 L55.5,74" />
+    <!-- "V" -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M61,70 L64,78 L67,70" />
+</vector>

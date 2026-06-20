@@ -1,0 +1,32 @@
+# One-command self-host for the openCook server. Ollama keeps running on the HOST
+# (it needs the GPU); this container only calls it over HTTP. See DOCKER.md.
+services:
+  opencook:
+    build: .
+    container_name: opencook-server
+    # Host networking: mDNS auto-discovery reaches the LAN AND the container reaches
+    # the host's Ollama at localhost:11434. (Linux host.)
+    network_mode: host
+    environment:
+      OPENCOOK_DATA_DIR: /data
+      OPENCOOK_OLLAMA_BASE_URL: http://localhost:11434
+      OPENCOOK_OLLAMA_MODEL: qwen2.5vl:7b
+      OPENCOOK_SERVER_NAME: ${OPENCOOK_SERVER_NAME:-openCook}
+      # OPENCOOK_BACKUP_DIR: /backups   # uncomment to store backups OUTSIDE the data volume
+    volumes:
+      - opencook-data:/data            # DB + images + (default) backups; survives restarts/updates
+      # - /mnt/backups:/backups         # off-box backups on another disk/NAS (chown host dir to uid 10001)
+    restart: unless-stopped            # comes back after a reboot
+    read_only: true                    # root FS immutable; only /data (+ /tmp) is writable
+    tmpfs:
+      - /tmp                           # backup.py snapshots the DB into a temp dir
+    cap_drop: ["ALL"]                 # the app needs no Linux capabilities
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  opencook-data:

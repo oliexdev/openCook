@@ -1,0 +1,18 @@
+# Keep the build context small/clean (build context = server/).
+data/
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+tests/
+scripts/
+*.db
+*.db-wal
+*.db-shm
+.env
+*.tar.gz
+DOCKER.md
+docker-compose.yml

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  openCook talks to a *self-hosted* server on the user's own LAN/VPN, addressed by
+  a user-entered IP that is unknown at build time and has no TLS certificate. A
+  plain-HTTP connection on the local network is therefore a deliberate, core part
+  of the product (no cloud, no account). Cleartext is permitted broadly because a
+  domain allow-list is impossible for arbitrary LAN addresses; the data never
+  leaves the user's network.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

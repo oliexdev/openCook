@@ -1,0 +1,62 @@
+{
+  "_comment": "Shared HLC + CRDT-merge test vectors. The Kotlin (app) and Python (server) sync engines must both satisfy these, guaranteeing byte-identical timestamps and identical convergence. Keys in 'expected' are dataset|rowId|column.",
+  "pack": [
+    { "millis": 1000, "counter": 1, "node": "node", "packed": "000000000001000-0001-node" },
+    { "millis": 0, "counter": 0, "node": "A", "packed": "000000000000000-0000-A" },
+    { "millis": 1700000000000, "counter": 255, "node": "abc-def", "packed": "001700000000000-00FF-abc-def" }
+  ],
+  "order": [
+    { "a": "000000000001000-0000-A", "b": "000000000001000-0000-B", "cmp": -1 },
+    { "a": "000000000001000-0001-A", "b": "000000000001001-0000-A", "cmp": -1 },
+    { "a": "000000000001002-0000-A", "b": "000000000001002-0000-A", "cmp": 0 },
+    { "a": "000000000001000-000A-A", "b": "000000000001000-0009-A", "cmp": 1 }
+  ],
+  "merkle": {
+    "build": [
+      {
+        "timestamps": ["000000001000000-0000-A", "000000001000060-0000-B", "000000002000000-0000-A"],
+        "rootHash": 3060584925
+      }
+    ],
+    "diff": [
+      {
+        "a": ["000000001000000-0000-A", "000000001000060-0000-B"],
+        "b": ["000000001000000-0000-A", "000000001000060-0000-B", "000000002000000-0000-A"],
+        "expectedMillis": 1980000
+      },
+      {
+        "a": ["000000001000000-0000-A"],
+        "b": ["000000001000000-0000-A"],
+        "expectedMillis": null
+      }
+    ]
+  },
+  "merge": [
+    {
+      "name": "per-field LWW with disjoint field and node tiebreak",
+      "messages": [
+        { "timestamp": "000000000001000-0000-A", "dataset": "recipes", "rowId": "r1", "column": "name", "value": "\"A name\"" },
+        { "timestamp": "000000000001000-0000-B", "dataset": "recipes", "rowId": "r1", "column": "name", "value": "\"B name\"" },
+        { "timestamp": "000000000001001-0000-A", "dataset": "recipes", "rowId": "r1", "column": "servings", "value": "\"2\"" },
+        { "timestamp": "000000000001002-0000-B", "dataset": "recipes", "rowId": "r1", "column": "name", "value": "\"B newest\"" },
+        { "timestamp": "000000000001002-0000-A", "dataset": "recipes", "rowId": "r2", "column": "name", "value": "\"Second\"" }
+      ],
+      "expected": {
+        "recipes|r1|name": "\"B newest\"",
+        "recipes|r1|servings": "\"2\"",
+        "recipes|r2|name": "\"Second\""
+      }
+    },
+    {
+      "name": "tombstone wins over later-listed create",
+      "messages": [
+        { "timestamp": "000000000002001-0000-A", "dataset": "recipes", "rowId": "r1", "column": "_deleted", "value": "true" },
+        { "timestamp": "000000000002000-0000-A", "dataset": "recipes", "rowId": "r1", "column": "name", "value": "\"Soup\"" }
+      ],
+      "expected": {
+        "recipes|r1|_deleted": "true",
+        "recipes|r1|name": "\"Soup\""
+      }
+    }
+  ]
+}

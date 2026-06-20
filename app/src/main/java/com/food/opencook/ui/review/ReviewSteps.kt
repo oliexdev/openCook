@@ -1,0 +1,700 @@
+package com.food.opencook.ui.review
+
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.outlined.Restaurant
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
+import com.food.opencook.R
+import com.food.opencook.ui.theme.Spacing
+
+/* ------------------------------------------------------------------------- */
+/* Step 1 — Bild & Basics                                                     */
+/* ------------------------------------------------------------------------- */
+
+@Composable
+fun BasicsStep(
+    recipe: EditableRecipe,
+    viewModel: ReviewViewModel,
+    index: Int,
+    onTakePhoto: () -> Unit,
+) {
+    val galleryLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia(),
+    ) { uri -> if (uri != null) viewModel.attachImage(index, uri) }
+
+    StepScroll {
+        ImageHero(
+            recipe = recipe,
+            viewModel = viewModel,
+            onTakePhoto = onTakePhoto,
+            onPickGallery = {
+                galleryLauncher.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                )
+            },
+        )
+        Spacer(Modifier.height(Spacing.lg))
+
+        WizardTextField(
+            label = stringResource(R.string.review_name),
+            value = recipe.name,
+            onValueChange = { v -> viewModel.updateRecipe(index) { it.copy(name = v) } },
+        )
+        Spacer(Modifier.height(Spacing.md))
+
+        ServingsStepper(
+            servings = recipe.servings,
+            onChange = { v -> viewModel.updateRecipe(index) { it.copy(servings = v) } },
+        )
+        Spacer(Modifier.height(Spacing.md))
+
+        WizardTextField(
+            label = stringResource(R.string.review_category),
+            value = recipe.category,
+            onValueChange = { v -> viewModel.updateRecipe(index) { it.copy(category = v) } },
+        )
+        Spacer(Modifier.height(Spacing.md))
+
+        WizardTextField(
+            label = stringResource(R.string.review_cookbook),
+            value = recipe.cookbook,
+            onValueChange = { v -> viewModel.updateRecipe(index) { it.copy(cookbook = v) } },
+        )
+    }
+}
+
+@Composable
+private fun ImageHero(
+    recipe: EditableRecipe,
+    viewModel: ReviewViewModel,
+    onTakePhoto: () -> Unit,
+    onPickGallery: () -> Unit,
+) {
+    val primary = recipe.images.firstOrNull { it.isPrimary } ?: recipe.images.firstOrNull()
+    val imageUrl = primary?.let { viewModel.imageUrlFor(it) }
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(220.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.primaryContainer),
+    ) {
+        if (imageUrl != null) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            Icon(
+                Icons.Outlined.Restaurant,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(56.dp).align(Alignment.Center),
+            )
+        }
+        Row(
+            Modifier
+                .align(Alignment.BottomEnd)
+                .padding(Spacing.sm),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+        ) {
+            FilledTonalButton(onClick = onTakePhoto) {
+                Icon(Icons.Outlined.PhotoCamera, contentDescription = null)
+                Spacer(Modifier.width(Spacing.xs))
+                Text(stringResource(R.string.review_image_take))
+            }
+            FilledTonalButton(onClick = onPickGallery) {
+                Icon(Icons.Outlined.PhotoLibrary, contentDescription = null)
+                Spacer(Modifier.width(Spacing.xs))
+                Text(stringResource(R.string.review_image_gallery))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ServingsStepper(servings: String, onChange: (String) -> Unit) {
+    val value = servings.toIntOrNull() ?: 0
+    Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+    ) {
+        Text(stringResource(R.string.review_servings), modifier = Modifier.weight(1f))
+        FilledTonalIconButton(onClick = { if (value > 1) onChange((value - 1).toString()) }) {
+            Text("−", style = MaterialTheme.typography.titleLarge)
+        }
+        Text(
+            if (value > 0) value.toString() else "—",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.width(40.dp),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+        FilledTonalIconButton(onClick = { onChange(((value.takeIf { it > 0 } ?: 0) + 1).toString()) }) {
+            Text("+", style = MaterialTheme.typography.titleLarge)
+        }
+    }
+}
+
+/* ------------------------------------------------------------------------- */
+/* Step 2 — Zutaten                                                          */
+/* ------------------------------------------------------------------------- */
+
+@Composable
+fun IngredientsStep(
+    recipe: EditableRecipe,
+    viewModel: ReviewViewModel,
+    index: Int,
+) {
+    StepScroll {
+        if (recipe.ingredients.isEmpty()) {
+            EmptyHint(stringResource(R.string.wizard_no_ingredients))
+        } else {
+            recipe.ingredients.forEachIndexed { i, ingredient ->
+                IngredientCard(
+                    ingredient = ingredient,
+                    onChange = { transform ->
+                        viewModel.updateRecipe(index) {
+                            it.copy(ingredients = it.ingredients.mapIndexed { j, ing -> if (j == i) transform(ing) else ing })
+                        }
+                    },
+                    onApplySuggestion = { viewModel.applySuggestion(index, i) },
+                    onRemove = { viewModel.removeIngredient(index, i) },
+                )
+                Spacer(Modifier.height(Spacing.sm))
+            }
+        }
+        Spacer(Modifier.height(Spacing.sm))
+        FilledTonalButton(
+            onClick = { viewModel.addIngredient(index) },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(Icons.Outlined.Add, contentDescription = null)
+            Spacer(Modifier.width(Spacing.xs))
+            Text(stringResource(R.string.review_add_ingredient))
+        }
+    }
+}
+
+@Composable
+private fun IngredientCard(
+    ingredient: EditableIngredient,
+    onChange: ((EditableIngredient) -> EditableIngredient) -> Unit,
+    onApplySuggestion: () -> Unit,
+    onRemove: () -> Unit,
+) {
+    Card(
+        Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+    ) {
+        Column(Modifier.padding(Spacing.md)) {
+            // Name is the primary field — give it the full width.
+            OutlinedTextField(
+                value = ingredient.name,
+                onValueChange = { v ->
+                    onChange { it.copy(name = v, suggestion = null, autoCorrected = false) }
+                },
+                label = { Text(stringResource(R.string.wizard_ingredient_name)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(Spacing.sm))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
+                OutlinedTextField(
+                    value = ingredient.quantity,
+                    onValueChange = { v -> onChange { it.copy(quantity = v) } },
+                    label = { Text(stringResource(R.string.wizard_ingredient_qty)) },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+                OutlinedTextField(
+                    value = ingredient.unit,
+                    onValueChange = { v -> onChange { it.copy(unit = v) } },
+                    label = { Text(stringResource(R.string.wizard_ingredient_unit)) },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = onRemove) {
+                    Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.review_remove))
+                }
+            }
+            when {
+                ingredient.suggestion != null -> TextButton(onClick = onApplySuggestion) {
+                    Text(
+                        stringResource(R.string.wizard_correction_suggest, ingredient.suggestion),
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+                ingredient.autoCorrected -> Text(
+                    stringResource(R.string.wizard_correction_auto),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = Spacing.xs),
+                )
+            }
+        }
+    }
+}
+
+/* ------------------------------------------------------------------------- */
+/* Step 3 — Schritte                                                          */
+/* ------------------------------------------------------------------------- */
+
+@Composable
+fun StepsStep(
+    recipe: EditableRecipe,
+    viewModel: ReviewViewModel,
+    index: Int,
+) {
+    StepScroll {
+        if (recipe.instructions.isEmpty()) {
+            EmptyHint(stringResource(R.string.wizard_no_steps))
+        } else {
+            recipe.instructions.forEachIndexed { i, step ->
+                StepCard(
+                    number = i + 1,
+                    text = step.text,
+                    isFirst = i == 0,
+                    isLast = i == recipe.instructions.lastIndex,
+                    onChange = { v ->
+                        viewModel.updateRecipe(index) {
+                            it.copy(instructions = it.instructions.mapIndexed { j, s -> if (j == i) s.copy(text = v) else s })
+                        }
+                    },
+                    onMoveUp = { viewModel.moveStep(index, i, i - 1) },
+                    onMoveDown = { viewModel.moveStep(index, i, i + 1) },
+                    onRemove = { viewModel.removeStep(index, i) },
+                )
+                Spacer(Modifier.height(Spacing.sm))
+            }
+        }
+        Spacer(Modifier.height(Spacing.sm))
+        FilledTonalButton(
+            onClick = { viewModel.addStep(index) },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(Icons.Outlined.Add, contentDescription = null)
+            Spacer(Modifier.width(Spacing.xs))
+            Text(stringResource(R.string.review_add_step))
+        }
+    }
+}
+
+@Composable
+private fun StepCard(
+    number: Int,
+    text: String,
+    isFirst: Boolean,
+    isLast: Boolean,
+    onChange: (String) -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
+    onRemove: () -> Unit,
+) {
+    Card(
+        Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+    ) {
+        Row(
+            Modifier.padding(Spacing.md),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+        ) {
+            Box(
+                Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    number.toString(),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Column(Modifier.weight(1f)) {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = onChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2,
+                )
+                Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                    IconButton(onClick = onMoveUp, enabled = !isFirst) {
+                        Icon(Icons.Outlined.ArrowUpward, contentDescription = stringResource(R.string.wizard_step_move_up))
+                    }
+                    IconButton(onClick = onMoveDown, enabled = !isLast) {
+                        Icon(Icons.Outlined.ArrowDownward, contentDescription = stringResource(R.string.wizard_step_move_down))
+                    }
+                    IconButton(onClick = onRemove) {
+                        Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.review_remove))
+                    }
+                }
+            }
+        }
+    }
+}
+
+/* ------------------------------------------------------------------------- */
+/* Step 4 — Optionales / Nährwerte                                            */
+/* ------------------------------------------------------------------------- */
+
+private val TIME_PRESETS = listOf(0, 5, 10, 15, 20, 30, 45, 60, 90, 120)
+
+@Composable
+fun DetailsStep(
+    recipe: EditableRecipe,
+    viewModel: ReviewViewModel,
+    index: Int,
+) {
+    StepScroll {
+        TimeStepper(
+            label = stringResource(R.string.review_prep_time),
+            humanValue = recipe.prepTime,
+            onChange = { v -> viewModel.updateRecipe(index) { it.copy(prepTime = v) } },
+        )
+        Spacer(Modifier.height(Spacing.lg))
+        TimeStepper(
+            label = stringResource(R.string.review_cook_time),
+            humanValue = recipe.cookTime,
+            onChange = { v -> viewModel.updateRecipe(index) { it.copy(cookTime = v) } },
+        )
+        Spacer(Modifier.height(Spacing.lg))
+
+        Text(stringResource(R.string.review_notes), style = MaterialTheme.typography.titleSmall)
+        OutlinedTextField(
+            value = recipe.notes,
+            onValueChange = { v -> viewModel.updateRecipe(index) { it.copy(notes = v) } },
+            modifier = Modifier.fillMaxWidth().padding(top = Spacing.xs),
+            minLines = 3,
+        )
+
+        Spacer(Modifier.height(Spacing.lg))
+        NutritionSection(recipe = recipe, viewModel = viewModel, index = index)
+    }
+}
+
+/**
+ * Minutes-as-chips: tap one to set the time, then nudge with ±5 / ±15 buttons.
+ * Storage uses the existing humanized format ("30 Min", "1 Std 10 Min") so
+ * [com.food.opencook.util.DurationFormat.toIso] keeps working on save.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TimeStepper(
+    label: String,
+    humanValue: String,
+    onChange: (String) -> Unit,
+) {
+    val currentMinutes = parseHumanMinutes(humanValue)
+    Text(label, style = MaterialTheme.typography.titleSmall)
+    Text(
+        humanMinutes(currentMinutes),
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(vertical = Spacing.xs),
+    )
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+        TIME_PRESETS.forEach { mins ->
+            FilterChip(
+                selected = currentMinutes == mins,
+                onClick = { onChange(formatHumanMinutes(mins)) },
+                label = { Text(humanMinutes(mins)) },
+            )
+        }
+    }
+    Row(
+        Modifier.padding(top = Spacing.xs),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+    ) {
+        OutlinedButton(onClick = { onChange(formatHumanMinutes((currentMinutes - 5).coerceAtLeast(0))) }) {
+            Text("−5")
+        }
+        OutlinedButton(onClick = { onChange(formatHumanMinutes((currentMinutes - 15).coerceAtLeast(0))) }) {
+            Text("−15")
+        }
+        OutlinedButton(onClick = { onChange(formatHumanMinutes(currentMinutes + 5)) }) { Text("+5") }
+        OutlinedButton(onClick = { onChange(formatHumanMinutes(currentMinutes + 15)) }) { Text("+15") }
+    }
+}
+
+private fun parseHumanMinutes(text: String): Int {
+    val iso = com.food.opencook.util.DurationFormat.toIso(text) ?: return 0
+    return com.food.opencook.util.DurationFormat.minutes(iso) ?: 0
+}
+
+@Composable
+private fun humanMinutes(total: Int): String {
+    if (total <= 0) return stringResource(R.string.wizard_time_none)
+    val hours = total / 60
+    val mins = total % 60
+    return when {
+        hours > 0 && mins > 0 -> stringResource(R.string.wizard_time_hour_minutes, hours, mins)
+        hours > 0 -> stringResource(R.string.wizard_time_hour, hours)
+        else -> stringResource(R.string.wizard_time_minutes, mins)
+    }
+}
+
+private fun formatHumanMinutes(total: Int): String {
+    if (total <= 0) return ""
+    val hours = total / 60
+    val mins = total % 60
+    return when {
+        hours > 0 && mins > 0 -> "$hours Std $mins Min"
+        hours > 0 -> "$hours Std"
+        else -> "$mins Min"
+    }
+}
+
+@Composable
+private fun NutritionSection(
+    recipe: EditableRecipe,
+    viewModel: ReviewViewModel,
+    index: Int,
+) {
+    var expanded by remember { mutableStateOf(recipe.nutrition != null) }
+    Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            stringResource(R.string.wizard_nutrition_toggle),
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.weight(1f),
+        )
+        Switch(
+            checked = expanded,
+            onCheckedChange = { on ->
+                expanded = on
+                if (on && recipe.nutrition == null) {
+                    viewModel.updateRecipe(index) {
+                        it.copy(nutrition = EditableNutrition("", "", "", "", ""))
+                    }
+                } else if (!on && recipe.nutrition != null) {
+                    viewModel.updateRecipe(index) { it.copy(nutrition = null) }
+                }
+            },
+        )
+    }
+    if (expanded) {
+        recipe.nutrition?.let { n ->
+            Column(Modifier.fillMaxWidth().padding(top = Spacing.sm)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    WizardTextField(
+                        label = "kcal",
+                        value = n.calories,
+                        onValueChange = { v -> viewModel.updateRecipe(index) { it.copy(nutrition = n.copy(calories = v)) } },
+                        modifier = Modifier.weight(1f),
+                    )
+                    WizardTextField(
+                        label = "Eiweiß",
+                        value = n.protein,
+                        onValueChange = { v -> viewModel.updateRecipe(index) { it.copy(nutrition = n.copy(protein = v)) } },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                Spacer(Modifier.height(Spacing.sm))
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    WizardTextField(
+                        label = "Fett",
+                        value = n.fat,
+                        onValueChange = { v -> viewModel.updateRecipe(index) { it.copy(nutrition = n.copy(fat = v)) } },
+                        modifier = Modifier.weight(1f),
+                    )
+                    WizardTextField(
+                        label = "Kohlenhydrate",
+                        value = n.carbs,
+                        onValueChange = { v -> viewModel.updateRecipe(index) { it.copy(nutrition = n.copy(carbs = v)) } },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/* ------------------------------------------------------------------------- */
+/* Step 5 — Übersicht                                                         */
+/* ------------------------------------------------------------------------- */
+
+@Composable
+fun SummaryStep(
+    recipe: EditableRecipe,
+    viewModel: ReviewViewModel,
+) {
+    StepScroll {
+        val primary = recipe.images.firstOrNull { it.isPrimary } ?: recipe.images.firstOrNull()
+        val imageUrl = primary?.let { viewModel.imageUrlFor(it) }
+        if (imageUrl != null) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+                    .clip(RoundedCornerShape(16.dp)),
+            )
+        } else {
+            Text(
+                stringResource(R.string.wizard_summary_no_image),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.height(Spacing.md))
+        Text(
+            recipe.name.ifBlank { "—" },
+            style = MaterialTheme.typography.headlineSmall,
+        )
+        if (recipe.servings.isNotBlank()) {
+            Text(
+                stringResource(R.string.wizard_summary_servings, recipe.servings),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (recipe.category.isNotBlank() || recipe.cookbook.isNotBlank()) {
+            Spacer(Modifier.height(Spacing.xs))
+            Text(
+                listOf(recipe.category, recipe.cookbook).filter { it.isNotBlank() }.joinToString(" · "),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (recipe.prepTime.isNotBlank() || recipe.cookTime.isNotBlank()) {
+            Text(
+                listOfNotNull(
+                    recipe.prepTime.takeIf { it.isNotBlank() }?.let { "Vorb. $it" },
+                    recipe.cookTime.takeIf { it.isNotBlank() }?.let { "Kochen $it" },
+                ).joinToString(" · "),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (recipe.ingredients.any { it.name.isNotBlank() }) {
+            Spacer(Modifier.height(Spacing.md))
+            HorizontalDivider()
+            Text(
+                stringResource(R.string.review_ingredients),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(top = Spacing.sm),
+            )
+            recipe.ingredients.filter { it.name.isNotBlank() }.forEach { ing ->
+                Text("• ${listOf(ing.quantity, ing.unit, ing.name).filter { it.isNotBlank() }.joinToString(" ")}")
+            }
+        }
+        if (recipe.instructions.any { it.text.isNotBlank() }) {
+            Spacer(Modifier.height(Spacing.md))
+            HorizontalDivider()
+            Text(
+                stringResource(R.string.review_instructions),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(top = Spacing.sm),
+            )
+            recipe.instructions.filter { it.text.isNotBlank() }.forEachIndexed { i, s ->
+                Text("${i + 1}. ${s.text}")
+            }
+        }
+    }
+}
+
+/* ------------------------------------------------------------------------- */
+/* Shared widgets                                                             */
+/* ------------------------------------------------------------------------- */
+
+@Composable
+private fun StepScroll(content: @Composable () -> Unit) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = Spacing.screen, vertical = Spacing.sm),
+    ) {
+        content()
+    }
+}
+
+@Composable
+fun WizardTextField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        singleLine = true,
+        modifier = modifier.then(Modifier.fillMaxWidth()),
+    )
+}
+
+@Composable
+private fun EmptyHint(text: String) {
+    AssistChip(
+        onClick = {},
+        enabled = false,
+        label = { Text(text) },
+    )
+}

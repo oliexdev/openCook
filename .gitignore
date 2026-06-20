@@ -1,0 +1,43 @@
+*.iml
+.gradle
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Kotlin compiler session/daemon state
+.kotlin/
+
+# Release build outputs (signed APK/AAB)
+/app/release/
+
+# Internal Claude Code project docs — kept local only, not part of the public repo
+CLAUDE.md
+**/CLAUDE.md
+
+# Server docs kept local only, not part of the public repo
+/server/*.md
+/server/data/
+
+# Product/design docs kept local only, not part of the public repo
+/opencook.md
+/mealplaner.md
+
+# Server/runtime output that leaked into the repo root when scripts ran from here
+/data/
+
+# Local test data provided by the user (cookbook photos, large recipe JSON) — kept local only
+/testfiles/
+
+# Local Claude Code runtime state
+.claude/
+
+# Session handoff notes — kept local only, not part of the repo
+/FORTSETZUNG.md
+
+# Live-test feedback notes — kept local only
+/TESTNOTIZEN.md

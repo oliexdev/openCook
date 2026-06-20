@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>openCook — Einstellungen</title>
+  <style>
+    :root { --terracotta: #C4572B; --cream: #FBF5EE; --ink: #2A211C; --muted: #7A6E64; --herb: #5B7A36; --error: #B3261E; }
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--cream); color: var(--ink); max-width: 480px; margin: 40px auto; padding: 0 20px; }
+    h1 { color: var(--terracotta); font-size: 20px; }
+    label { display: block; font-weight: 600; margin: 18px 0 6px; font-size: 14px; }
+    input { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #d8ccbf; border-radius: 8px; font-size: 14px; background: #fff; }
+    .hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
+    .row { display: flex; gap: 10px; margin-top: 22px; }
+    button { padding: 10px 16px; border: 0; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    #save { background: var(--terracotta); color: var(--cream); }
+    #test { background: #e8ded3; color: var(--ink); }
+    #msg { margin-top: 16px; font-size: 13px; }
+    .ok { color: var(--herb); } .err { color: var(--error); }
+  </style>
+</head>
+<body>
+  <h1>openCook — Rezept-Import</h1>
+  <p class="hint">Verbindet die Extension mit deinem selbst-gehosteten openCook-Server. Dieselbe
+    Server-Adresse und denselben Haushaltscode wie in der App verwenden (LAN/VPN).</p>
+
+  <label for="serverUrl">Server-Adresse</label>
+  <input id="serverUrl" type="url" placeholder="http://192.168.1.50:8000">
+  <div class="hint">Inkl. Port, ohne abschließenden Schrägstrich.</div>
+
+  <label for="householdCode">Haushaltscode</label>
+  <input id="householdCode" type="text" placeholder="Invite-Code des Haushalts">
+  <div class="hint">Der Sync-Code (X-Household-Code), den die App beim Beitritt nutzt.</div>
+
+  <div class="row">
+    <button id="save">Speichern</button>
+    <button id="test">Verbindung testen</button>
+  </div>
+  <div id="msg"></div>
+
+  <script src="options.js"></script>
+</body>
+</html>

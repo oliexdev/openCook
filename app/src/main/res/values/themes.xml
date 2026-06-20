@@ -1,0 +1,20 @@
+<resources>
+    <!--
+      Base window theme applied before Compose draws. The actual app colors come from
+      the Compose MaterialTheme (Material 3, dynamic color). A framework theme is used
+      here so the app does not depend on the Material Components (View) library.
+      windowBackground uses a brand color (cream / dark in values-night) so there is no
+      white flash on launch before Compose takes over.
+    -->
+    <style name="Theme.OpenCook" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/brand_window</item>
+    </style>
+
+    <!-- Launch/splash theme (androidx core-splashscreen): brand-coloured splash with the
+         app mark, then hands off to Theme.OpenCook once Compose is ready. -->
+    <style name="Theme.OpenCook.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/brand_terracotta</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.OpenCook</item>
+    </style>
+</resources>

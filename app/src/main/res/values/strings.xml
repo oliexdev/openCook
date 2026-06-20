@@ -1,0 +1,401 @@
+<resources>
+    <!-- app_name is generated per build type in build.gradle.kts (resValue) so the
+         second test identity (debug2) can show a distinct launcher label. -->
+    <string name="back">Zurück</string>
+
+    <!-- Bottom navigation -->
+    <string name="nav_recipes">Rezepte</string>
+    <string name="nav_scan">Scannen</string>
+    <string name="nav_shopping">Einkaufsliste</string>
+    <string name="nav_settings">Einstellungen</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Einstellungen</string>
+    <string name="settings_server_section">Server (optional)</string>
+    <string name="settings_server_hint">Adresse deines selbst gehosteten openCook-Servers. Wird nur für KI-Scan und Sync gebraucht — die App funktioniert auch komplett offline.</string>
+    <string name="settings_server_url_label">Server-Adresse</string>
+    <string name="settings_server_url_placeholder">http://192.168.1.10:8000</string>
+    <string name="settings_household_section">Haushalt</string>
+    <string name="settings_household_hint">Dein Haushalt teilt Rezepte, Einkaufsliste und Planung mit allen Geräten.</string>
+    <string name="settings_household_code_label">Haushaltscode</string>
+    <string name="settings_household_code_copied">Code kopiert</string>
+    <string name="settings_sync_now">Jetzt synchronisieren</string>
+    <string name="settings_save">Speichern</string>
+    <string name="settings_saved">Gespeichert</string>
+
+    <!-- Scan -->
+    <string name="scan_title">Rezept scannen</string>
+    <string name="scan_intro">Fotografiere eine Kochbuchseite oder wähle ein Bild aus der Galerie. Die KI erkennt die Rezepte für dich.</string>
+    <string name="scan_take_photo">Foto aufnehmen</string>
+    <string name="scan_pick_gallery">Aus Galerie wählen</string>
+    <string name="scan_no_server">Kein Server konfiguriert. Trage zuerst in den Einstellungen die Server-Adresse ein.</string>
+    <string name="scan_go_to_settings">Zu den Einstellungen</string>
+
+    <!-- Camera -->
+    <string name="camera_capture">Aufnehmen</string>
+    <string name="camera_permission_rationale">Für die Aufnahme wird Kamerazugriff benötigt. Du kannst stattdessen auch ein Bild aus der Galerie wählen.</string>
+
+    <!-- Processing -->
+    <string name="processing_title">Wird verarbeitet…</string>
+    <string name="processing_hint">Das Rezept wird auf dem Server erkannt. Das kann einen Moment dauern.</string>
+    <string name="processing_offline">Server nicht erreichbar — der Scan steht in der Warteschlange und wird verarbeitet, sobald der Server wieder da ist.</string>
+    <string name="processing_cancel">Abbrechen</string>
+    <string name="processing_error">Erkennung fehlgeschlagen</string>
+
+    <!-- Review -->
+    <string name="review_title">Rezept prüfen</string>
+    <string name="review_recipe_index">Rezept %1$d von %2$d</string>
+    <string name="review_name">Titel</string>
+    <string name="review_servings">Portionen</string>
+    <string name="review_cookbook">Kochbuch / Sammlung</string>
+    <string name="review_category">Kategorie</string>
+    <string name="review_prep_time">Vorbereitungszeit</string>
+    <string name="review_cook_time">Kochzeit</string>
+    <string name="review_ingredients">Zutaten</string>
+    <string name="review_instructions">Zubereitung</string>
+    <string name="review_nutrition">Nährwerte</string>
+    <string name="review_notes">Notizen</string>
+    <string name="review_add_ingredient">Zutat hinzufügen</string>
+    <string name="review_add_step">Schritt hinzufügen</string>
+    <string name="review_save">Speichern</string>
+    <string name="review_image_take">Foto aufnehmen</string>
+    <string name="review_image_gallery">Galerie</string>
+    <string name="review_image_later">Später</string>
+
+    <!-- Recipes -->
+    <string name="recipes_title">Rezepte</string>
+    <string name="recipes_title_count">Rezepte (%1$d)</string>
+    <string name="recipes_empty">Noch keine Rezepte. Tippe auf „Scannen“, um dein erstes Rezept zu erfassen.</string>
+    <string name="recipes_search_hint">Rezepte suchen…</string>
+    <string name="recipes_filter_all">Alle</string>
+    <string name="recipe_delete">Löschen</string>
+    <string name="recipe_edit">Bearbeiten</string>
+    <string name="recipe_like">Gemocht</string>
+    <string name="recipe_cookbook_label">Kochbuch</string>
+    <string name="recipe_cooked_mark">Als gekocht markieren</string>
+    <string name="recipe_cooked_marked">Heute gekocht</string>
+    <string name="recipe_cooked_badge">Gekocht</string>
+    <string name="recipe_last_cooked_prefix">Zuletzt gekocht</string>
+    <string name="recipe_cooked_today">heute</string>
+    <string name="recipe_cooked_yesterday">gestern</string>
+    <string name="recipe_cooked_days_ago">vor %1$d Tagen</string>
+    <string name="recipe_cooked_week_ago">vor 1 Woche</string>
+    <string name="recipe_cooked_weeks_ago">vor %1$d Wochen</string>
+    <string name="recipe_liked_label">♥ Gemocht</string>
+    <string name="recipe_cook_moved">„%1$s" auf %2$s verschoben</string>
+    <string name="recipe_cook_removed">„%1$s" von heute entfernt</string>
+
+    <!-- Barcode scanning -->
+    <string name="barcode_scan_cd">Barcode scannen</string>
+    <string name="barcode_hint">Strichcode in den Rahmen halten</string>
+    <string name="barcode_found">Produkt gefunden</string>
+    <string name="barcode_not_found">Nicht gefunden — Name eingeben</string>
+    <string name="barcode_name_label">Produktname</string>
+    <string name="barcode_code_label">Barcode: %1$s</string>
+    <string name="barcode_add">Hinzufügen</string>
+    <string name="barcode_rescan">Erneut scannen</string>
+
+    <!-- Status strip (running scans) -->
+    <string name="status_queued">In Warteschlange…</string>
+    <string name="stage_reading_text">Rezepttext wird gelesen…</string>
+    <string name="stage_detecting_photos">Gerichtsfotos werden erkannt…</string>
+    <string name="status_processing_generic">Wird verarbeitet…</string>
+    <string name="status_processing_many">%1$d Scans werden verarbeitet…</string>
+    <string name="status_review_action">Prüfen</string>
+    <string name="status_dismiss">Schließen</string>
+    <string name="status_cancel">Abbrechen</string>
+    <string name="status_retry">Wiederholen</string>
+    <!-- "%1$s" is the current stage text, "%2$d" the number still queued -->
+    <string name="status_stage_with_queue">%1$s · %2$d in Warteschlange</string>
+    <string name="status_queued_only">%1$d in Warteschlange…</string>
+    <plurals name="status_failed">
+        <item quantity="one">1 Scan fehlgeschlagen</item>
+        <item quantity="other">%1$d Scans fehlgeschlagen</item>
+    </plurals>
+    <string name="status_added_one">„%1$s“ hinzugefügt</string>
+    <string name="status_added_many">„%1$s“ + %2$d weitere</string>
+
+    <!-- Shopping list -->
+    <string name="shopping_title">Einkaufsliste</string>
+    <!-- Segment switch in the "Einkauf" tab between the shopping list and the pantry -->
+    <string name="segment_shopping">Einkaufsliste</string>
+    <string name="segment_pantry">Vorrat</string>
+    <!-- Live search over the active segment (shopping list or pantry) -->
+    <string name="search">Suchen</string>
+    <string name="search_close">Suche schließen</string>
+    <string name="search_clear">Eingabe löschen</string>
+    <string name="search_hint">Suchen…</string>
+    <string name="search_no_results">Keine Treffer</string>
+    <string name="shopping_add_hint">Artikel hinzufügen…</string>
+    <string name="shopping_add">Hinzufügen</string>
+    <string name="shopping_empty">Einkaufsliste ist leer. Füge Artikel hinzu oder übernimm die Zutaten eines Rezepts.</string>
+    <string name="shopping_delete">Entfernen</string>
+    <string name="shopping_clear_checked">Abgehakte → Vorrat</string>
+    <string name="shopping_all_bought_title">Alles eingekauft 🎉</string>
+    <string name="shopping_all_bought_action">In den Vorrat übernehmen</string>
+    <string name="shopping_clear_all">Alles löschen</string>
+    <string name="shopping_clear_all_title">Einkaufsliste leeren?</string>
+    <string name="shopping_clear_all_text">Alle %1$d Artikel werden entfernt. Diese Aktion kann nicht rückgängig gemacht werden.</string>
+    <string name="shopping_clear_all_confirm">Leeren</string>
+    <string name="shopping_more_actions">Weitere Aktionen</string>
+    <string name="shopping_add_from_recipe">Auf die Einkaufsliste</string>
+    <string name="shopping_not_found">Nicht gefunden?</string>
+    <string name="shopping_actions">Aktionen</string>
+    <string name="shopping_already_home">Schon zu Hause (→ Vorrat)</string>
+    <string name="shopping_needed_for">Für: %1$s</string>
+    <string name="shopping_done_section">Erledigt</string>
+    <string name="shopping_nf_title">„%1$s" nicht gefunden</string>
+    <string name="shopping_nf_later">Später kaufen</string>
+    <string name="shopping_nf_replace">Gericht ersetzen</string>
+    <string name="shopping_nf_adapt">Selbst abwandeln</string>
+    <string name="shopping_nf_pick">Ersatzgericht wählen</string>
+    <string name="shopping_nf_no_alt">Kein Gericht aus den vorhandenen Zutaten gefunden.</string>
+    <string name="shopping_nf_manual">Manuell hinzugefügt — kein geplantes Gericht zum Ersetzen.</string>
+    <string name="shopping_adapted">Als erledigt markiert</string>
+    <string name="scan_manual">Manuell erstellen</string>
+    <string name="recipe_add_to_plan">Zum Wochenplan</string>
+    <string name="recipe_plan_sheet_title">Tag wählen</string>
+    <string name="recipe_plan_added">Hinzugefügt für %1$s</string>
+    <string name="recipe_plan_replace_title">Tag bereits geplant</string>
+    <string name="recipe_plan_replace_text">Am %1$s ist bereits „%2$s" geplant. Soll dieses Rezept ersetzt werden?</string>
+    <string name="recipe_plan_replace_confirm">Ersetzen</string>
+    <string name="recipe_plan_day_free">Frei</string>
+    <string name="wizard_step_of">Schritt %1$d von %2$d</string>
+    <string name="wizard_back">Zurück</string>
+    <string name="wizard_next">Weiter</string>
+    <string name="wizard_step_basics">Bild &amp; Basics</string>
+    <string name="wizard_step_ingredients">Zutaten</string>
+    <string name="wizard_step_steps">Schritte</string>
+    <string name="wizard_step_details">Optionales</string>
+    <string name="wizard_step_summary">Übersicht</string>
+    <string name="wizard_name_required">Bitte zuerst einen Titel eingeben.</string>
+    <string name="wizard_no_ingredients">Noch keine Zutaten. Tippe „Zutat hinzufügen".</string>
+    <string name="wizard_no_steps">Noch keine Schritte. Tippe „Schritt hinzufügen".</string>
+    <string name="wizard_summary_servings">%1$s Portionen</string>
+    <string name="wizard_summary_no_image">Kein Bild gewählt.</string>
+    <string name="wizard_ingredient_qty">Menge</string>
+    <string name="wizard_ingredient_unit">Einheit</string>
+    <string name="wizard_ingredient_name">Zutat</string>
+    <string name="wizard_step_number">Schritt %1$d</string>
+    <string name="wizard_step_move_up">Nach oben</string>
+    <string name="wizard_step_move_down">Nach unten</string>
+    <string name="wizard_time_none">Keine Angabe</string>
+    <string name="wizard_time_minutes">%1$d Min</string>
+    <string name="wizard_time_hour">%1$d Std</string>
+    <string name="wizard_time_hour_minutes">%1$d Std %2$d Min</string>
+    <string name="wizard_nutrition_toggle">Nährwerte angeben</string>
+    <string name="wizard_correction_suggest">Meinten Sie „%1$s"?</string>
+    <string name="wizard_correction_auto">automatisch korrigiert</string>
+
+    <!-- Pantry -->
+    <string name="pantry_add_hint">Standardzutat hinzufügen…</string>
+    <string name="pantry_empty">Noch keine Standardzutaten.</string>
+    <string name="shopping_added">Zur Einkaufsliste hinzugefügt</string>
+
+    <!-- Meal plan -->
+    <string name="mealplan_title">Wochenplan</string>
+    <string name="mealplan_to_shopping">Einkaufsliste erzeugen</string>
+    <string name="mealplan_add_recipe">Rezept hinzufügen</string>
+    <string name="mealplan_smart_pick">Passendes Gericht würfeln</string>
+    <string name="mealplan_pick_recipe">Rezept wählen</string>
+    <string name="mealplan_no_recipes">Noch keine Rezepte zum Planen.</string>
+    <string name="mealplan_generated">Zutaten zur Einkaufsliste hinzugefügt</string>
+    <string name="mealplan_suggest_week">Woche vorschlagen</string>
+    <string name="mealplan_no_recipes_suggest">Erst Rezepte scannen, dann schlägt die App eine Woche vor.</string>
+    <string name="mealplan_regenerate_title">Neuen Wochenplan erstellen?</string>
+    <string name="mealplan_regenerate_text">Alle bereits geplanten Gerichte dieser Woche werden ersetzt. Ausgesetzte Tage bleiben leer.</string>
+    <string name="mealplan_regenerate_confirm">Neu erstellen</string>
+    <string name="mealplan_remove_dish">Gericht entfernen</string>
+    <string name="mealplan_week_current">Diese Woche</string>
+    <string name="mealplan_week_next">Nächste Woche</string>
+    <string name="mealplan_week_range">%1$s – %2$s</string>
+    <string name="mealplan_skip">Aussetzen</string>
+    <string name="mealplan_unskip">Einplanen</string>
+    <string name="mealplan_skipped_label">ausgesetzt</string>
+    <string name="mealplan_pin">Anpinnen (bleibt beim Würfeln)</string>
+    <string name="mealplan_unpin">Lösen</string>
+    <string name="mealplan_reroll">Anderes Gericht würfeln</string>
+    <string name="mealplan_cooked">Gekocht</string>
+    <string name="mealplan_uncooked">Doch nicht gekocht</string>
+
+    <!-- Meal-planner reasons (why a dish was picked) -->
+    <string name="mealplan_reason_week_reuse">Verwertet %1$s</string>
+    <string name="mealplan_reason_pantry_reuse">Aus dem Vorrat: %1$s</string>
+    <string name="mealplan_reason_liked">Beliebt</string>
+    <string name="mealplan_reason_quick_weekday">Schnell (%1$s)</string>
+    <string name="mealplan_reason_big_batch_leftover">Reicht für zwei Tage</string>
+    <string name="mealplan_reason_new_ingredients">Brauchst noch: %1$s</string>
+    <string name="mealplan_reason_recently_planned">Erst geplant (%1$s)</string>
+    <string name="mealplan_reason_recently_cooked">Erst gekocht (%1$s)</string>
+    <string name="mealplan_reason_same_category">Ähnlich wie Nachbartag (%1$s)</string>
+    <string name="mealplan_reason_monotony">Schon oft diese Woche: %1$s</string>
+    <string name="mealplan_reasons_title">Warum dieses Gericht?</string>
+    <string name="mealplan_reasons_why">Warum?</string>
+    <string name="mealplan_reasons_close">Schließen</string>
+    <string name="mealplan_reasons_section_for">Pro</string>
+    <string name="mealplan_reasons_section_against">Kontra</string>
+    <string name="mealplan_reasons_none">Manuell hinzugefügt — keine Begründung.</string>
+
+    <!-- Settings: household size -->
+    <string name="settings_household_size_section">Haushaltsgröße</string>
+    <string name="settings_household_size_hint">Für wie viele Personen geplant wird. Bei großen Mengen schlägt der Planer Reste am Folgetag vor.</string>
+    <string name="settings_household_size_label">Personen</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_title">Willkommen bei openCook</string>
+    <string name="onboarding_subtitle">Rezepte sammeln, planen und kochen – offline und ohne Konto.</string>
+    <string name="onboarding_server_step_title">Server wählen</string>
+    <string name="onboarding_searching">Suche im Netzwerk…</string>
+    <string name="onboarding_manual_hint">Nicht gefunden? Server-Adresse manuell eingeben:</string>
+    <string name="onboarding_manual_toggle">Server manuell eingeben</string>
+    <string name="onboarding_manual_address_label">Server-Adresse</string>
+    <string name="onboarding_manual_address_placeholder">192.168.0.10:8000</string>
+    <string name="onboarding_connect">Verbinden</string>
+    <string name="onboarding_household_step_title">Haushalt wählen</string>
+    <string name="onboarding_no_households">Noch kein Haushalt — erstelle einen.</string>
+    <string name="onboarding_create_household">Neuen Haushalt erstellen</string>
+    <string name="onboarding_persons">%1$d Personen</string>
+    <string name="onboarding_protected">PIN-geschützt</string>
+    <string name="onboarding_pin_prompt_title">PIN für „%1$s"</string>
+    <string name="onboarding_pin_label">PIN</string>
+    <string name="onboarding_join">Beitreten</string>
+    <string name="onboarding_cancel">Abbrechen</string>
+    <string name="onboarding_create_step_title">Haushalt erstellen</string>
+    <string name="onboarding_name_label">Name des Haushalts</string>
+    <string name="onboarding_pin_optional_label">PIN (optional)</string>
+    <string name="onboarding_admin_password_optional_label">Admin-Passwort (optional)</string>
+    <string name="onboarding_admin_password_hint">Schützt den Admin-Bereich (Server-Backups). Lässt sich später ändern.</string>
+    <string name="onboarding_create">Erstellen</string>
+    <string name="onboarding_back">Zurück</string>
+
+    <!-- Settings: household membership -->
+    <string name="settings_household_current">Haushalt: %1$s</string>
+    <string name="settings_household_leave">Haushalt verlassen / wechseln</string>
+    <string name="settings_appearance_section">Darstellung</string>
+    <string name="settings_dynamic_color">Material You (Systemfarben)</string>
+
+    <!-- Settings: grouped sections + admin -->
+    <string name="settings_household_section_label">Haushalt</string>
+    <string name="settings_server_label">Server &amp; Verbindung</string>
+    <string name="settings_admin">Admin-Bereich</string>
+    <string name="settings_admin_subtitle">Server-Backups verwalten (Passwort nötig)</string>
+    <string name="settings_update_section">App-Update</string>
+    <string name="settings_update_check">Nach Update suchen</string>
+    <string name="settings_update_idle">Auf dem Server nach einer neueren Version suchen.</string>
+    <string name="settings_update_checking">Suche…</string>
+    <string name="settings_update_uptodate">Du hast die aktuelle Version.</string>
+    <string name="settings_update_available">Update verfügbar: %1$s</string>
+    <string name="settings_update_downloading">Wird heruntergeladen…</string>
+    <string name="settings_update_install">Herunterladen &amp; installieren</string>
+    <string name="settings_update_error">Update-Prüfung fehlgeschlagen. Server erreichbar?</string>
+
+    <!-- Admin area (server backup/restore) -->
+    <string name="admin_title">Admin-Bereich</string>
+    <string name="admin_password_label">Admin-Passwort</string>
+    <string name="admin_set_password_title">Admin-Passwort festlegen</string>
+    <string name="admin_set_password_hint">Noch kein Admin-Passwort gesetzt. Lege jetzt eins fest, um Server-Backups zu schützen.</string>
+    <string name="admin_enter_password_title">Admin-Passwort eingeben</string>
+    <string name="admin_unlock">Entsperren</string>
+    <string name="admin_save_password">Festlegen</string>
+    <string name="admin_wrong_password">Falsches Passwort</string>
+    <string name="admin_not_configured_server">Kein Server gewählt – erst in den Einstellungen verbinden.</string>
+    <string name="admin_backups_section">Backups</string>
+    <string name="admin_create_backup">Backup jetzt erstellen</string>
+    <string name="admin_no_backups">Noch keine Backups vorhanden.</string>
+    <string name="admin_restore">Wiederherstellen</string>
+    <string name="admin_restore_confirm_title">Wiederherstellen?</string>
+    <string name="admin_restore_confirm_text">Ersetzt ALLE aktuellen Server-Daten durch dieses Backup. Ein Server-Neustart wird empfohlen.</string>
+    <string name="admin_restore_done">Wiederhergestellt – bitte Server neu starten und neu synchronisieren.</string>
+    <string name="admin_backup_created">Backup erstellt</string>
+    <string name="admin_error">Aktion fehlgeschlagen</string>
+    <string name="admin_confirm">OK</string>
+    <string name="admin_reset">Datenbank zurücksetzen</string>
+    <string name="admin_reset_button">Alles löschen</string>
+    <string name="admin_reset_confirm_title">Wirklich alles löschen?</string>
+    <string name="admin_reset_confirm_text">Löscht alle Rezepte, Haushalte und den gesamten Verlauf — auf dem Server und auf diesem Gerät. Backups bleiben erhalten. Dieses Gerät kehrt danach zur Ersteinrichtung zurück.</string>
+    <string name="admin_reset_done">Datenbank zurückgesetzt</string>
+    <string name="admin_households_section">Haushalte</string>
+    <string name="admin_no_households">Keine Haushalte vorhanden.</string>
+    <string name="admin_delete_household_button">Löschen</string>
+    <string name="admin_delete_household_confirm_title">Haushalt löschen?</string>
+    <string name="admin_delete_household_confirm_text">Löscht den Haushalt „%1$s" samt allen synchronisierten Daten (Rezepte, Einkauf, Plan, Vorrat) und ausstehenden Importen auf dem Server. Geräte mit diesem Haushalt können danach nicht mehr synchronisieren.</string>
+    <string name="admin_household_deleted">Haushalt gelöscht</string>
+    <string name="admin_maintenance_section">Wartung</string>
+    <string name="admin_show_all">Alle %1$d anzeigen</string>
+    <string name="admin_show_less">Weniger anzeigen</string>
+
+    <!-- Recipe JSON import (button on the add-recipe screen) -->
+    <string name="import_from_file">Aus JSON-Datei importieren</string>
+    <string name="import_running">Importiere… %1$d / %2$d</string>
+    <string name="import_done">%1$d importiert, %2$d übersprungen</string>
+    <string name="import_error">Import fehlgeschlagen: %1$s</string>
+    <string name="import_read_failed">Datei konnte nicht gelesen werden</string>
+    <string name="import_generic_failed">Import fehlgeschlagen</string>
+
+    <!-- Browser-inbox import (recipes pushed by the extension, drained during sync) -->
+    <plurals name="import_browser_imported">
+        <item quantity="one">1 Rezept aus dem Browser importiert</item>
+        <item quantity="other">%1$d Rezepte aus dem Browser importiert</item>
+    </plurals>
+    <plurals name="import_browser_skipped">
+        <item quantity="one">1 Duplikat übersprungen</item>
+        <item quantity="other">%1$d Duplikate übersprungen</item>
+    </plurals>
+
+    <!-- Share import (Teilen → openCook): a recipe page URL shared from a browser -->
+    <string name="import_share_saved">Rezept importiert: %1$s</string>
+    <string name="import_share_view">Ansehen</string>
+    <string name="import_share_duplicate">„%1$s“ ist schon vorhanden</string>
+    <string name="import_share_no_recipe">Kein Rezept auf dieser Seite gefunden</string>
+    <string name="import_share_error_load">Seite konnte nicht geladen werden.</string>
+    <string name="import_share_fallback_name">Rezept</string>
+
+    <!-- Home (Heute) -->
+    <string name="home_title">Heute</string>
+    <string name="home_welcome_title">Willkommen bei openCook</string>
+    <string name="home_welcome_msg">Füge dein erstes Rezept hinzu — ein Foto genügt.</string>
+    <string name="home_add_first">Erstes Rezept hinzufügen</string>
+    <string name="home_today_empty_title">Für heute ist noch nichts geplant.</string>
+    <string name="home_today_empty_msg">Lass dir einen Wochenplan vorschlagen oder wähle ein Rezept.</string>
+    <string name="home_plan_week">Woche planen</string>
+    <string name="home_quick_shopping">Einkauf</string>
+    <string name="home_quick_plan">Plan</string>
+    <string name="home_quick_recipes">Rezepte</string>
+    <string name="home_week_section">Diese Woche</string>
+    <string name="home_week_empty">Noch keine weiteren Gerichte geplant.</string>
+
+    <!-- Recipes list -->
+    <string name="recipes_add">Rezept hinzufügen</string>
+    <string name="recipes_empty_title">Noch keine Rezepte</string>
+    <string name="recipes_empty_msg">Füge ein Rezept hinzu oder lege eins an.</string>
+    <string name="recipes_search_empty_title">Nichts gefunden</string>
+    <string name="recipes_search_empty_msg">Versuch einen anderen Suchbegriff.</string>
+    <string name="review_remove">Entfernen</string>
+
+    <!-- Confirmations -->
+    <string name="action_delete">Löschen</string>
+    <string name="recipe_delete_confirm_title">Rezept löschen?</string>
+    <string name="recipe_delete_confirm_text">Dieses Rezept wird dauerhaft gelöscht.</string>
+    <string name="settings_leave_confirm_title">Haushalt verlassen?</string>
+    <string name="settings_leave_confirm_text">Dieses Gerät trennt sich vom Haushalt und kehrt zur Ersteinrichtung zurück. Die geteilten Daten bleiben auf dem Server.</string>
+    <string name="undo">Rückgängig</string>
+    <string name="deleted">Gelöscht</string>
+
+    <!-- Sync status (shared top bar) -->
+    <string name="sync_status_ok">Synchronisiert</string>
+    <string name="sync_status_not_configured">Kein Server – tippen für Einstellungen</string>
+    <string name="sync_status_syncing">Synchronisiere…</string>
+    <string name="sync_status_failed">Nicht verbunden – tippen zum Synchronisieren</string>
+    <string name="sync_status_household_missing">Haushalt auf dem Server nicht gefunden – evtl. wurde er neu aufgesetzt. In den Einstellungen neu beitreten.</string>
+    <string name="sync_error_offline">Server nicht erreichbar – wird automatisch erneut versucht, sobald er verfügbar ist.</string>
+    <string name="sync_status_last_success">Zuletzt synchronisiert: %1$s</string>
+    <string name="sync_progress_recipes">Rezepte synchronisieren … %1$d</string>
+    <string name="sync_progress_images">Bilder laden … %1$d / %2$d</string>
+    <string name="sync_progress_percent">%1$d %%</string>
+
+    <!-- Notifications -->
+    <string name="notif_channel_jobs_name">Rezept-Erkennung</string>
+    <string name="notif_channel_jobs_desc">Benachrichtigt, wenn ein gescanntes Rezept erkannt wurde.</string>
+    <string name="notif_recipe_ready_title">Rezept erkannt</string>
+    <string name="notif_recipe_ready_body">Tippe, um das erkannte Rezept zu prüfen.</string>
+</resources>

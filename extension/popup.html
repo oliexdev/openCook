@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <style>
+    :root {
+      --terracotta: #C4572B;
+      --cream: #FBF5EE;
+      --ink: #2A211C;
+      --muted: #7A6E64;
+      --herb: #5B7A36;
+      --error: #B3261E;
+    }
+    body {
+      width: 320px;
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--cream);
+      color: var(--ink);
+    }
+    header {
+      background: var(--terracotta);
+      color: var(--cream);
+      padding: 12px 16px;
+      font-weight: 600;
+      font-size: 15px;
+    }
+    main { padding: 16px; }
+    #preview-img {
+      width: 100%;
+      height: 140px;
+      object-fit: cover;
+      border-radius: 10px;
+      background: #e8ded3;
+      display: none;
+    }
+    #title {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 12px 0 4px;
+      line-height: 1.3;
+    }
+    #meta { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+    button {
+      width: 100%;
+      padding: 11px;
+      border: 0;
+      border-radius: 10px;
+      background: var(--terracotta);
+      color: var(--cream);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.5; cursor: default; }
+    #status { font-size: 13px; margin-top: 12px; line-height: 1.4; white-space: pre-line; word-break: break-word; }
+    .ok { color: var(--herb); }
+    .err { color: var(--error); }
+    a { color: var(--terracotta); }
+    .link-btn {
+      background: none; color: var(--terracotta); text-decoration: underline;
+      padding: 6px 0; font-size: 13px; font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <header>openCook</header>
+  <main>
+    <img id="preview-img" alt="">
+    <div id="title">Suche Rezept…</div>
+    <div id="meta"></div>
+    <button id="import-btn" disabled>Importieren</button>
+    <div id="status"></div>
+  </main>
+  <script src="extract.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
