@@ -5,7 +5,7 @@ A small Manifest V3 web extension that detects the embedded `schema.org/Recipe`
 self-hosted openCook server. The app picks the import up automatically on its next
 sync and distributes it to every device in the household.
 
-Works in Chromium-based browsers (Vivaldi, Chrome, Brave, Edge).
+Works in Chromium-based browsers only (Vivaldi, Chrome, Brave, Edge) — not Firefox.
 
 ## Install (unpacked)
 

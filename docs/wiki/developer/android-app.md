@@ -35,7 +35,7 @@ Single Activity (`MainActivity.kt`) → `ui/OpenCookApp.kt` hosts a Compose `Nav
 
 ## Data layer (Room)
 
-`data/local/OpenCookDatabase.kt` — **schema version 15**, persisted as `opencook.db`. Entities:
+`data/local/OpenCookDatabase.kt` — **schema version 17**, persisted as `opencook.db`. Entities:
 
 `RecipeEntity`, `IngredientEntity`, `InstructionEntity`, `NutritionEntity`, `ImageEntity`,
 `JobEntity`, `MessageEntity` (the append-only sync log), `ShoppingItemEntity`, `PantryItemEntity`,
@@ -43,7 +43,7 @@ Single Activity (`MainActivity.kt`) → `ui/OpenCookApp.kt` hosts a Compose `Nav
 `ProductCacheEntity` (barcode → product cache).
 
 DAOs mirror these: `RecipeDao, JobDao, MessageDao, ShoppingDao, PantryDao, MealPlanDao, MealDayDao,
-RecipeLikeDao, ProductCacheDao`. Migrations `MIGRATION_2_3 … MIGRATION_14_15` are registered in
+RecipeLikeDao, ProductCacheDao`. Migrations `MIGRATION_2_3 … MIGRATION_16_17` are registered in
 `DatabaseModule`.
 
 ## The scan flow (client side)

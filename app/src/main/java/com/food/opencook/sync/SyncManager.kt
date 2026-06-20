@@ -91,7 +91,7 @@ class SyncManager @Inject constructor(
                     fraction = p.fraction,
                 )
             }
-        }.getOrElse { SyncEngine.Result.Failed(it.message ?: "Fehler") }
+        }.getOrElse { SyncEngine.Result.Failed(it.message ?: "error") }
         _status.value = when (result) {
             is SyncEngine.Result.Ok -> {
                 lastSuccessEpochMs = System.currentTimeMillis()

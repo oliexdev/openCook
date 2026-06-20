@@ -49,21 +49,21 @@ def require_admin(
     """Reject unless the request carries the correct admin password."""
     cfg = _get_config(session)
     if cfg is None or cfg.admin_pw_hash is None:
-        raise HTTPException(status_code=409, detail="Admin-Passwort nicht eingerichtet")
+        raise HTTPException(status_code=409, detail="Admin password not set")
     if not verify_secret(x_admin_password, cfg.admin_pw_salt, cfg.admin_pw_hash):
-        raise HTTPException(status_code=401, detail="Falsches Admin-Passwort")
+        raise HTTPException(status_code=401, detail="Wrong admin password")
 
 
 def _resolve_backup(backup_id: str) -> Path:
     """Resolve a backup id to a file inside the backups dir, guarding traversal."""
     if "/" in backup_id or "\\" in backup_id or backup_id in ("", ".", ".."):
-        raise HTTPException(status_code=400, detail="Ungültiger Backup-Name")
+        raise HTTPException(status_code=400, detail="Invalid backup name")
     if not backup_id.startswith(_PREFIX) or not backup_id.endswith(".tar.gz"):
-        raise HTTPException(status_code=400, detail="Kein openCook-Backup")
+        raise HTTPException(status_code=400, detail="Not an openCook backup")
     backups_dir = get_settings().backups_dir.resolve()
     path = (backups_dir / backup_id).resolve()
     if backups_dir not in path.parents or not path.is_file():
-        raise HTTPException(status_code=404, detail="Backup nicht gefunden")
+        raise HTTPException(status_code=404, detail="Backup not found")
     return path
 
 
@@ -94,9 +94,9 @@ def set_admin_password(
         session.add(cfg)
     if cfg.admin_pw_hash is not None:
         if not verify_secret(body.current_password, cfg.admin_pw_salt, cfg.admin_pw_hash):
-            raise HTTPException(status_code=401, detail="Falsches aktuelles Passwort")
+            raise HTTPException(status_code=401, detail="Wrong current password")
     if not body.new_password:
-        raise HTTPException(status_code=400, detail="Neues Passwort darf nicht leer sein")
+        raise HTTPException(status_code=400, detail="New password must not be empty")
     cfg.admin_pw_salt = make_salt()
     cfg.admin_pw_hash = hash_secret(body.new_password, cfg.admin_pw_salt)
     session.commit()
@@ -154,7 +154,7 @@ def restore_from_id(body: RestoreRequest) -> RestoreResult:
 def restore_from_upload(file: UploadFile = File(...)) -> RestoreResult:
     """Restore from an uploaded ``.tar.gz`` archive. Replaces ALL current data."""
     if not (file.filename or "").endswith(".tar.gz"):
-        raise HTTPException(status_code=400, detail="Erwarte eine .tar.gz-Datei")
+        raise HTTPException(status_code=400, detail="Expected a .tar.gz file")
     with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as tmp:
         shutil.copyfileobj(file.file, tmp)
         tmp_path = Path(tmp.name)

@@ -44,4 +44,5 @@ It's a simple "do you have it or not?" list — openCook doesn't track exact qua
 
 Everyday basics — salt, pepper, sugar, oil, vinegar and the like — are treated as **staples**:
 openCook assumes you always have them, so they're never added to the shopping list or planned for.
-Staples are configurable, so you decide what counts as "always in the house".
+This staples list is built in and the same for everyone — it isn't editable. The part you control
+is your **pantry** (your actual stock); staples are the fixed everyday basics on top of that.
