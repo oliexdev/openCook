@@ -48,11 +48,14 @@ Everything except the two server-backed features:
 |---|---|
 | Browse / edit / create recipes | Scanning a recipe from a photo |
 | Meal planning | Sync between phones |
-| Shopping list & pantry | Web import (browser extension) |
+| Shopping list & pantry | Web import via browser extension |
 | Search, cookbooks, barcode lookup* | |
 
 \* Barcode scanning works offline for products you've scanned before; the first lookup of a new
 product needs internet (Open Food Facts).
+
+Sharing a recipe page to openCook from your phone's browser needs internet but **not** the server —
+the app reads and saves the recipe on its own.
 
 When the server is off, photo scans are simply **queued** and processed automatically the next time
 it's reachable — you never have to wait.

@@ -35,8 +35,9 @@ A recipe and meal-planning app that:
 * **Find anything** — recipes group into cookbooks and are fully searchable.
 * **Scan to add** — add pantry or shopping items by scanning a barcode (with Open
   Food Facts lookup).
-* **Import from the web** — a small browser extension grabs recipes from
-  sites like Chefkoch and sends them straight into openCook. See [`extension/`](extension/README.md).
+* **Import from the web** — browsing a recipe on your phone (Chefkoch, Lecker, …)? Just **Share →
+  openCook** and it's saved, no server needed. On the desktop a small browser extension does the
+  same. See [`extension/`](extension/README.md).
 * **Stay in sync** — every family member's phone stays up to date through
   your own server; changes merge automatically, even after someone's been offline.
 

@@ -35,6 +35,22 @@ sync they appear in your library on every phone.
 - Setup and usage are in the extension's own guide: [`extension/`](../../extension/README.md).
 - Needs a connected server (it's the server's import inbox the extension fills).
 
+## Share to openCook (from your phone's browser)
+
+On your phone you don't need the extension at all. While browsing a recipe on a cooking site
+(Chefkoch, Lecker, NDR, Eat-this, and any site that embeds a standard recipe), use the browser's
+**Share** button and pick **openCook** from the share sheet.
+
+openCook opens, reads the page's recipe and saves it straight to your library — no server required.
+A snackbar confirms the import (or tells you if the page has no machine-readable recipe).
+
+- Works **on-device over the internet only** — the app fetches and parses the page itself, so it
+  works even without a server. If you do run a server, the imported recipe syncs to the rest of the
+  family like any other.
+- The recipe is filed under a cookbook named after the source site (e.g. *Chefkoch*), unless the
+  page already names its own cookbook.
+- If you share the same recipe twice, openCook recognises the duplicate instead of adding it again.
+
 ## Scan barcodes
 
 When adding items to your **shopping list** or **pantry**, you can scan a product barcode instead of
