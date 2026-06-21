@@ -11,7 +11,6 @@ import com.food.opencook.data.remote.dto.BackupInfoDto
 import com.food.opencook.data.remote.dto.HouseholdSummaryDto
 import com.food.opencook.data.remote.dto.RestoreRequestDto
 import com.food.opencook.data.settings.SettingsRepository
-import com.food.opencook.update.AppUpdater
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,16 +19,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-/** State of the "check for app update" flow shown in the admin area. */
-sealed interface UpdateUi {
-    data object Idle : UpdateUi
-    data object Checking : UpdateUi
-    data object UpToDate : UpdateUi
-    data class Available(val versionName: String, val url: String, val notes: String?) : UpdateUi
-    data object Downloading : UpdateUi
-    data object Error : UpdateUi
-}
 
 data class AdminUiState(
     val loading: Boolean = true,
@@ -41,7 +30,6 @@ data class AdminUiState(
     val busy: Boolean = false,
     val error: String? = null,
     val info: String? = null,
-    val update: UpdateUi = UpdateUi.Idle,
 )
 
 /**
@@ -54,7 +42,6 @@ class AdminViewModel @Inject constructor(
     private val adminApi: AdminApi,
     private val settings: SettingsRepository,
     private val wiper: LocalDataWiper,
-    private val appUpdater: AppUpdater,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AdminUiState())
@@ -172,21 +159,4 @@ class AdminViewModel @Inject constructor(
     }
 
     fun clearMessages() = _state.update { it.copy(error = null, info = null) }
-
-    /** Ask the configured server whether a newer APK is published (self-hosted update flow). */
-    fun checkForUpdates() = viewModelScope.launch {
-        _state.update { it.copy(update = UpdateUi.Checking) }
-        val next = when (val r = appUpdater.check()) {
-            AppUpdater.Check.UpToDate -> UpdateUi.UpToDate
-            is AppUpdater.Check.Available -> UpdateUi.Available(r.versionName, r.url, r.notes)
-            is AppUpdater.Check.Error -> UpdateUi.Error
-        }
-        _state.update { it.copy(update = next) }
-    }
-
-    /** Download the published APK and launch the system installer. */
-    fun downloadAndInstall(url: String) = viewModelScope.launch {
-        _state.update { it.copy(update = UpdateUi.Downloading) }
-        if (!appUpdater.downloadAndInstall(url)) _state.update { it.copy(update = UpdateUi.Error) }
-    }
 }

@@ -284,15 +284,6 @@
     <string name="settings_server_label">Server &amp; connection</string>
     <string name="settings_admin">Admin area</string>
     <string name="settings_admin_subtitle">Manage server backups (password required)</string>
-    <string name="settings_update_section">App update</string>
-    <string name="settings_update_check">Check for update</string>
-    <string name="settings_update_idle">Check the server for a newer version.</string>
-    <string name="settings_update_checking">Checking…</string>
-    <string name="settings_update_uptodate">You\'re on the latest version.</string>
-    <string name="settings_update_available">Update available: %1$s</string>
-    <string name="settings_update_downloading">Downloading…</string>
-    <string name="settings_update_install">Download &amp; install</string>
-    <string name="settings_update_error">Update check failed. Is the server reachable?</string>
 
     <!-- Admin area (server backup/restore) -->
     <string name="admin_title">Admin area</string>

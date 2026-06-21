@@ -21,7 +21,6 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.SettingsBackupRestore
-import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -128,13 +127,10 @@ fun AdminScreen(
                     backups = state.backups,
                     households = state.households,
                     busy = state.busy,
-                    update = state.update,
                     onCreate = viewModel::createBackup,
                     onRestore = { confirmRestore = it },
                     onReset = { confirmReset = true },
                     onDeleteHousehold = { confirmDeleteHousehold = it },
-                    onCheckUpdate = viewModel::checkForUpdates,
-                    onInstallUpdate = viewModel::downloadAndInstall,
                 )
             }
         }
@@ -249,13 +245,10 @@ private fun AdminContent(
     backups: List<BackupInfoDto>,
     households: List<HouseholdSummaryDto>,
     busy: Boolean,
-    update: UpdateUi,
     onCreate: () -> Unit,
     onRestore: (String) -> Unit,
     onReset: () -> Unit,
     onDeleteHousehold: (HouseholdSummaryDto) -> Unit,
-    onCheckUpdate: () -> Unit,
-    onInstallUpdate: (String) -> Unit,
 ) {
     val context = LocalContext.current
     var householdsExpanded by remember { mutableStateOf(false) }
@@ -348,34 +341,6 @@ private fun AdminContent(
             }
         }
 
-        // --- App-Update (self-hosted distribution) ---
-        item {
-            SectionHeader(
-                stringResource(R.string.settings_update_section),
-                modifier = Modifier.padding(top = Spacing.md),
-            )
-        }
-        item {
-            GroupCard {
-                Column(Modifier.fillMaxWidth().padding(Spacing.md), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                    Text(updateStatusLabel(update), style = MaterialTheme.typography.bodyMedium)
-                    val checking = update is UpdateUi.Checking || update is UpdateUi.Downloading
-                    (update as? UpdateUi.Available)?.let { available ->
-                        available.notes?.takeIf { it.isNotBlank() }?.let {
-                            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Button(onClick = { onInstallUpdate(available.url) }, enabled = !checking, modifier = Modifier.fillMaxWidth()) {
-                            Icon(Icons.Outlined.SystemUpdate, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Text(stringResource(R.string.settings_update_install), modifier = Modifier.padding(start = Spacing.sm))
-                        }
-                    } ?: FilledTonalButton(onClick = onCheckUpdate, enabled = !checking, modifier = Modifier.fillMaxWidth()) {
-                        Icon(Icons.Outlined.SystemUpdate, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Text(stringResource(R.string.settings_update_check), modifier = Modifier.padding(start = Spacing.sm))
-                    }
-                }
-            }
-        }
-
         // --- Maintenance / danger zone ---
         item {
             SectionHeader(
@@ -395,16 +360,6 @@ private fun AdminContent(
             }
         }
     }
-}
-
-@Composable
-private fun updateStatusLabel(update: UpdateUi): String = when (update) {
-    UpdateUi.Idle -> stringResource(R.string.settings_update_idle)
-    UpdateUi.Checking -> stringResource(R.string.settings_update_checking)
-    UpdateUi.UpToDate -> stringResource(R.string.settings_update_uptodate)
-    is UpdateUi.Available -> stringResource(R.string.settings_update_available, update.versionName)
-    UpdateUi.Downloading -> stringResource(R.string.settings_update_downloading)
-    UpdateUi.Error -> stringResource(R.string.settings_update_error)
 }
 
 /** Number of rows shown before a list collapses behind "show all". */

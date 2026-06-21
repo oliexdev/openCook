@@ -1,0 +1,16 @@
+openCook is an open-source, offline-first recipe app. Collect, plan and cook your recipes — without an account, ads or tracking.
+
+Recipe management, meal planning and the shopping list work fully offline on your device. An optional self-hosted server (which you run yourself, on your own hardware) adds AI photo scanning and family sync over your home network — there is no cloud and no registration.
+
+Features:
+
+* Works fully offline — your recipes never leave your device
+* No account, no ads, no tracking
+* Turn cookbook photos into structured recipes (optional self-hosted AI)
+* Weekly meal planner
+* Shared shopping list
+* Barcode scanning via Open Food Facts
+* Import recipes from the web
+* Family sync through your own home server (invite code, LAN/VPN only)
+
+openCook is free software licensed under the GPLv3.

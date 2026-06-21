@@ -51,17 +51,6 @@ endpoints require the `X-Admin-Password` header. **Do not expose the server to t
 | POST | `/images` | `X-Household-Code` | Upload raw image bytes (≤ 25 MB). → `{"name": "<sha256>.jpg"}` — content-addressed, so identical images dedupe across devices. |
 | GET | `/images/{name}` | — | Serve a stored image (path-traversal guarded). |
 
-## App updates (`api/updates.py`)
-
-Self-hosted in-app updater. Unauthenticated by design (public version info + signed APK on a trusted
-LAN). APKs are published into `OPENCOOK_DATA_DIR/apks/` — see
-[Releasing app updates](building.md#releasing-app-updates-self-hosted).
-
-| Method | Path | Purpose |
-|---|---|---|
-| GET | `/app/latest` | Latest published release `{versionCode, versionName, url, notes}` (read from `apks/latest.json`), or `404` if nothing is published. `url` is the relative `/app/download/<file>` path. |
-| GET | `/app/download/{filename}` | Download a published APK (`application/vnd.android.package-archive`, path-traversal guarded). |
-
 ## Admin (`api/admin.py`)
 
 All require `X-Admin-Password` except `/admin/status` and the first `/admin/password` set.

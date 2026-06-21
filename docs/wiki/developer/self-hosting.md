@@ -69,7 +69,6 @@ Everything lives under `/data` (the Docker named volume `opencook-data`):
 /data/opencook.db (+ -wal/-shm)   # SQLite
 /data/images/                      # uploaded photos + AI crops
 /data/backups/                     # *.tar.gz backups (default)
-/data/apks/                        # published release APKs + latest.json (in-app updates)
 ```
 
 It survives restarts and `docker compose up --build`, but **not** deleting the volume or losing the
@@ -104,18 +103,8 @@ archives off-box). For Docker, mount a host dir / NAS at the backup path and `ch
 
 ## App updates
 
-Devices can update themselves from the server — no app store or USB cable. Build a signed release
-and bump `versionCode`, then publish it:
-
-```bash
-PYTHONPATH=server server/.venv/bin/python server/scripts/publish_apk.py \
-    app-release.apk --version-code 2 --version-name 1.1
-```
-
-This stores the APK under `/data/apks/` and writes `latest.json`. In the app, **Admin → App update →
-"Nach Update suchen"** offers the download and install (each device grants openCook the one-time
-"install unknown apps" permission once). Full release steps:
-[Building → Releasing app updates](building.md#releasing-app-updates-self-hosted).
+openCook has no in-app updater. Get the app from F-Droid (auto-updates) or from the GitHub
+releases. Release steps are in [Building → Releasing](building.md#releasing).
 
 ## Security notes
 

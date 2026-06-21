@@ -115,10 +115,10 @@ contribute code, fork the repository and send a pull request.
 
 <table>
   <tr>
-    <th><img src='docs/screens/1_recipes.png' width='200px' alt='Recipes' /></th>
-    <th><img src='docs/screens/2_recipe_detail.png' width='200px' alt='Recipe detail' /></th>
-    <th><img src='docs/screens/3_meal_planner.png' width='200px' alt='Meal planner' /></th>
-    <th><img src='docs/screens/4_shopping_list.png' width='200px' alt='Shopping list' /></th>
+    <th><img src='fastlane/metadata/android/en-US/images/phoneScreenshots/1_recipes.png' width='200px' alt='Recipes' /></th>
+    <th><img src='fastlane/metadata/android/en-US/images/phoneScreenshots/2_recipe_detail.png' width='200px' alt='Recipe detail' /></th>
+    <th><img src='fastlane/metadata/android/en-US/images/phoneScreenshots/3_meal_planner.png' width='200px' alt='Meal planner' /></th>
+    <th><img src='fastlane/metadata/android/en-US/images/phoneScreenshots/4_shopping_list.png' width='200px' alt='Shopping list' /></th>
   </tr>
 </table>
 

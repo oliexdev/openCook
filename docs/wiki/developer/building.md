@@ -29,34 +29,26 @@ You need a JDK 17–21 on `JAVA_HOME` (for example the JBR bundled with Android 
 
 The SDK location goes in `local.properties` (`sdk.dir=…`), which is git-ignored.
 
-## Releasing app updates (self-hosted)
+## Releasing
 
-The app updates itself from your own server — no Play Store, F-Droid or USB cable. Each release:
+Releases go out via GitHub releases and F-Droid — there is no in-app updater.
 
 1. **Bump the version.** In `app/build.gradle.kts` raise `versionCode` (and usually `versionName`)
-   for **every** release you publish. The in-app updater only offers an update when the server's
-   published `versionCode` is **higher** than the installed one, and Android only installs over the
-   top when `versionCode` increases. Keep the same signing key for a clean in-place upgrade.
+   for every release.
 
 2. **Build a signed release APK.** Signing is wired in `app/build.gradle.kts` from a
    `../openCook.keystore` properties file (or env vars); without it the release build is unsigned.
    ```bash
-   ./gradlew assembleRelease     # → app/build/outputs/apk/release/app-release.apk
+   ./gradlew assembleRelease   # → app/build/outputs/apk/release/openCook-<versionName>-release.apk
    ```
 
-3. **Publish it to the server.** The helper copies the APK into `OPENCOOK_DATA_DIR/apks/` and writes
-   `latest.json` next to it:
-   ```bash
-   PYTHONPATH=server server/.venv/bin/python server/scripts/publish_apk.py \
-       app/build/outputs/apk/release/app-release.apk --version-code 2 --version-name 1.1
-   ```
-   `--version-code` must match the `versionCode` you built.
+3. **Tag and publish.** Tag the commit `v<versionName>` and attach the signed
+   `openCook-<versionName>-release.apk` to the GitHub release. F-Droid picks up new tags
+   automatically (`UpdateCheckMode: Tags`), builds the release variant reproducibly and ships your
+   signed APK — see the reference recipe at `fdroid/com.food.opencook.yml`.
 
-The server then advertises the release at `GET /app/latest`; devices download from
-`GET /app/download/{file}` and hand the APK to the system installer. Users trigger the check in the
-app under **Admin → App update** (a device needs the one-time "install unknown apps" permission for
-openCook). See [API reference → App updates](api-reference.md) and
-[Self-hosting → App updates](self-hosting.md#app-updates).
+(A CI workflow also publishes a rolling debug APK as the `dev-build` prerelease on every push to
+`main`; see `.github/workflows/ci.yml`.)
 
 ## Server
 

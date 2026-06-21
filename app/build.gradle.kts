@@ -36,10 +36,9 @@ android {
         applicationId = "com.food.opencook"
         minSdk = 30
         targetSdk = 36
-        // Bump versionCode on EVERY release that gets published to the server — the
-        // in-app updater (AppUpdater) only offers an update when the server's published
-        // versionCode is higher than this, and Android only installs over the top of an
-        // existing install when the new versionCode is greater. versionName is cosmetic.
+        // Bump versionCode on every release; tag the commit `v<versionName>` so F-Droid
+        // (UpdateCheckMode: Tags) and Android both pick the new build up. versionName is
+        // the user-facing label.
         versionCode = 1
         versionName = "0.1"
 
@@ -48,6 +47,12 @@ android {
         // Launcher label as a generated resource so the second test identity can
         // override it (see the debug2 build type).
         resValue("string", "app_name", "openCook")
+    }
+
+    // F-Droid: keep the APK free of the Google-signed dependency-metadata block.
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
     }
 
     signingConfigs {
@@ -131,6 +136,22 @@ kotlin {
 // committed app/schemas/.../1.json is the baseline for real migrations past v1.
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
+}
+
+// Predictable APK filenames for GitHub releases / F-Droid: openCook-debug.apk and
+// openCook-<versionName>-release.apk.
+val appVersionName = android.defaultConfig.versionName
+androidComponents {
+    onVariants { variant ->
+        variant.outputs.forEach { output ->
+            if (output is com.android.build.api.variant.impl.VariantOutputImpl) {
+                output.outputFileName.set(
+                    if (variant.name == "debug") "openCook-debug.apk"
+                    else "openCook-$appVersionName-${variant.name}.apk",
+                )
+            }
+        }
+    }
 }
 
 dependencies {

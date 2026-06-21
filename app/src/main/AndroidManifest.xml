@@ -7,8 +7,6 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- mDNS/NSD server discovery needs a multicast lock on many devices. -->
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
-    <!-- Self-hosted in-app update: download a signed APK from our server and install it. -->
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
 
     <application
@@ -46,17 +44,6 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
-
-        <!-- Shares downloaded update APKs with the system installer (see AppUpdater). -->
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.fileprovider"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths" />
-        </provider>
 
         <!-- On-demand WorkManager init: remove the default initializer so the
              Hilt-aware factory in OpenCookApplication is used instead. -->

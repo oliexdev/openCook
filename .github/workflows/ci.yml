@@ -1,0 +1,37 @@
+name: CI
+
+# Builds a debug APK on every push to main and publishes it as a rolling
+# "dev-build" prerelease. Manual runs are allowed from the Actions tab.
+on:
+  push:
+    branches:
+      - 'main'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: "zulu"
+          java-version: "21"
+
+      - name: Build APK
+        run: ./gradlew assembleDebug
+
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "dev-build"
+          prerelease: true
+          title: "openCook development build"
+          files: |
+            app/build/outputs/apk/debug/openCook-debug.apk

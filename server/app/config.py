@@ -51,12 +51,6 @@ class Settings(BaseSettings):
     def backups_dir(self) -> Path:
         return self.backup_dir or (self.data_dir / "backups")
 
-    @property
-    def apks_dir(self) -> Path:
-        # Where signed release APKs + their latest.json metadata are published, so the
-        # app can self-update against its own server (no F-Droid / Play / USB needed).
-        return self.data_dir / "apks"
-
 
 @lru_cache
 def get_settings() -> Settings:
@@ -64,5 +58,4 @@ def get_settings() -> Settings:
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     settings.images_dir.mkdir(parents=True, exist_ok=True)
     settings.backups_dir.mkdir(parents=True, exist_ok=True)
-    settings.apks_dir.mkdir(parents=True, exist_ok=True)
     return settings

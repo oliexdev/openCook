@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
-from app.api import admin, households, images, imports, jobs, sync, updates
+from app.api import admin, households, images, imports, jobs, sync
 from app.db import engine, init_db
 from app.discovery import MdnsAdvertiser
 from app.worker import worker_loop
@@ -67,7 +67,6 @@ app.include_router(images.router)
 app.include_router(households.router)
 app.include_router(sync.router)
 app.include_router(admin.router)
-app.include_router(updates.router)
 
 
 @app.get("/health", tags=["meta"])

@@ -7,7 +7,6 @@ import com.food.opencook.data.remote.ImportApi
 import com.food.opencook.data.remote.JobsApi
 import com.food.opencook.data.remote.OpenFoodFactsApi
 import com.food.opencook.data.remote.SyncApi
-import com.food.opencook.data.remote.UpdateApi
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import dagger.Module
 import dagger.Provides
@@ -77,10 +76,6 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideAdminApi(retrofit: Retrofit): AdminApi = retrofit.create(AdminApi::class.java)
-
-    @Provides
-    @Singleton
-    fun provideUpdateApi(retrofit: Retrofit): UpdateApi = retrofit.create(UpdateApi::class.java)
 
     // --- Open Food Facts: a SEPARATE client that bypasses BaseUrlInterceptor so the
     // request actually goes to the public API instead of the self-hosted server. ---
