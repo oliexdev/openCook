@@ -27,11 +27,17 @@ jobs:
       - name: Build APK
         run: ./gradlew assembleDebug
 
-      - uses: "marvinpinto/action-automatic-releases@latest"
-        with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "dev-build"
-          prerelease: true
-          title: "openCook development build"
-          files: |
-            app/build/outputs/apk/debug/openCook-debug.apk
+      # Re-publish the rolling "dev-build" prerelease at the current commit. Uses the
+      # preinstalled gh CLI with the workflow's contents:write token (the old
+      # marvinpinto action fails with "Resource not accessible by integration").
+      - name: Publish dev-build prerelease
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete dev-build --yes --cleanup-tag || true
+          gh release create dev-build \
+            app/build/outputs/apk/debug/openCook-debug.apk \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "openCook development build" \
+            --notes "Latest development build from main. May contain bugs; no automatic updates."
