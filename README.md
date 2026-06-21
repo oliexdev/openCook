@@ -1,4 +1,4 @@
-&nbsp; <img src="docs/icon.png" alt="openCook logo" height="60"/> &nbsp;openCook
+&nbsp; <img src="docs/icon.png" alt="openCook logo" height="60"/> &nbsp;openCook [![CI](https://github.com/oliexdev/openCook/actions/workflows/ci.yml/badge.svg)](https://github.com/oliexdev/openCook/actions/workflows/ci.yml)
 =========
 Open-source recipe app that turns cookbook photos into recipes, plans your week and shares the shopping list
 
@@ -8,8 +8,8 @@ build a shared shopping list everyone can tick off, and keep it all in sync at h
 sign-up, no tracking.
 
 > [!NOTE]
-> openCook is still in active development. There is no F-Droid / Play Store release yet — for now
-> you build it yourself from source (see **Building & Running** below).
+> For the latest development state, install the latest [openCook dev](https://github.com/oliexdev/openCook/releases/tag/dev-build) build from the [GitHub release page](https://github.com/oliexdev/openCook/releases) or build it yourself from source (see **Building & Running** below).
+> Please be aware that the development version, may contain bugs, and will not receive automatic updates.
 
 # Summary :clipboard:
 
