@@ -64,11 +64,11 @@ object MealPlanReasons {
             ReasonCode.NEW_INGREDIENTS_NEEDED -> context.getString(R.string.mealplan_reason_new_ingredients, list)
             ReasonCode.RECENTLY_PLANNED -> context.getString(
                 R.string.mealplan_reason_recently_planned,
-                context.getString(R.string.recipe_cooked_days_ago, days),
+                context.resources.getQuantityString(R.plurals.recipe_cooked_days_ago, days, days),
             )
             ReasonCode.RECENTLY_COOKED -> context.getString(
                 R.string.mealplan_reason_recently_cooked,
-                context.getString(R.string.recipe_cooked_days_ago, days),
+                context.resources.getQuantityString(R.plurals.recipe_cooked_days_ago, days, days),
             )
             ReasonCode.SAME_CATEGORY_NEIGHBOUR -> context.getString(
                 R.string.mealplan_reason_same_category,

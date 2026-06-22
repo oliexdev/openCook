@@ -25,6 +25,7 @@ import com.food.opencook.repository.MealPlanRepository
 import com.food.opencook.repository.PantryRepository
 import com.food.opencook.repository.RecipeRepository
 import com.food.opencook.repository.ShoppingRepository
+import com.food.opencook.util.DateLabels
 import com.food.opencook.util.IngredientMatch
 import com.food.opencook.util.WeekDates
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -39,8 +40,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 import javax.inject.Inject
 
 /** Which 7-day window the user is currently looking at. We expose exactly two —
@@ -74,7 +73,7 @@ class MealPlanViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
 
-    private val labelFormat = DateTimeFormatter.ofPattern("EEE dd.MM.", Locale.getDefault())
+    private val labelFormat = DateLabels.weekdayDayMonth()
 
     private val _selectedWeek = MutableStateFlow(WeekSelection.CURRENT)
     val selectedWeek: StateFlow<WeekSelection> = _selectedWeek.asStateFlow()

@@ -81,6 +81,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.food.opencook.R
 import com.food.opencook.data.remote.dto.BackupInfoDto
+import java.text.NumberFormat
+import java.util.Locale
 import com.food.opencook.data.remote.dto.HouseholdSummaryDto
 import com.food.opencook.ui.components.SectionHeader
 import com.food.opencook.ui.theme.Spacing
@@ -342,7 +344,10 @@ private fun AdminContent(
                                 Icon(Icons.Outlined.Inventory2, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             },
                             headlineContent = { Text(formatBackupDate(context, backup.createdAt) ?: backup.id) },
-                            supportingContent = { Text("${backup.sizeBytes / 1024} KB") },
+                            supportingContent = {
+                                val kb = NumberFormat.getInstance(Locale.getDefault()).format(backup.sizeBytes / 1024)
+                                Text(stringResource(R.string.backup_size_kb, kb))
+                            },
                             trailingContent = {
                                 IconButton(onClick = { onRestore(backup.id) }, enabled = !busy) {
                                     Icon(

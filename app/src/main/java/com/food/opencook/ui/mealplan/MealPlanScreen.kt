@@ -114,8 +114,7 @@ import com.food.opencook.ui.components.AvailabilityBadge
 import com.food.opencook.ui.components.CookedBadge
 import com.food.opencook.ui.theme.Spacing
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.util.Locale
+import com.food.opencook.util.DateLabels
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -341,7 +340,7 @@ private fun WeekSelector(
             val first = runCatching { LocalDate.parse(week.first().date) }.getOrNull()
             val last = runCatching { LocalDate.parse(week.last().date) }.getOrNull()
             if (first != null && last != null) {
-                val fmt = remember { DateTimeFormatter.ofPattern("EEE dd.MM.", Locale.getDefault()) }
+                val fmt = remember { DateLabels.weekdayDayMonth() }
                 Text(
                     text = stringResource(R.string.mealplan_week_range, first.format(fmt), last.format(fmt)),
                     style = MaterialTheme.typography.labelMedium,

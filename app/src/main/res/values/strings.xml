@@ -101,9 +101,15 @@
     <string name="recipe_last_cooked_prefix">Last cooked</string>
     <string name="recipe_cooked_today">today</string>
     <string name="recipe_cooked_yesterday">yesterday</string>
-    <string name="recipe_cooked_days_ago">%1$d days ago</string>
+    <plurals name="recipe_cooked_days_ago">
+        <item quantity="one">%1$d day ago</item>
+        <item quantity="other">%1$d days ago</item>
+    </plurals>
     <string name="recipe_cooked_week_ago">1 week ago</string>
-    <string name="recipe_cooked_weeks_ago">%1$d weeks ago</string>
+    <plurals name="recipe_cooked_weeks_ago">
+        <item quantity="one">%1$d week ago</item>
+        <item quantity="other">%1$d weeks ago</item>
+    </plurals>
     <string name="recipe_liked_label">♥ Liked</string>
     <string name="recipe_cook_moved">Moved “%1$s” to %2$s</string>
     <string name="recipe_cook_removed">Removed “%1$s” from today</string>
@@ -496,4 +502,20 @@
     <string name="cat_salad">Salad</string>
     <string name="cat_dessert">Dessert</string>
     <string name="cat_other">Other</string>
+
+    <!-- Generic -->
+    <string name="action_ok">OK</string>
+
+    <!-- Ingredient availability badge -->
+    <string name="availability_ready">All set</string>
+    <string name="availability_ready_desc">All ingredients available</string>
+    <string name="availability_missing_desc">%1$d ingredients missing</string>
+    <string name="availability_missing_title">Missing ingredients</string>
+
+    <!-- Meal-plan recipe search -->
+    <string name="mealplan_search_empty_title">Nothing found</string>
+    <string name="mealplan_search_empty_message">Try a different search term.</string>
+
+    <!-- Admin -->
+    <string name="backup_size_kb">%1$s KB</string>
 </resources>

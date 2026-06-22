@@ -40,9 +40,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.food.opencook.R
 
 /**
  * Compact availability pill for a planned recipe:
@@ -60,7 +62,11 @@ fun AvailabilityBadge(
     val fg = if (ok) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onTertiaryContainer
     var showDialog by remember { mutableStateOf(false) }
     val tappable = !ok && missingItems.isNotEmpty()
-    val desc = if (ok) "Alle Zutaten vorhanden" else "$missingCount Zutaten fehlen"
+    val desc = if (ok) {
+        stringResource(R.string.availability_ready_desc)
+    } else {
+        stringResource(R.string.availability_missing_desc, missingCount)
+    }
 
     Surface(
         shape = RoundedCornerShape(999.dp),
@@ -81,7 +87,7 @@ fun AvailabilityBadge(
                 modifier = Modifier.size(14.dp),
             )
             Text(
-                if (ok) "Alles da" else missingCount.toString(),
+                if (ok) stringResource(R.string.availability_ready) else missingCount.toString(),
                 style = MaterialTheme.typography.labelMedium,
                 color = fg,
             )
@@ -91,8 +97,8 @@ fun AvailabilityBadge(
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
-            confirmButton = { TextButton(onClick = { showDialog = false }) { Text("OK") } },
-            title = { Text("Fehlt noch") },
+            confirmButton = { TextButton(onClick = { showDialog = false }) { Text(stringResource(R.string.action_ok)) } },
+            title = { Text(stringResource(R.string.availability_missing_title)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     missingItems.forEach { Text("• $it", style = MaterialTheme.typography.bodyMedium) }

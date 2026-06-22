@@ -125,8 +125,8 @@ fun MealPlanPickScreen(
             if (recipes.isEmpty()) {
                 EmptyState(
                     icon = Icons.Outlined.Search,
-                    title = if (query.isBlank()) stringResource(R.string.mealplan_no_recipes) else "Nichts gefunden",
-                    message = if (query.isBlank()) null else "Versuch einen anderen Suchbegriff.",
+                    title = if (query.isBlank()) stringResource(R.string.mealplan_no_recipes) else stringResource(R.string.mealplan_search_empty_title),
+                    message = if (query.isBlank()) null else stringResource(R.string.mealplan_search_empty_message),
                 )
             } else {
                 LazyColumn(

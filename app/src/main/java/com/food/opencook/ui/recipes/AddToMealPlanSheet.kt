@@ -60,8 +60,7 @@ import coil3.compose.AsyncImage
 import com.food.opencook.R
 import com.food.opencook.ui.theme.Spacing
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.util.Locale
+import com.food.opencook.util.DateLabels
 
 /**
  * Sheet that lets the user assign the current recipe to any day in the current
@@ -81,8 +80,8 @@ fun AddToMealPlanSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var replaceTarget by remember { mutableStateOf<Pair<String, PlannedDish>?>(null) }
     val today = remember { LocalDate.now().toString() }
-    val dayLabelFmt = remember { DateTimeFormatter.ofPattern("EEEE dd.MM.", Locale.getDefault()) }
-    val shortLabelFmt = remember { DateTimeFormatter.ofPattern("EEE dd.MM.", Locale.getDefault()) }
+    val dayLabelFmt = remember { DateLabels.weekdayDayMonth(fullWeekday = true) }
+    val shortLabelFmt = remember { DateLabels.weekdayDayMonth() }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(

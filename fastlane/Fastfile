@@ -1,0 +1,35 @@
+# https://docs.fastlane.tools
+opt_out_usage
+
+default_platform(:android)
+
+platform :android do
+    versionName = get_version_name(
+        gradle_file_path: "app/build.gradle.kts",
+        ext_constant_name: "versionName",
+    )
+    versionCode = get_version_name(
+        gradle_file_path: "app/build.gradle.kts",
+        ext_constant_name: "versionCode",
+    )
+
+    desc "Build a signed release APK"
+    lane :release do
+        gradle(task: "clean")
+        gradle(task: "assemble", build_type: "Release")
+    end
+
+    desc "Create a GitHub release (tag v<versionName>) with the release APK"
+    lane :deployGitHubRelease do
+        gradle(task: "clean")
+        gradle(task: "assemble", build_type: "Release")
+        set_github_release(
+            repository_name: "oliexdev/openCook",
+            api_token: ENV["OLIEXDEV_GITHUB_API_TOKEN"],
+            name: "openCook #{versionName} release",
+            tag_name: "v#{versionName}",
+            description: (File.read("metadata/android/en-US/changelogs/#{versionCode}.txt") rescue "No changelog provided"),
+            upload_assets: ["app/build/outputs/apk/release/openCook-#{versionName}-release.apk"],
+        )
+    end
+end

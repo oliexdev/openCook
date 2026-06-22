@@ -91,6 +91,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -102,12 +103,11 @@ import coil3.compose.AsyncImage
 import com.food.opencook.R
 import com.food.opencook.data.local.relation.RecipeWithDetails
 import com.food.opencook.ui.theme.Spacing
+import com.food.opencook.util.DateLabels
 import com.food.opencook.util.DurationFormat
 import com.food.opencook.util.Numbers
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
-import java.util.Locale
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -144,7 +144,7 @@ fun RecipeDetailScreen(
     val movedTemplate = stringResource(R.string.recipe_cook_moved)
     val removedTemplate = stringResource(R.string.recipe_cook_removed)
     val undoLabel = stringResource(R.string.undo)
-    val dayFmt = remember { DateTimeFormatter.ofPattern("EEE dd.MM.", Locale.getDefault()) }
+    val dayFmt = remember { DateLabels.weekdayDayMonth() }
     LaunchedEffect(lastSwap) {
         val s = lastSwap ?: return@LaunchedEffect
         val movedLabel = s.movedTo?.let { runCatching { LocalDate.parse(it).format(dayFmt) }.getOrNull() }
@@ -477,9 +477,12 @@ private fun lastCookedLabel(iso: String): String? {
     return when {
         days == 0L -> stringResource(R.string.recipe_cooked_today)
         days == 1L -> stringResource(R.string.recipe_cooked_yesterday)
-        days < 7L -> stringResource(R.string.recipe_cooked_days_ago, days.toInt())
+        days < 7L -> pluralStringResource(R.plurals.recipe_cooked_days_ago, days.toInt(), days.toInt())
         days < 14L -> stringResource(R.string.recipe_cooked_week_ago)
-        else -> stringResource(R.string.recipe_cooked_weeks_ago, (days / 7L).toInt())
+        else -> {
+            val weeks = (days / 7L).toInt()
+            pluralStringResource(R.plurals.recipe_cooked_weeks_ago, weeks, weeks)
+        }
     }
 }
 
