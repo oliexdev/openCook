@@ -53,7 +53,8 @@ endpoints require the `X-Admin-Password` header. **Do not expose the server to t
 
 ## Admin (`api/admin.py`)
 
-All require `X-Admin-Password` except `/admin/status` and the first `/admin/password` set.
+All require `X-Admin-Password` except `/admin/status`, the first `/admin/password` set, and the
+web-console HTML shell (which holds no data and prompts for the password itself).
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -65,5 +66,20 @@ All require `X-Admin-Password` except `/admin/status` and the first `/admin/pass
 | GET | `/admin/backups/{backup_id}` | Download a backup archive. |
 | POST | `/admin/restore` | Restore from a server-side backup (safety snapshot first). |
 | POST | `/admin/restore/upload` | Restore from an uploaded `.tar.gz`. |
+| PATCH | `/admin/households/{household_id}` | Admin-edit a household: rename and/or set/change/clear its PIN (`{name?, pin?}`; `pin: ""` clears, `null` leaves). The plaintext PIN is never readable, only overwritten. |
 | DELETE | `/admin/households/{household_id}` | Delete a household + its sync log & imports. |
 | POST | `/admin/reset` | Wipe all data (keeps admin password + backups dir). |
+
+### Web admin console (`app/static/admin.html`)
+
+A self-contained browser UI (no build step, openCook-themed) served by the endpoints below. The
+HTML shell is public; every data endpoint is password-gated. Read-only DB inspection plus the
+curated write actions above — no free-form SQL.
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/admin` · `/admin/` · `/admin/db` | Serve the admin console HTML shell. |
+| GET | `/admin/db/tables` | List tables (from ORM metadata) with columns + row counts. |
+| GET | `/admin/db/tables/{table}` | Paginated rows (`limit`, `offset`, `order_by`, `direction`). Table/column validated against metadata; secret columns (`admin_pw_hash/salt`, `pin_hash/salt`) are masked. |
+| GET | `/admin/db/sync` | Sync log grouped by dataset (message + distinct-row counts). Optional `household_id` scope. |
+| GET | `/admin/db/sync/{dataset}` | Reconstructed entities for a dataset (latest value per field), each tagged `created`/`edited`/`deleted` with a message breakdown (`stats`). Recipes resolve `sourcePhotoId` → the job's original-scan filename as a synthetic `originalScan` field. Optional `household_id` scope. |

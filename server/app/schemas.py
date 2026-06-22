@@ -116,6 +116,88 @@ class RestoreResult(BaseModel):
     restart_recommended: bool = True
 
 
+class DbColumn(BaseModel):
+    name: str
+    type: str
+    primary_key: bool = False
+
+
+class DbTableInfo(BaseModel):
+    name: str
+    row_count: int
+    columns: list[DbColumn]
+
+
+class DbTableListResponse(BaseModel):
+    tables: list[DbTableInfo]
+
+
+class DbTablePage(BaseModel):
+    table: str
+    columns: list[str]
+    # Each row is a {column: value} dict; secret columns are masked, datetimes are
+    # ISO strings, JSON columns stay raw text (the UI pretty-prints them).
+    rows: list[dict]
+    total: int
+    limit: int
+    offset: int
+
+
+class DbSyncDataset(BaseModel):
+    name: str
+    row_count: int
+    message_count: int
+
+
+class DbSyncDatasetList(BaseModel):
+    datasets: list[DbSyncDataset]
+
+
+class DbSyncColumnCount(BaseModel):
+    column: str
+    count: int
+
+
+class DbSyncStats(BaseModel):
+    """Breakdown of a dataset's append-only messages by kind. Each message is
+    classified into exactly one of adds/edits/deletes, so they sum to total."""
+
+    total_messages: int
+    adds: int  # first write to a (row, field) — the row/field coming into existence
+    edits: int  # a later write to a field that already existed — a change
+    deletes: int  # a tombstone message (_deleted flipped to true)
+    rows_total: int
+    rows_live: int
+    rows_deleted: int  # rows whose latest _deleted is true
+    by_column: list[DbSyncColumnCount]
+
+
+class DbSyncRow(BaseModel):
+    row_id: str
+    household_id: str
+    # Packed HLC of the most recent field write for this row.
+    updated: str
+    # "created" (only initial writes), "edited" (a field was rewritten) or
+    # "deleted" (tombstoned: latest _deleted is true). Used by the UI filter.
+    status: str
+    edited: bool
+    message_count: int
+    # Reconstructed current state: latest value per column (per-field LWW), JSON-decoded.
+    fields: dict
+
+
+class DbSyncRows(BaseModel):
+    dataset: str
+    stats: DbSyncStats
+    rows: list[DbSyncRow]
+
+
+class AdminHouseholdPatch(BaseModel):
+    name: str | None = None
+    # None = leave unchanged, "" = clear the PIN, any other value = set/change it.
+    pin: str | None = None
+
+
 class ImportCreatedResponse(BaseModel):
     import_id: str
 

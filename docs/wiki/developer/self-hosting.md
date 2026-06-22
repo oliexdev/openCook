@@ -74,14 +74,28 @@ Everything lives under `/data` (the Docker named volume `opencook-data`):
 It survives restarts and `docker compose up --build`, but **not** deleting the volume or losing the
 disk — so keep durable backups off the data volume.
 
+## Web admin console
+
+Open **`http://<server>:8000/admin/`** in a browser and enter the admin password. It's a built-in,
+self-contained page (no extra service) for inspecting and maintaining the server:
+
+- **Tables** — browse the SQLite tables read-only (paginated, sortable; password/PIN hashes masked).
+- **Sync log** — the append-only message log shown as reconstructed entities per dataset, scoped by
+  household, with an added/edited/deleted breakdown and filter. Dish crops and AI original-scan
+  photos render inline.
+- **Households** — rename, set/change/clear a PIN, or delete a household.
+- **Maintenance** — create/download/restore backups, change the admin password, full reset.
+
+The page itself is unauthenticated (it carries no data) and prompts for the password, which it sends
+on every data request. Keep it on the trusted LAN/VPN like the rest of the server.
+
 ## Backup & restore
 
 A backup is one portable `.tar.gz` with a consistent `opencook.db` snapshot (SQLite online-backup —
 safe while running) plus the whole `images/` tree. Phones re-sync from the server after a restore,
 so they need no backup of their own.
 
-**From the app:** the admin screen can create, download and restore backups (admin password
-required).
+**From the app or web console:** create, download and restore backups (admin password required).
 
 **From the CLI:**
 ```bash

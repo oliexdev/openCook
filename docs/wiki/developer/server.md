@@ -20,6 +20,7 @@ server/app/
   security.py      # salted SHA-256 hashing (PINs, admin password)
   backup.py        # DB+images snapshot/restore
   api/             # routers: jobs, sync, imports, households, images, admin (+ _deps.py)
+  static/          # admin.html — self-contained web admin console (served at /admin/)
 server/scripts/    # backup.py, restore.py, extraction experiments
 server/tests/      # pytest; fixtures/ (incl. sync-vectors.json)
 ```

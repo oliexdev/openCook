@@ -80,6 +80,10 @@
     <string name="review_image_take">Take photo</string>
     <string name="review_image_gallery">Gallery</string>
     <string name="review_image_later">Later</string>
+    <string name="review_image_rotate">Rotate 90°</string>
+    <string name="review_image_crop">Crop</string>
+    <string name="crop_apply">Apply</string>
+    <string name="crop_cancel">Cancel</string>
 
     <!-- Recipes -->
     <string name="recipes_title">Recipes</string>

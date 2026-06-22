@@ -23,6 +23,7 @@ import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.food.opencook.data.image.ImageEditor
 import com.food.opencook.data.image.ImageStore
 import com.food.opencook.data.local.entity.ImageEntity
 import com.food.opencook.data.local.entity.IngredientEntity
@@ -106,6 +107,7 @@ class ReviewViewModel @Inject constructor(
     private val repository: RecipeRepository,
     private val suggestionRepository: SuggestionRepository,
     private val imageStore: ImageStore,
+    private val imageEditor: ImageEditor,
     settings: SettingsRepository,
 ) : ViewModel() {
 
@@ -238,6 +240,33 @@ class ReviewViewModel @Inject constructor(
     fun attachImage(index: Int, uri: Uri) {
         viewModelScope.launch {
             attachLocalImage(index, imageStore.saveFromUri(uri))
+        }
+    }
+
+    /** The primary image of the recipe at [index], but only if it has a local file we
+     *  can edit (rotate/crop need bytes on disk; a not-yet-downloaded remote image has none). */
+    private fun editablePrimary(index: Int): ImageEntity? {
+        val recipe = _recipes.value?.getOrNull(index) ?: return null
+        val primary = recipe.images.firstOrNull { it.isPrimary } ?: recipe.images.firstOrNull()
+        return primary?.takeIf { it.localPath != null }
+    }
+
+    /** Whether the recipe at [index] has a locally-editable primary image (drives the UI). */
+    fun canEditImage(index: Int): Boolean = editablePrimary(index) != null
+
+    /** Rotate the primary image 90° clockwise and re-attach it (re-uploads on next sync). */
+    fun rotateImage(index: Int) {
+        val image = editablePrimary(index) ?: return
+        viewModelScope.launch {
+            attachLocalImage(index, imageEditor.rotate90(image.localPath!!))
+        }
+    }
+
+    /** Crop the primary image to a fractional rectangle (0..1) and re-attach it. */
+    fun cropImage(index: Int, left: Float, top: Float, right: Float, bottom: Float) {
+        val image = editablePrimary(index) ?: return
+        viewModelScope.launch {
+            attachLocalImage(index, imageEditor.crop(image.localPath!!, left, top, right, bottom))
         }
     }
 

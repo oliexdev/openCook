@@ -1,0 +1,603 @@
+<!doctype html>
+<!--
+  openCook server — admin console.
+
+  A single self-contained page (no build step, no external assets) served at
+  /admin/. Read-only DB browser, a structured sync-log view, household
+  management (rename / PIN / delete) and maintenance (backups, password,
+  reset). Auth is the server admin password, kept in sessionStorage and sent as
+  X-Admin-Password on every request. Colors + logo mirror the openCook app.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>openCook · Admin</title>
+<style>
+  :root {
+    /* openCook "warm & cozy" light palette (app ui/theme/Color.kt). */
+    --bg: #FBF5EE;          /* cream background */
+    --surface: #FFFFFF;     /* cards */
+    --sidebar: #F4EADF;     /* warm tinted rail */
+    --primary: #C4572B;     /* terracotta */
+    --primary-ctr: #F6E2D6;
+    --secondary: #5B7A36;   /* herb green */
+    --secondary-ctr: #E3EBD4;
+    --tertiary: #B07B2B;    /* gold */
+    --ink: #2C2118;         /* text */
+    --muted: #7E7163;       /* warm muted */
+    --line: #E7D9C9;        /* hairlines */
+    --danger: #B3261E;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--ink); }
+  button { font: inherit; cursor: pointer; border: 1px solid var(--line); background: var(--surface);
+    color: var(--ink); border-radius: 8px; padding: 6px 13px; }
+  button:hover { border-color: var(--primary); }
+  button.primary { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 600; }
+  button.primary:hover { filter: brightness(1.06); }
+  button.danger { border-color: var(--danger); color: var(--danger); background: var(--surface); }
+  button.danger:hover { background: var(--danger); color: #fff; }
+  button:disabled { opacity: .45; cursor: default; }
+  input, textarea, select { font: inherit; background: var(--surface); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--primary); }
+  a { color: var(--primary); }
+
+  .logo { width: 34px; height: 34px; border-radius: 9px; flex: none; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; }
+  .brand small { font-weight: 500; color: var(--muted); }
+
+  /* Gate */
+  #gate { display: flex; min-height: 100vh; align-items: center; justify-content: center; }
+  #gate .box { background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+    padding: 34px; width: 350px; text-align: center; box-shadow: 0 8px 30px rgba(44,33,24,.08); }
+  #gate .brand { justify-content: center; margin-bottom: 6px; }
+  #gate p { color: var(--muted); margin: 4px 0 20px; font-size: 13px; }
+  #gate input { width: 100%; margin-bottom: 12px; }
+  #gate button { width: 100%; }
+  .err { color: var(--danger); font-size: 13px; min-height: 18px; margin-top: 8px; }
+
+  /* Shell */
+  #app { display: none; height: 100vh; grid-template-columns: 248px 1fr; }
+  aside { background: var(--sidebar); border-right: 1px solid var(--line); overflow-y: auto; padding: 16px; }
+  aside .brand { padding: 4px 6px 14px; }
+  aside h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted);
+    margin: 18px 0 8px; }
+  .navitem { display: flex; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 8px;
+    cursor: pointer; color: var(--ink); }
+  .navitem:hover { background: var(--primary-ctr); }
+  .navitem.active { background: var(--primary); color: #fff; }
+  .navitem .count { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .navitem.active .count { color: #fff; opacity: .85; }
+  main { overflow: auto; padding: 24px 28px; }
+  .topbar { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .topbar h1 { font-size: 18px; margin: 0; flex: 1; }
+  .muted { color: var(--muted); }
+  .badge { display: inline-block; font-size: 12px; padding: 2px 9px; border-radius: 999px;
+    background: var(--secondary-ctr); color: var(--secondary); font-weight: 600; }
+  .badge.open { background: var(--primary-ctr); color: var(--primary); }
+  .badge.created { background: var(--secondary-ctr); color: var(--secondary); }
+  .badge.edited { background: #F3E4C7; color: #8a5e16; }
+  .badge.deleted { background: #F6D9D7; color: var(--danger); }
+
+  .sechd { font-size: 11px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted);
+    margin: 16px 0 8px; }
+  .chip .name { font-weight: 600; }
+  .fcards { display: flex; flex-wrap: wrap; gap: 10px; margin: 4px 0 16px; }
+  .fcard { padding: 11px 18px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer;
+    background: var(--surface); min-width: 104px; }
+  .fcard:hover { border-color: var(--ink); }
+  .fcard .big { font-size: 22px; font-weight: 700; line-height: 1.1; }
+  .fcard .lbl { font-size: 12px; color: var(--muted); }
+  .fcard.k-added .big { color: var(--secondary); }
+  .fcard.k-edited .big { color: #8a5e16; }
+  .fcard.k-deleted .big { color: var(--danger); }
+  .fcard.k-all.active { background: var(--ink); border-color: var(--ink); }
+  .fcard.k-all.active .big, .fcard.k-all.active .lbl { color: var(--bg); }
+  .fcard.k-added.active { background: var(--secondary-ctr); border-color: var(--secondary); }
+  .fcard.k-edited.active { background: #F3E4C7; border-color: #c9a45f; }
+  .fcard.k-deleted.active { background: #F6D9D7; border-color: var(--danger); }
+  .fcard.active .lbl { color: inherit; }
+  .thumb { max-width: 170px; max-height: 130px; border-radius: 8px; border: 1px solid var(--line); display: block; }
+  .fields .v .imgname { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 13px; background: var(--surface);
+    border-radius: 10px; overflow: hidden; }
+  th, td { border-bottom: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: top;
+    max-width: 460px; }
+  th { background: var(--primary-ctr); color: var(--ink); position: sticky; top: 0; cursor: pointer; white-space: nowrap; }
+  th:hover { color: var(--primary); }
+  td { white-space: pre-wrap; word-break: break-word; font-variant-numeric: tabular-nums; }
+  td.null { color: var(--muted); font-style: italic; }
+  td.expandable { cursor: pointer; }
+  td.expandable.collapsed { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pager { display: flex; gap: 10px; align-items: center; margin: 14px 0; }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+    padding: 18px; margin-bottom: 16px; max-width: 720px; }
+  .card h3 { margin: 0 0 12px; font-size: 14px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+  .row:last-child { margin-bottom: 0; }
+  .grow { flex: 1; min-width: 120px; }
+
+  /* Sync log */
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+  .chip { padding: 10px 16px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer;
+    background: var(--surface); min-width: 120px; }
+  .chip:hover { border-color: var(--primary); }
+  .chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .chip .big { font-size: 18px; font-weight: 700; }
+  .chip .sub { font-size: 12px; color: var(--muted); }
+  .chip.active .sub { color: #fff; opacity: .85; }
+  .entity { background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 16px; margin-bottom: 12px; }
+  .entity .ehead { display: flex; gap: 10px; align-items: baseline; margin-bottom: 8px; }
+  .entity .ehead .rid { font-family: ui-monospace, monospace; font-size: 12px; color: var(--muted); }
+  .fields { display: grid; grid-template-columns: minmax(120px,200px) 1fr; gap: 2px 14px; font-size: 13px; }
+  .fields .k { color: var(--secondary); font-weight: 600; }
+  .fields .v { white-space: pre-wrap; word-break: break-word; }
+  .fields .v.json { font-family: ui-monospace, monospace; font-size: 12px; }
+
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+    background: var(--ink); color: var(--bg); padding: 11px 20px; border-radius: 10px;
+    opacity: 0; transition: opacity .2s; pointer-events: none; box-shadow: 0 6px 20px rgba(44,33,24,.2); }
+  .toast.show { opacity: 1; }
+  .toast.ok { background: var(--secondary); }
+  .toast.bad { background: var(--danger); }
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="box">
+    <div class="brand"><span id="logoGate"></span><span>openCook</span></div>
+    <p>Enter the server admin password.</p>
+    <input id="pw" type="password" placeholder="Admin password" autocomplete="current-password" />
+    <button class="primary" id="unlock">Unlock</button>
+    <div class="err" id="gateErr"></div>
+  </div>
+</div>
+
+<div id="app">
+  <aside>
+    <div class="brand"><span id="logoSide"></span><span>openCook<br><small>Admin console</small></span></div>
+    <h2>Tables</h2>
+    <div id="tableNav"></div>
+    <h2>Views</h2>
+    <div class="navitem" data-view="sync">Sync log</div>
+    <div class="navitem" data-view="households">Households</div>
+    <div class="navitem" data-view="maintenance">Maintenance</div>
+    <div class="navitem" data-view="lock" style="color:var(--muted)">Lock</div>
+  </aside>
+  <main id="main"></main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+// openCook adaptive-icon utensils glyph on a terracotta rounded square.
+const LOGO_SVG = `<svg class="logo" viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg">
+  <rect width="108" height="108" rx="26" fill="#C4572B"/>
+  <g transform="translate(25.2 27.6) scale(2.4)" fill="none" stroke="#FBF5EE"
+     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3,2 v7 c0,1.1 0.9,2 2,2 h4 a2,2 0 0 0 2,-2 V2"/>
+    <path d="M7,2 v20"/>
+    <path d="M21,15 V2 V0 a5,5 0 0 0 -5,5 v6 c0,1.1 0.9,2 2,2 h3 Z m0,0 v7"/>
+  </g></svg>`;
+
+const KEY = "opencook-admin-pw";
+let pw = sessionStorage.getItem(KEY) || "";
+let tables = [];
+const state = { table: null, offset: 0, limit: 50, orderBy: null, dir: "asc" };
+
+const $ = (id) => document.getElementById(id);
+const el = (tag, props = {}, kids = []) => {
+  const n = Object.assign(document.createElement(tag), props);
+  for (const k of [].concat(kids)) if (k != null) n.append(k);
+  return n;
+};
+function toast(msg, kind = "") {
+  const t = $("toast"); t.textContent = msg; t.className = "toast show " + kind;
+  setTimeout(() => (t.className = "toast"), 2600);
+}
+
+async function api(path, opts = {}) {
+  const headers = Object.assign({ "X-Admin-Password": pw }, opts.headers || {});
+  const res = await fetch(path, Object.assign({}, opts, { headers }));
+  if (res.status === 401) { lock(); throw new Error("Unauthorized"); }
+  return res;
+}
+async function apiJson(path, opts) {
+  const res = await api(path, opts);
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.statusText);
+  return res.status === 204 ? null : res.json();
+}
+const jpost = (body) => ({ method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+
+// ---- Gate ---------------------------------------------------------------
+function lock() {
+  pw = ""; sessionStorage.removeItem(KEY);
+  $("app").style.display = "none"; $("gate").style.display = "flex";
+  $("pw").value = ""; $("pw").focus();
+}
+async function unlock() {
+  const candidate = $("pw").value; $("gateErr").textContent = "";
+  const res = await fetch("/admin/verify", { method: "POST", headers: { "X-Admin-Password": candidate } });
+  if (res.status === 204) {
+    pw = candidate; sessionStorage.setItem(KEY, pw);
+    $("gate").style.display = "none"; $("app").style.display = "grid"; await boot();
+  } else if (res.status === 409) {
+    $("gateErr").textContent = "No admin password is set on this server yet.";
+  } else { $("gateErr").textContent = "Wrong password."; }
+}
+
+// ---- Boot ---------------------------------------------------------------
+async function boot() {
+  const data = await apiJson("/admin/db/tables");
+  tables = data.tables;
+  const nav = $("tableNav"); nav.innerHTML = "";
+  for (const t of tables) {
+    const item = el("div", { className: "navitem" }, [
+      el("span", { textContent: t.name }), el("span", { className: "count", textContent: t.row_count }),
+    ]);
+    item.onclick = () => openTable(t.name);
+    item.dataset.table = t.name;
+    nav.append(item);
+  }
+  openSync();
+}
+function setActiveNav(sel) {
+  document.querySelectorAll(".navitem").forEach((n) => n.classList.remove("active"));
+  if (sel) sel.classList.add("active");
+}
+
+// ---- Table browser ------------------------------------------------------
+function isExpandable(v) {
+  return typeof v === "string" && v.length > 60 && (v.trim().startsWith("{") || v.trim().startsWith("["));
+}
+function prettyMaybe(v) { try { return JSON.stringify(JSON.parse(v), null, 2); } catch { return v; } }
+
+// All dish images (crops) AND original AI-analysis photos live in the server's
+// images dir and are served by GET /images/{name}. Map an image-bearing field to
+// that URL: imageRef/image_name are bare names; jobs.image_path is a full path.
+function imageUrlFor(key, value) {
+  if (typeof value !== "string" || !value) return null;
+  // imageRef = cropped dish; originalScan = the original AI-scan photo (resolved
+  // server-side from the recipe's sourcePhotoId); image_name = import image.
+  if (key === "imageRef" || key === "originalScan" || key === "image_name") return `/images/${encodeURIComponent(value)}`;
+  if (key === "image_path") return `/images/${encodeURIComponent(value.split(/[\\/]/).pop())}`;
+  return null;
+}
+function imageCell(url, name) {
+  const img = el("img", { className: "thumb", src: url, loading: "lazy", alt: name });
+  const a = el("a", { href: url, target: "_blank", rel: "noopener" }, [img]);
+  return el("div", {}, [a, el("div", { className: "imgname", textContent: name })]);
+}
+
+async function openTable(name) {
+  state.table = name; state.offset = 0; state.orderBy = null; state.dir = "asc";
+  setActiveNav(document.querySelector(`.navitem[data-table="${name}"]`));
+  await loadTable();
+}
+async function loadTable() {
+  const q = new URLSearchParams({ limit: state.limit, offset: state.offset, direction: state.dir });
+  if (state.orderBy) q.set("order_by", state.orderBy);
+  const page = await apiJson(`/admin/db/tables/${encodeURIComponent(state.table)}?${q}`);
+  const main = $("main"); main.innerHTML = "";
+  main.append(el("div", { className: "topbar" }, [
+    el("h1", { textContent: page.table }), el("span", { className: "muted", textContent: `${page.total} rows` }),
+  ]));
+  const thead = el("tr", {}, page.columns.map((c) => {
+    const arrow = state.orderBy === c ? (state.dir === "asc" ? " ▲" : " ▼") : "";
+    const th = el("th", { textContent: c + arrow });
+    th.onclick = () => {
+      if (state.orderBy === c) state.dir = state.dir === "asc" ? "desc" : "asc";
+      else { state.orderBy = c; state.dir = "asc"; }
+      state.offset = 0; loadTable();
+    };
+    return th;
+  }));
+  const rows = page.rows.map((r) => el("tr", {}, page.columns.map((c) => {
+    const v = r[c];
+    if (v === null) return el("td", { className: "null", textContent: "NULL" });
+    const imgUrl = imageUrlFor(c, v);
+    if (imgUrl) return el("td", {}, [imageCell(imgUrl, String(v).split(/[\\/]/).pop())]);
+    if (isExpandable(v)) {
+      const td = el("td", { className: "expandable collapsed", textContent: v });
+      td.onclick = () => { const open = td.classList.toggle("collapsed"); td.textContent = open ? v : prettyMaybe(v); };
+      return td;
+    }
+    return el("td", { textContent: String(v) });
+  })));
+  main.append(el("table", {}, [el("thead", {}, thead), el("tbody", {}, rows)]));
+  const prev = el("button", { textContent: "‹ Prev", disabled: state.offset === 0 });
+  prev.onclick = () => { state.offset = Math.max(0, state.offset - state.limit); loadTable(); };
+  const next = el("button", { textContent: "Next ›", disabled: state.offset + state.limit >= page.total });
+  next.onclick = () => { state.offset += state.limit; loadTable(); };
+  const lbl = `${page.total ? state.offset + 1 : 0}–${Math.min(state.offset + state.limit, page.total)}`;
+  main.append(el("div", { className: "pager" }, [prev, next, el("span", { className: "muted", textContent: lbl })]));
+}
+
+// ---- Sync log (structured) ---------------------------------------------
+let syncHousehold = "";  // "" = all households
+let syncDataset = null;  // currently selected dataset
+let dsFilter = "all";    // entity-list filter: all | added | edited | deleted
+
+function syncQuery() { return syncHousehold ? `?household_id=${encodeURIComponent(syncHousehold)}` : ""; }
+
+// A selectable pill-card (households + datasets).
+function chip(label, active, sub) {
+  const kids = [el("div", { className: "name", textContent: label })];
+  if (sub) kids.push(el("div", { className: "sub", textContent: sub }));
+  return el("div", { className: "chip" + (active ? " active" : "") }, kids);
+}
+
+async function openSync() {
+  setActiveNav(document.querySelector('.navitem[data-view="sync"]'));
+  const main = $("main"); main.innerHTML = "";
+  main.append(el("div", { className: "topbar" }, [el("h1", { textContent: "Sync log" })]));
+
+  const hhSec = el("div", { className: "chips" });
+  const dsSec = el("div", { className: "chips" });
+  const body = el("div");
+  main.append(el("div", { className: "sechd", textContent: "Household" }), hhSec,
+    el("div", { className: "sechd", textContent: "Dataset" }), dsSec, body);
+
+  // Households as selectable cards (incl. an "All households" card).
+  const households = await apiJson("/households");
+  const choices = [{ id: "", name: "All households" }, ...households];
+  if (!choices.some((h) => h.id === syncHousehold)) syncHousehold = "";
+  function paintHouseholds() {
+    hhSec.innerHTML = "";
+    for (const h of choices) {
+      const c = chip(h.name || "(unnamed)", h.id === syncHousehold, h.id ? h.id.slice(0, 8) : null);
+      c.onclick = () => { if (syncHousehold === h.id) return; syncHousehold = h.id; paintHouseholds(); renderDatasets(dsSec, body); };
+      hhSec.append(c);
+    }
+  }
+  paintHouseholds();
+  await renderDatasets(dsSec, body);
+}
+
+async function renderDatasets(dsSec, body) {
+  dsSec.innerHTML = ""; body.innerHTML = "";
+  const { datasets } = await apiJson(`/admin/db/sync${syncQuery()}`);
+  if (!datasets.length) { dsSec.append(el("span", { className: "muted", textContent: "No sync messages for this scope." })); return; }
+  if (!datasets.some((d) => d.name === syncDataset)) syncDataset = datasets[0].name;
+  const cards = new Map();
+  for (const d of datasets) {
+    const c = chip(d.name, d.name === syncDataset, `${d.row_count} rows · ${d.message_count} msgs`);
+    c.onclick = () => {
+      if (syncDataset === d.name) return;
+      syncDataset = d.name; dsFilter = "all";
+      cards.forEach((elc, name) => elc.classList.toggle("active", name === syncDataset));
+      loadDataset(d.name, body);
+    };
+    cards.set(d.name, c); dsSec.append(c);
+  }
+  loadDataset(syncDataset, body);
+}
+
+async function loadDataset(name, body) {
+  body.innerHTML = "";
+  dsFilter = "all";
+  const { rows } = await apiJson(`/admin/db/sync/${encodeURIComponent(name)}${syncQuery()}`);
+
+  // Colored cards double as the breakdown AND the filter (added=created rows).
+  const KINDS = [
+    ["all", "All", "k-all", (r) => true],
+    ["added", "Added", "k-added", (r) => r.status === "created"],
+    ["edited", "Edited", "k-edited", (r) => r.status === "edited"],
+    ["deleted", "Deleted", "k-deleted", (r) => r.status === "deleted"],
+  ];
+  const fwrap = el("div", { className: "fcards" });
+  const list = el("div");
+  const cardEls = {};
+  for (const [key, label, cls, pred] of KINDS) {
+    const c = el("div", { className: `fcard ${cls}` + (dsFilter === key ? " active" : "") }, [
+      el("div", { className: "big", textContent: rows.filter(pred).length }),
+      el("div", { className: "lbl", textContent: label }),
+    ]);
+    c.onclick = () => {
+      dsFilter = key;
+      for (const k in cardEls) cardEls[k].classList.toggle("active", k === key);
+      renderList();
+    };
+    cardEls[key] = c; fwrap.append(c);
+  }
+  body.append(fwrap, list);
+
+  function renderList() {
+    list.innerHTML = "";
+    const pred = KINDS.find(([k]) => k === dsFilter)[3];
+    const filtered = rows.filter(pred);
+    list.append(el("p", { className: "muted", textContent: `${filtered.length} row(s)` }));
+    for (const r of filtered) list.append(entityCard(r));
+  }
+  renderList();
+}
+
+function entityCard(r) {
+  const fields = el("div", { className: "fields" });
+  for (const [k, v] of Object.entries(r.fields)) {
+    fields.append(el("div", { className: "k", textContent: k }));
+    const imgUrl = imageUrlFor(k, v);
+    if (imgUrl) { fields.append(el("div", { className: "v" }, [imageCell(imgUrl, String(v))])); continue; }
+    const isObj = v !== null && typeof v === "object";
+    fields.append(el("div", {
+      className: "v" + (isObj ? " json" : ""),
+      textContent: v === null ? "—" : (isObj ? JSON.stringify(v, null, 2) : String(v)),
+    }));
+  }
+  return el("div", { className: "entity" }, [
+    el("div", { className: "ehead" }, [
+      el("span", { className: "badge " + r.status, textContent: r.status }),
+      el("span", { className: "rid", textContent: r.row_id }),
+      el("span", { className: "muted", style: "margin-left:auto;font-size:12px",
+        textContent: `${r.message_count} msgs` }),
+    ]),
+    fields,
+  ]);
+}
+
+// ---- Households ---------------------------------------------------------
+async function openHouseholds() {
+  setActiveNav(document.querySelector('.navitem[data-view="households"]'));
+  const main = $("main"); main.innerHTML = "";
+  main.append(el("div", { className: "topbar" }, [el("h1", { textContent: "Households" })]));
+  const households = await apiJson("/households");
+  if (!households.length) { main.append(el("p", { className: "muted", textContent: "None yet." })); return; }
+  main.append(el("p", { className: "muted",
+    textContent: "PINs are stored hashed — the existing value can't be shown, only set, changed or cleared." }));
+  for (const h of households) main.append(householdCard(h));
+}
+function householdCard(h) {
+  const badge = h.protected
+    ? el("span", { className: "badge", textContent: "🔒 PIN set" })
+    : el("span", { className: "badge open", textContent: "open" });
+  const size = (h.settings && h.settings.household_size != null) ? `${h.settings.household_size} people` : "";
+
+  const nameIn = el("input", { className: "grow", value: h.name || "", placeholder: "Household name" });
+  const saveName = el("button", { textContent: "Rename" });
+
+  const pinIn = el("input", { type: "text", placeholder: "New PIN", style: "max-width:140px" });
+  const setPin = el("button", { className: "primary", textContent: h.protected ? "Change PIN" : "Set PIN" });
+  const clearPin = h.protected ? el("button", { className: "danger", textContent: "Remove PIN" }) : null;
+  const del = el("button", { className: "danger", textContent: "Delete household" });
+
+  async function patch(body, msg) {
+    try { const updated = await apiJson(`/admin/households/${h.id}`, { method: "PATCH", ...jpost(body) });
+      toast(msg, "ok"); card.replaceWith(householdCard(updated)); }
+    catch (e) { toast(e.message, "bad"); }
+  }
+  saveName.onclick = () => patch({ name: nameIn.value }, "Renamed");
+  setPin.onclick = () => { if (!pinIn.value) return toast("Enter a PIN", "bad"); patch({ pin: pinIn.value }, "PIN updated"); };
+  if (clearPin) clearPin.onclick = () => { if (confirm("Remove PIN protection?")) patch({ pin: "" }, "PIN removed"); };
+  del.onclick = async () => {
+    if (!confirm(`Delete household "${h.name}"? Its sync log + imports are removed too.`)) return;
+    try { await apiJson(`/admin/households/${h.id}`, { method: "DELETE" }); toast("Deleted", "ok"); card.remove(); }
+    catch (e) { toast(e.message, "bad"); }
+  };
+
+  const card = el("div", { className: "card" }, [
+    el("div", { className: "row" }, [
+      el("h3", { textContent: h.name || "(unnamed)", style: "margin:0;flex:1" }), badge,
+    ]),
+    el("div", { className: "row" }, [
+      el("span", { className: "muted", textContent: `id ${h.id}${size ? "  ·  " + size : ""}` }),
+    ]),
+    el("div", { className: "row" }, [nameIn, saveName]),
+    el("div", { className: "row" }, [pinIn, setPin, clearPin]),
+    el("div", { className: "row" }, [del]),
+  ]);
+  return card;
+}
+
+// ---- Maintenance --------------------------------------------------------
+async function openMaintenance() {
+  setActiveNav(document.querySelector('.navitem[data-view="maintenance"]'));
+  const main = $("main"); main.innerHTML = "";
+  main.append(el("div", { className: "topbar" }, [el("h1", { textContent: "Maintenance" })]));
+
+  // Backups
+  const backupList = el("div");
+  const makeBtn = el("button", { className: "primary", textContent: "Create backup" });
+  makeBtn.onclick = async () => {
+    try { await apiJson("/admin/backups", { method: "POST" }); toast("Backup created", "ok"); refreshBackups(); }
+    catch (e) { toast(e.message, "bad"); }
+  };
+  const upFile = el("input", { type: "file", accept: ".gz,.tar.gz" });
+  const upBtn = el("button", { textContent: "Restore from upload", className: "danger" });
+  upBtn.onclick = async () => {
+    if (!upFile.files[0]) return toast("Pick a .tar.gz file first", "bad");
+    if (!confirm("Restore replaces ALL current data. Continue?")) return;
+    const fd = new FormData(); fd.append("file", upFile.files[0]);
+    try { await apiJson("/admin/restore/upload", { method: "POST", body: fd }); toast("Restored — restart the server", "ok"); }
+    catch (e) { toast(e.message, "bad"); }
+  };
+  async function refreshBackups() {
+    backupList.innerHTML = "";
+    const { backups } = await apiJson("/admin/backups");
+    if (!backups.length) { backupList.append(el("p", { className: "muted", textContent: "No backups yet." })); return; }
+    for (const b of backups) {
+      const dl = el("a", { textContent: "download", href: "#" });
+      dl.onclick = async (e) => {
+        e.preventDefault();
+        const res = await api(`/admin/backups/${b.id}`); const blob = await res.blob();
+        const a = el("a", { href: URL.createObjectURL(blob), download: b.id }); a.click();
+      };
+      const restore = el("button", { textContent: "restore", className: "danger" });
+      restore.onclick = async () => {
+        if (!confirm(`Restore ${b.id}? Replaces ALL current data.`)) return;
+        try { await apiJson("/admin/restore", jpost({ backup_id: b.id })); toast("Restored — restart the server", "ok"); }
+        catch (e) { toast(e.message, "bad"); }
+      };
+      const kb = (b.size_bytes / 1024).toFixed(0);
+      backupList.append(el("div", { className: "row" }, [
+        el("span", { className: "grow", textContent: `${b.id}  ·  ${kb} KB` }), dl, restore,
+      ]));
+    }
+  }
+  main.append(el("div", { className: "card" }, [
+    el("h3", { textContent: "Backups" }), el("div", { className: "row" }, [makeBtn]), backupList,
+    el("div", { className: "row", style: "margin-top:14px" }, [upFile, upBtn]),
+  ]));
+  refreshBackups();
+
+  // Change password
+  const cur = el("input", { type: "password", placeholder: "Current password", className: "grow" });
+  const nw = el("input", { type: "password", placeholder: "New password", className: "grow" });
+  const save = el("button", { className: "primary", textContent: "Change" });
+  save.onclick = async () => {
+    try { await apiJson("/admin/password", jpost({ current_password: cur.value, new_password: nw.value }));
+      toast("Password changed — re-unlock", "ok"); lock(); }
+    catch (e) { toast(e.message, "bad"); }
+  };
+  main.append(el("div", { className: "card" }, [
+    el("h3", { textContent: "Change admin password" }),
+    el("div", { className: "row" }, [cur]), el("div", { className: "row" }, [nw]), el("div", { className: "row" }, [save]),
+  ]));
+
+  // Reset
+  const resetBtn = el("button", { className: "danger", textContent: "Wipe everything" });
+  resetBtn.onclick = async () => {
+    if (prompt("Type RESET to confirm wiping all data:") !== "RESET") return;
+    try { await apiJson("/admin/reset", { method: "POST" }); toast("Database reset", "ok"); boot(); }
+    catch (e) { toast(e.message, "bad"); }
+  };
+  main.append(el("div", { className: "card" }, [
+    el("h3", { textContent: "Reset (wipe all data)" }),
+    el("p", { className: "muted",
+      textContent: "Deletes all households, sync log, jobs, imports and images. Keeps backups and the admin password." }),
+    el("div", { className: "row" }, [resetBtn]),
+  ]));
+}
+
+// ---- Wiring -------------------------------------------------------------
+$("unlock").onclick = unlock;
+$("pw").addEventListener("keydown", (e) => { if (e.key === "Enter") unlock(); });
+$("logoGate").innerHTML = LOGO_SVG;
+$("logoSide").innerHTML = LOGO_SVG;
+document.querySelectorAll('.navitem[data-view]').forEach((n) => {
+  n.onclick = () => {
+    const v = n.dataset.view;
+    if (v === "lock") return lock();
+    if (v === "sync") return openSync();
+    if (v === "households") return openHouseholds();
+    if (v === "maintenance") return openMaintenance();
+  };
+});
+
+(async function init() {
+  if (pw) {
+    const res = await fetch("/admin/verify", { method: "POST", headers: { "X-Admin-Password": pw } });
+    if (res.status === 204) { $("gate").style.display = "none"; $("app").style.display = "grid"; await boot(); return; }
+  }
+  lock();
+})();
+</script>
+</body>
+</html>

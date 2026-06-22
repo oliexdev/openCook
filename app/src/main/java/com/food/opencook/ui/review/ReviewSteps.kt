@@ -75,10 +75,30 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.offset
+import androidx.compose.material.icons.automirrored.outlined.RotateRight
+import androidx.compose.material.icons.outlined.Crop
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.isSpecified
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
+import coil3.compose.rememberAsyncImagePainter
 import com.food.opencook.R
 import com.food.opencook.util.RecipeCategories
 import com.food.opencook.ui.theme.Spacing
+import kotlin.math.roundToInt
 
 /* ------------------------------------------------------------------------- */
 /* Step 1 — Bild & Basics                                                     */
@@ -99,6 +119,7 @@ fun BasicsStep(
         ImageHero(
             recipe = recipe,
             viewModel = viewModel,
+            index = index,
             onTakePhoto = onTakePhoto,
             onPickGallery = {
                 galleryLauncher.launch(
@@ -139,11 +160,14 @@ fun BasicsStep(
 private fun ImageHero(
     recipe: EditableRecipe,
     viewModel: ReviewViewModel,
+    index: Int,
     onTakePhoto: () -> Unit,
     onPickGallery: () -> Unit,
 ) {
     val primary = recipe.images.firstOrNull { it.isPrimary } ?: recipe.images.firstOrNull()
     val imageUrl = primary?.let { viewModel.imageUrlFor(it) }
+    val canEdit = imageUrl != null && viewModel.canEditImage(index)
+    var cropping by remember { mutableStateOf(false) }
     Box(
         Modifier
             .fillMaxWidth()
@@ -166,6 +190,21 @@ private fun ImageHero(
                 modifier = Modifier.size(56.dp).align(Alignment.Center),
             )
         }
+        if (canEdit) {
+            Row(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(Spacing.sm),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
+                FilledTonalIconButton(onClick = { viewModel.rotateImage(index) }) {
+                    Icon(Icons.AutoMirrored.Outlined.RotateRight, contentDescription = stringResource(R.string.review_image_rotate))
+                }
+                FilledTonalIconButton(onClick = { cropping = true }) {
+                    Icon(Icons.Outlined.Crop, contentDescription = stringResource(R.string.review_image_crop))
+                }
+            }
+        }
         Row(
             Modifier
                 .align(Alignment.BottomEnd)
@@ -184,6 +223,112 @@ private fun ImageHero(
             }
         }
     }
+    if (cropping && imageUrl != null) {
+        CropDialog(
+            model = imageUrl,
+            onCancel = { cropping = false },
+            onApply = { l, t, r, b -> viewModel.cropImage(index, l, t, r, b); cropping = false },
+        )
+    }
+}
+
+/**
+ * Full-screen crop overlay: a draggable/resizable rectangle over the image. The image is
+ * sized to its own aspect ratio with [ContentScale.Fit], so the crop box coordinates map
+ * 1:1 to image fractions (0..1) — which is what [ReviewViewModel.cropImage] expects.
+ */
+@Composable
+private fun CropDialog(
+    model: Any,
+    onCancel: () -> Unit,
+    onApply: (Float, Float, Float, Float) -> Unit,
+) {
+    val painter = rememberAsyncImagePainter(model)
+    val intrinsic = painter.intrinsicSize
+    var rect by remember { mutableStateOf(floatArrayOf(0.1f, 0.1f, 0.9f, 0.9f)) }
+    Dialog(onDismissRequest = onCancel, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.92f))
+                .padding(Spacing.md),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md),
+        ) {
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                if (intrinsic.isSpecified && intrinsic.width > 0f && intrinsic.height > 0f) {
+                    BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(intrinsic.width / intrinsic.height)) {
+                        Image(painter, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+                        val density = LocalDensity.current
+                        val boxW = constraints.maxWidth.toFloat()
+                        val boxH = constraints.maxHeight.toFloat()
+                        val minPx = with(density) { 48.dp.toPx() }
+                        val handleDp = 28.dp
+                        val handlePx = with(density) { handleDp.toPx() }
+                        var l by remember(boxW, boxH) { mutableStateOf(boxW * 0.1f) }
+                        var t by remember(boxW, boxH) { mutableStateOf(boxH * 0.1f) }
+                        var r by remember(boxW, boxH) { mutableStateOf(boxW * 0.9f) }
+                        var b by remember(boxW, boxH) { mutableStateOf(boxH * 0.9f) }
+                        fun emit() { rect = floatArrayOf(l / boxW, t / boxH, r / boxW, b / boxH) }
+
+                        Canvas(Modifier.fillMaxSize()) {
+                            val scrim = Color.Black.copy(alpha = 0.5f)
+                            drawRect(scrim, Offset(0f, 0f), Size(boxW, t))
+                            drawRect(scrim, Offset(0f, b), Size(boxW, boxH - b))
+                            drawRect(scrim, Offset(0f, t), Size(l, b - t))
+                            drawRect(scrim, Offset(r, t), Size(boxW - r, b - t))
+                            drawRect(Color.White, Offset(l, t), Size(r - l, b - t), style = Stroke(width = 2.dp.toPx()))
+                        }
+                        // Move the whole selection.
+                        Box(
+                            Modifier
+                                .offset { IntOffset(l.roundToInt(), t.roundToInt()) }
+                                .size(with(density) { (r - l).toDp() }, with(density) { (b - t).toDp() })
+                                .pointerInput(boxW, boxH) {
+                                    detectDragGestures { change, d ->
+                                        change.consume()
+                                        val w = r - l; val h = b - t
+                                        val nl = (l + d.x).coerceIn(0f, boxW - w)
+                                        val nt = (t + d.y).coerceIn(0f, boxH - h)
+                                        l = nl; r = nl + w; t = nt; b = nt + h; emit()
+                                    }
+                                },
+                        )
+                        // Four corner handles.
+                        CropHandle(l, t) { dx, dy -> l = (l + dx).coerceIn(0f, r - minPx); t = (t + dy).coerceIn(0f, b - minPx); emit() }
+                        CropHandle(r - handlePx, t) { dx, dy -> r = (r + dx).coerceIn(l + minPx, boxW); t = (t + dy).coerceIn(0f, b - minPx); emit() }
+                        CropHandle(l, b - handlePx) { dx, dy -> l = (l + dx).coerceIn(0f, r - minPx); b = (b + dy).coerceIn(t + minPx, boxH); emit() }
+                        CropHandle(r - handlePx, b - handlePx) { dx, dy -> r = (r + dx).coerceIn(l + minPx, boxW); b = (b + dy).coerceIn(t + minPx, boxH); emit() }
+                    }
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.crop_cancel))
+                }
+                FilledTonalButton(
+                    onClick = { onApply(rect[0], rect[1], rect[2], rect[3]) },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(stringResource(R.string.crop_apply))
+                }
+            }
+        }
+    }
+}
+
+/** A draggable 28dp corner handle positioned at the given pixel offset within the crop box. */
+@Composable
+private fun CropHandle(xPx: Float, yPx: Float, onDrag: (Float, Float) -> Unit) {
+    Box(
+        Modifier
+            .offset { IntOffset(xPx.roundToInt(), yPx.roundToInt()) }
+            .size(28.dp)
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.85f))
+            .pointerInput(Unit) {
+                detectDragGestures { change, d -> change.consume(); onDrag(d.x, d.y) }
+            },
+    )
 }
 
 @Composable

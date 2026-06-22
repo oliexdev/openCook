@@ -79,6 +79,10 @@
     <string name="review_image_take">Foto aufnehmen</string>
     <string name="review_image_gallery">Galerie</string>
     <string name="review_image_later">Später</string>
+    <string name="review_image_rotate">90° drehen</string>
+    <string name="review_image_crop">Zuschneiden</string>
+    <string name="crop_apply">Übernehmen</string>
+    <string name="crop_cancel">Abbrechen</string>
 
     <!-- Recipes -->
     <string name="recipes_title">Rezepte</string>
