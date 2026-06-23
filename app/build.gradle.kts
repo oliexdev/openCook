@@ -36,9 +36,6 @@ android {
         applicationId = "com.food.opencook"
         minSdk = 30
         targetSdk = 36
-        // Bump versionCode on every release; tag the commit `v<versionName>` so F-Droid
-        // (UpdateCheckMode: Tags) and Android both pick the new build up. versionName is
-        // the user-facing label.
         versionCode = 1
         versionName = "0.1"
 
