@@ -1,6 +1,10 @@
 &nbsp; <img src="fastlane/metadata/android/en-US/images/icon.png" alt="openCook logo" height="60"/> &nbsp;openCook [![CI](https://github.com/oliexdev/openCook/actions/workflows/ci.yml/badge.svg)](https://github.com/oliexdev/openCook/actions/workflows/ci.yml)
 =========
-Open-source recipe app that turns cookbook photos into recipes, plans your week and shares the shopping list
+Open-source recipe app that turns cookbook photos into recipes, plans your week and shares the shopping list.
+
+<a href="https://f-droid.org/repository/browse/?fdid=com.food.opencook" target="_blank">
+  <img src="https://f-droid.org/badge/get-it-on.png" alt="Get it on F-Droid" height="80"/>
+</a>
 
 openCook is an open-source Android app (with an optional server you host yourself). Take a
 picture of a cookbook page and it becomes a tidy, editable recipe. Plan meals for the week,
@@ -105,6 +109,10 @@ openCook has no ads, no tracking, and asks for no unnecessary permissions. There
 nothing in the cloud. Any AI runs on **your own** server, the family sync stays on your home
 network, and family members join with a simple invite code. Without a server, the app never goes
 online at all.
+
+# Donations :heart:
+
+If you would like to support this project's further development, the creator of this project or the continuous maintenance of this project, feel free to donate via [![PayPal Donation](https://img.shields.io/badge/PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=H5KSTQA6TKTE4&source=url) or become a [![GitHub Sponsor](https://img.shields.io/badge/sponsor-30363D?style=for-the-badge&logo=GitHub-Sponsors&logoColor=#white)](https://github.com/sponsors/oliexdev). Your donation is highly appreciated. Thank you!
 
 # Contributing :+1:
 
