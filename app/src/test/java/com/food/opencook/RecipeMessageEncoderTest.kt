@@ -18,6 +18,7 @@
 
 package com.food.opencook
 
+import com.food.opencook.data.local.entity.ImageEntity
 import com.food.opencook.data.local.entity.IngredientEntity
 import com.food.opencook.data.local.entity.NutritionEntity
 import com.food.opencook.data.local.entity.RecipeEntity
@@ -25,6 +26,7 @@ import com.food.opencook.sync.FieldChange
 import com.food.opencook.sync.RecipeMessageEncoder
 import com.food.opencook.sync.SyncDatasets
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -58,5 +60,32 @@ class RecipeMessageEncoderTest {
 
         // Every change targets a non-empty dataset/row/column.
         assertTrue(changes.all { it.dataset.isNotBlank() && it.rowId.isNotBlank() && it.column.isNotBlank() })
+    }
+
+    private val recipe = RecipeEntity(id = "r1", name = "Soup", createdAt = 0, updatedAt = 0)
+
+    private fun imageRef(images: List<ImageEntity>): FieldChange? =
+        RecipeMessageEncoder.encode(recipe, emptyList(), emptyList(), null, images)
+            .firstOrNull { it.dataset == SyncDatasets.RECIPES && it.rowId == "r1" && it.column == "imageRef" }
+
+    @Test
+    fun emitsImageRefWhenPrimaryHasServerName() {
+        val images = listOf(ImageEntity("img1", "r1", 0, remoteName = "abc.jpg", localPath = "/x.jpg", isPrimary = true))
+        assertEquals("\"abc.jpg\"", imageRef(images)?.value)
+    }
+
+    @Test
+    fun emitsNullImageRefWhenRecipeHasNoImages() {
+        // A genuine removal must still sync as null so other devices drop the photo.
+        assertEquals("null", imageRef(emptyList())?.value)
+    }
+
+    @Test
+    fun omitsImageRefWhileFreshCropPendingUpload() {
+        // A just-cropped image (local file, not yet uploaded → no remoteName) must NOT
+        // regress the synced imageRef to null; the field is omitted until the upload
+        // step emits the real server name.
+        val images = listOf(ImageEntity("img1", "r1", 0, remoteName = null, localPath = "/crop.jpg", isPrimary = true))
+        assertNull(imageRef(images))
     }
 }

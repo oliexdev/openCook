@@ -64,7 +64,9 @@ class ImageEditor @Inject constructor(
         }
 
     private fun writeJpeg(bitmap: Bitmap): String {
-        val dest = imageStore.newCaptureFile()
+        // Persistent (filesDir), not the evictable cache: a fresh crop/rotate is the
+        // only copy until the next sync uploads it, and the server is often offline.
+        val dest = imageStore.newEditFile()
         dest.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 92, it) }
         return dest.absolutePath
     }

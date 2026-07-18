@@ -124,11 +124,17 @@ interface RecipeDao {
     @Query("SELECT id FROM images WHERE recipeId = :recipeId")
     suspend fun imageIdsFor(recipeId: String): List<String>
 
+    @Query("SELECT * FROM images WHERE recipeId = :recipeId")
+    suspend fun imagesForRecipe(recipeId: String): List<ImageEntity>
+
     @Query("SELECT * FROM images WHERE id = :id")
     suspend fun getImageById(id: String): ImageEntity?
 
     @Query("DELETE FROM images WHERE id = :id")
     suspend fun deleteImageById(id: String)
+
+    @Query("DELETE FROM images WHERE recipeId = :recipeId")
+    suspend fun deleteImagesForRecipe(recipeId: String)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertNutrition(nutrition: NutritionEntity)

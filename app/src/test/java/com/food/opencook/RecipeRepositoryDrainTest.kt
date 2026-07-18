@@ -83,17 +83,24 @@ private class FakeRecipeDao : RecipeDao {
     val recipes = mutableListOf<RecipeEntity>()
     val ingredients = mutableListOf<IngredientEntity>()
     val instructions = mutableListOf<InstructionEntity>()
+    val images = mutableListOf<ImageEntity>()
     override suspend fun insertRecipe(recipe: RecipeEntity) { recipes += recipe }
     override suspend fun insertIngredients(ingredients: List<IngredientEntity>) { this.ingredients += ingredients }
     override suspend fun insertInstructions(instructions: List<InstructionEntity>) { this.instructions += instructions }
-    override suspend fun insertImages(images: List<ImageEntity>) {}
-    override suspend fun localOnlyImages(): List<ImageEntity> = emptyList()
-    override suspend fun remoteOnlyImages(): List<ImageEntity> = emptyList()
-    override suspend fun setImageRemoteName(id: String, name: String) {}
-    override suspend fun setImageLocalPath(id: String, path: String) {}
-    override suspend fun imageIdsFor(recipeId: String): List<String> = emptyList()
-    override suspend fun getImageById(id: String): ImageEntity? = null
-    override suspend fun deleteImageById(id: String) {}
+    override suspend fun insertImages(images: List<ImageEntity>) { this.images += images }
+    override suspend fun localOnlyImages(): List<ImageEntity> = images.filter { it.remoteName == null && it.localPath != null }
+    override suspend fun remoteOnlyImages(): List<ImageEntity> = images.filter { it.remoteName != null && it.localPath == null }
+    override suspend fun setImageRemoteName(id: String, name: String) {
+        images.replaceAll { if (it.id == id) it.copy(remoteName = name) else it }
+    }
+    override suspend fun setImageLocalPath(id: String, path: String) {
+        images.replaceAll { if (it.id == id) it.copy(localPath = path) else it }
+    }
+    override suspend fun imageIdsFor(recipeId: String): List<String> = images.filter { it.recipeId == recipeId }.map { it.id }
+    override suspend fun imagesForRecipe(recipeId: String): List<ImageEntity> = images.filter { it.recipeId == recipeId }
+    override suspend fun getImageById(id: String): ImageEntity? = images.firstOrNull { it.id == id }
+    override suspend fun deleteImageById(id: String) { images.removeAll { it.id == id } }
+    override suspend fun deleteImagesForRecipe(recipeId: String) { images.removeAll { it.recipeId == recipeId } }
     override suspend fun insertNutrition(nutrition: NutritionEntity) {}
     override suspend fun deleteIngredientsFor(recipeId: String) {}
     override suspend fun deleteInstructionsFor(recipeId: String) {}
@@ -116,7 +123,7 @@ private class FakeRecipeDao : RecipeDao {
     override suspend fun upsertIngredientRow(ingredient: IngredientEntity) { ingredients.removeAll { it.id == ingredient.id }; ingredients += ingredient }
     override suspend fun upsertInstructionRow(instruction: InstructionEntity) { instructions.removeAll { it.id == instruction.id }; instructions += instruction }
     override suspend fun upsertNutritionRow(nutrition: NutritionEntity) {}
-    override suspend fun upsertImageRow(image: ImageEntity) {}
+    override suspend fun upsertImageRow(image: ImageEntity) { images.removeAll { it.id == image.id }; images += image }
     override suspend fun setLastCookedAt(recipeId: String, dateIso: String?, now: Long) {
         recipes.replaceAll { if (it.id == recipeId) it.copy(lastCookedAt = dateIso) else it }
     }

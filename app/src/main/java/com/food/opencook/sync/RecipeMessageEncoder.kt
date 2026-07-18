@@ -72,9 +72,19 @@ object RecipeMessageEncoder {
         // Image syncs out-of-band: only the server-hosted crop's name travels in
         // the log; bytes are fetched via GET /images/{name}. Local-only captures
         // (no remoteName) aren't shared.
-        val remoteName = images.firstOrNull { it.isPrimary }?.remoteName
-            ?: images.firstOrNull()?.remoteName
-        out += FieldChange(r, recipe.id, "imageRef", str(remoteName))
+        //
+        // Only emit imageRef when there's a server name to point at, or when the recipe
+        // has no image at all (a genuine removal that should sync as null). While a fresh
+        // crop/capture is still pending upload (a primary row with a localPath but no
+        // remoteName), omit the field so the previously-synced imageRef survives until
+        // uploadLocalImages emits the real name — otherwise other devices would briefly
+        // see imageRef=null and drop back to the stale image.
+        val primary = images.firstOrNull { it.isPrimary } ?: images.firstOrNull()
+        val remoteName = primary?.remoteName
+        val pendingUpload = primary != null && primary.remoteName == null && primary.localPath != null
+        if (!pendingUpload) {
+            out += FieldChange(r, recipe.id, "imageRef", str(remoteName))
+        }
 
         ingredients.forEach { ing ->
             val d = SyncDatasets.INGREDIENTS

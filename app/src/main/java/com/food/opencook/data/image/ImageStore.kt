@@ -47,8 +47,17 @@ class ImageStore @Inject constructor(
     private val downloadsDir: File
         get() = File(context.filesDir, "images").apply { mkdirs() }
 
+    /** Persistent home for on-device edits (crop/rotate) that haven't been uploaded
+     *  yet. In filesDir, not cacheDir, so Android can't reclaim the *only* copy of a
+     *  fresh crop before the next sync uploads it (the server is often offline). */
+    private val editsDir: File
+        get() = File(context.filesDir, "edits").apply { mkdirs() }
+
     /** A fresh destination file for a CameraX capture. */
     fun newCaptureFile(): File = File(capturesDir, "${UUID.randomUUID()}.jpg")
+
+    /** A fresh destination file for a local edit (crop/rotate) pending upload. */
+    fun newEditFile(): File = File(editsDir, "${UUID.randomUUID()}.jpg")
 
     /** Copy a picked gallery image into the cache; returns the absolute path. */
     suspend fun saveFromUri(uri: Uri): String = withContext(Dispatchers.IO) {
@@ -81,5 +90,6 @@ class ImageStore @Inject constructor(
     suspend fun wipeAll(): Unit = withContext(Dispatchers.IO) {
         capturesDir.listFiles()?.forEach { it.delete() }
         downloadsDir.listFiles()?.forEach { it.delete() }
+        editsDir.listFiles()?.forEach { it.delete() }
     }
 }

@@ -350,11 +350,20 @@ class SyncEngine @Inject constructor(
                     ),
                 )
                 str("imageRef")?.let { remoteName ->
-                    // Preserve the existing localPath if the remoteName hasn't actually
-                    // changed (a text-only edit re-emits the same imageRef). Otherwise
-                    // we'd wipe the downloaded copy and re-fetch on every sync round.
-                    val existing = recipeDao.getImageById("sync-$rowId")
-                    val keepLocal = existing?.localPath?.takeIf { existing.remoteName == remoteName }
+                    // Collapse the recipe to a single canonical image row keyed by the
+                    // recipe id. Local creation/edit paths key images with random UUIDs,
+                    // so without this a remote imageRef change would spawn a *second*
+                    // isPrimary row and leave the device's own (stale) one behind — the
+                    // unordered @Relation could then keep showing the pre-edit image
+                    // (e.g. a crop made on another device never appearing here).
+                    //
+                    // Preserve a localPath only from a row whose remoteName already matches
+                    // (a text-only edit re-emits the same imageRef, and the editing device
+                    // keeps its just-uploaded local file) — otherwise wipe it so
+                    // downloadRemoteImages fetches the new crop.
+                    val existing = recipeDao.imagesForRecipe(rowId)
+                    val keepLocal = existing.firstOrNull { it.remoteName == remoteName }?.localPath
+                    recipeDao.deleteImagesForRecipe(rowId)
                     recipeDao.upsertImageRow(
                         ImageEntity("sync-$rowId", rowId, 0, remoteName = remoteName, localPath = keepLocal, isPrimary = true),
                     )
