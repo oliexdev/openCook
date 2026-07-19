@@ -292,6 +292,9 @@
     <string name="onboarding_mode_local_subtitle">Recipes, plans and shopping list stay offline on this device.</string>
     <string name="onboarding_mode_server_title">Connect to a home server</string>
     <string name="onboarding_mode_server_subtitle">Unlock photo scanning and family sync (a household server is required).</string>
+    <string name="onboarding_mode_serverless_title">Household without a server</string>
+    <string name="onboarding_mode_serverless_subtitle">Phones sync directly with each other over your Wi-Fi. A server can be added later.</string>
+    <string name="onboarding_peer_subtitle">Phone on this Wi-Fi</string>
     <string name="onboarding_server_step_title">Choose a server</string>
     <string name="onboarding_searching">Searching the network…</string>
     <string name="onboarding_manual_hint">Not found? Enter the server address manually:</string>
@@ -331,9 +334,20 @@
     <!-- Settings: grouped sections + admin -->
     <string name="settings_household_section_label">Household</string>
     <string name="settings_server_label">Server &amp; connection</string>
+<<<<<<< HEAD
     <string name="settings_export_section_label">Backup &amp; export</string>
     <string name="settings_export_all_data">Export all data (ZIP)</string>
     <string name="settings_export_all_data_hint">Recipes (JSON + Markdown), meal plan and shopping list</string>
+=======
+    <string name="settings_p2p_title">Phone-to-phone sync</string>
+    <string name="settings_p2p_subtitle">Sync directly over Wi-Fi, even with the app closed</string>
+    <string name="standby_channel_name">Family sync standby</string>
+    <string name="standby_notification_title">Reachable for your family</string>
+    <string name="standby_notification_text">Household devices can sync with this phone (Wi-Fi only).</string>
+    <string name="settings_attach_server">Add a server</string>
+    <string name="settings_attach_server_hint">Optional: photo scanning, backups and browser import need a home server.</string>
+    <string name="settings_attach_server_action">Add server</string>
+>>>>>>> upstream/main
     <string name="settings_admin">Admin area</string>
     <string name="settings_admin_subtitle">Manage server backups (password required)</string>
 
@@ -433,6 +447,7 @@
 
     <!-- Sync status (shared top bar) -->
     <string name="sync_status_ok">Synced</string>
+    <string name="sync_status_ok_peer">Synced (via %1$s)</string>
     <string name="sync_status_not_configured">No server – tap for settings</string>
     <string name="sync_status_syncing">Syncing…</string>
     <string name="sync_status_failed">Not connected – tap to sync</string>
@@ -489,6 +504,8 @@
     <!-- Settings sync messages -->
     <string name="settings_msg_size_update_failed">Couldn\'t update the server — will retry on the next sync.</string>
     <string name="settings_msg_synced">Synced (%1$d received)</string>
+    <string name="settings_msg_server_attached">Server added — syncing this household to it now</string>
+    <string name="settings_msg_attach_failed">Could not reach that server</string>
     <string name="settings_msg_no_household">No household — join one first.</string>
     <string name="settings_msg_household_missing">Household not found on the server — it may have been re-set up. Please re-join.</string>
     <string name="settings_msg_sync_failed">Sync failed: %1$s</string>

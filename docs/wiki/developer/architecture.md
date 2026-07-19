@@ -11,9 +11,12 @@ openCook is a monorepo with two halves that talk over HTTP:
 ```
 
 - **`app/`** — the Android client. It is the whole product on its own: recipe management, meal
-  planning and shopping lists run entirely on-device with no server.
-- **`server/`** — an **optional** Python backend that adds the two things a phone can't do alone:
-  AI recipe extraction from photos, and acting as the family **sync hub**.
+  planning and shopping lists run entirely on-device with no server — and with the phone-to-phone
+  switch enabled, each phone itself answers the sync contract for other phones on the home Wi-Fi
+  (embedded Ktor server + mDNS `role=peer`; a standby foreground service keeps it reachable with
+  the app closed), so a household syncs **peer-to-peer** without any backend.
+- **`server/`** — an **optional** Python backend that adds what phones can't do alone: AI recipe
+  extraction from photos, browser import, backups, and reachability beyond the home Wi-Fi (VPN).
 
 ## Design principles
 
@@ -41,6 +44,9 @@ append-only message log keyed by **Hybrid Logical Clock** timestamps, **per-fiel
 merge, and **Merkle-trie** diffing so only changed messages cross the wire. Images sync out-of-band
 (content-addressed by SHA-256); only their IDs travel in the log. A shared test fixture
 (`server/tests/fixtures/sync-vectors.json`) pins both implementations to byte-identical behaviour.
+Because the responder role is also implemented in the app, a sync round works against the server
+*or* another phone with the identical wire contract; the idempotent log makes any mix converge —
+see [Sync engine → Peer-to-peer](sync.md#peer-to-peer-a-phone-as-the-responder).
 
 ## Where to read next
 

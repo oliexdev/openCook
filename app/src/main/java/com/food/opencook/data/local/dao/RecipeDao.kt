@@ -118,6 +118,16 @@ interface RecipeDao {
     @Query("UPDATE images SET remoteName = :name WHERE id = :id")
     suspend fun setImageRemoteName(id: String, name: String)
 
+    /** Serve a peer's GET /images/{name}: the local file for a content-addressed name. */
+    @Query("SELECT localPath FROM images WHERE remoteName = :name AND localPath IS NOT NULL LIMIT 1")
+    suspend fun localPathForRemoteName(name: String): String?
+
+    /** Attach-a-server flow: forget upload state so every image with a local file is
+     *  re-uploaded to the new server. Content-addressing makes the re-upload land under
+     *  the exact same name, so existing imageRef messages stay valid. */
+    @Query("UPDATE images SET remoteName = NULL WHERE localPath IS NOT NULL")
+    suspend fun resetRemoteNamesForReupload()
+
     @Query("UPDATE images SET localPath = :path WHERE id = :id")
     suspend fun setImageLocalPath(id: String, path: String)
 

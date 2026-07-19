@@ -18,13 +18,22 @@
 
 package com.food.opencook.sync
 
+/** Which counterpart a successful sync ran against. */
+sealed interface SyncVia {
+    data object Server : SyncVia
+
+    /** A peer phone, identified by its advertised mDNS service name. */
+    data class Peer(val name: String) : SyncVia
+}
+
 /** Observable state of background sync, shown in the shared top bar. */
 sealed interface SyncStatus {
     /** No household/server configured yet — nothing to sync. */
     data object NotConfigured : SyncStatus
 
-    /** Idle after a (possibly past) successful sync; [lastSuccessEpochMs] null if never. */
-    data class Idle(val lastSuccessEpochMs: Long?) : SyncStatus
+    /** Idle after a (possibly past) successful sync; [lastSuccessEpochMs] null if never.
+     *  [via] tells the UI whether the server or a peer phone answered (null = unknown/never). */
+    data class Idle(val lastSuccessEpochMs: Long?, val via: SyncVia? = null) : SyncStatus
 
     /** Which step of the sync is reporting progress right now. */
     enum class Phase { APPLY, IMAGES }

@@ -63,8 +63,10 @@ object NetworkModule {
                     )
                 }
             }
-            // Uploads block until the server returns 201; allow generous timeouts.
-            .connectTimeout(15, TimeUnit.SECONDS)
+            // Connect fast-fails: on the home LAN the server either answers promptly or
+            // is off — a long connect timeout only stalls the peer-sync fallback.
+            // Read/write stay generous for uploads (they block until the 201).
+            .connectTimeout(4, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
             .writeTimeout(60, TimeUnit.SECONDS)
             .build()
@@ -94,6 +96,39 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideAdminApi(retrofit: Retrofit): AdminApi = retrofit.create(AdminApi::class.java)
+
+    // --- Peer-to-peer sync: a SEPARATE client whose interceptor points at the peer
+    // phone currently being synced with. Sharing the main client would let unrelated
+    // in-flight calls (job polling, imports) be rerouted to the peer mid-sync. ---
+
+    @Provides
+    @Singleton
+    @Named("peer")
+    fun providePeerUrlInterceptor(): BaseUrlInterceptor = BaseUrlInterceptor()
+
+    @Provides
+    @Singleton
+    @Named("peer")
+    fun providePeerRetrofit(@Named("peer") peerUrlInterceptor: BaseUrlInterceptor, json: Json): Retrofit {
+        val client = OkHttpClient.Builder()
+            .addInterceptor(peerUrlInterceptor)
+            // A peer is on the same LAN and either answers fast or is gone (app went to
+            // background) — fail over to the next peer quickly instead of hanging.
+            .connectTimeout(5, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build()
+        return Retrofit.Builder()
+            .baseUrl("http://localhost/")
+            .client(client)
+            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    @Named("peer")
+    fun providePeerSyncApi(@Named("peer") retrofit: Retrofit): SyncApi = retrofit.create(SyncApi::class.java)
 
     // --- Open Food Facts: a SEPARATE client that bypasses BaseUrlInterceptor so the
     // request actually goes to the public API instead of the self-hosted server. ---

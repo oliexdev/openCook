@@ -44,7 +44,9 @@ class MdnsAdvertiser:
             f"{name}.{SERVICE_TYPE}",
             addresses=[socket.inet_aton(ip)],
             port=settings.port,
-            properties={"name": name},
+            # "role" lets the app tell the real server apart from peer phones, which
+            # advertise the same _opencook._tcp service with role=peer for P2P sync.
+            properties={"name": name, "role": "server"},
             server=f"{socket.gethostname()}.local.",
         )
         try:

@@ -114,11 +114,14 @@ class SyncManager @Inject constructor(
             is SyncEngine.Result.Ok -> {
                 lastSuccessEpochMs = System.currentTimeMillis()
                 // Server is reachable — drain any recipes the browser extension pushed.
+                // Peers have no import inbox, so only drain after a *server* sync.
                 // Best-effort: a failure here must not flip the sync status to Failed.
-                val result = runCatching { importInboxSyncer.get().drain() }
-                    .getOrDefault(ImportInboxSyncer.Result(0, 0))
-                if (result.any) _importedEvents.tryEmit(result)
-                SyncStatus.Idle(lastSuccessEpochMs)
+                if (result.via == SyncVia.Server) {
+                    val drained = runCatching { importInboxSyncer.get().drain() }
+                        .getOrDefault(ImportInboxSyncer.Result(0, 0))
+                    if (drained.any) _importedEvents.tryEmit(drained)
+                }
+                SyncStatus.Idle(lastSuccessEpochMs, result.via)
             }
             SyncEngine.Result.NoHousehold -> SyncStatus.NotConfigured
             SyncEngine.Result.UnknownHousehold -> SyncStatus.HouseholdMissing

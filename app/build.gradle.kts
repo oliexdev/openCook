@@ -206,6 +206,13 @@ dependencies {
     // Barcode decoding: ZXing core decodes CameraX frames (no ML Kit — proprietary)
     implementation(libs.zxing.core)
 
+    // Peer-to-peer LAN sync: the phone answers the same sync contract as the Python
+    // server via an embedded Ktor server; lifecycle-process gates it to the foreground
+    implementation(libs.ktor.server.cio)
+    implementation(libs.ktor.server.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
+    implementation(libs.androidx.lifecycle.process)
+
     // Background work: expedited upload + poll workers, Hilt-injected
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.hilt.work)

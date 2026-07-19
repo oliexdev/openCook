@@ -45,8 +45,8 @@ openCook opens, reads the page's recipe and saves it straight to your library â€
 A snackbar confirms the import (or tells you if the page has no machine-readable recipe).
 
 - Works **on-device over the internet only** â€” the app fetches and parses the page itself, so it
-  works even without a server. If you do run a server, the imported recipe syncs to the rest of the
-  family like any other.
+  works even without a server. The imported recipe then syncs to the rest of the family like any
+  other (via your server, or directly phone-to-phone at home).
 - The recipe is filed under a cookbook named after the source site (e.g. *Chefkoch*), unless the
   page already names its own cookbook.
 - If you share the same recipe twice, openCook recognises the duplicate instead of adding it again.

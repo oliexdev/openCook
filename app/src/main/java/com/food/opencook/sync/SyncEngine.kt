@@ -18,33 +18,18 @@
 
 package com.food.opencook.sync
 
-import com.food.opencook.data.local.Transactor
-import com.food.opencook.data.local.dao.MealDayDao
-import com.food.opencook.data.local.dao.MealPlanDao
-import com.food.opencook.data.local.dao.MessageDao
-import com.food.opencook.data.local.dao.PantryDao
-import com.food.opencook.data.local.dao.RecipeDao
-import com.food.opencook.data.local.dao.RecipeLikeDao
-import com.food.opencook.data.local.dao.ShoppingDao
-import com.food.opencook.data.local.entity.ImageEntity
-import com.food.opencook.data.local.entity.MealDayEntity
-import com.food.opencook.data.local.entity.MealPlanEntity
-import com.food.opencook.data.local.entity.PantryItemEntity
-import com.food.opencook.data.local.entity.RecipeLikeEntity
-import com.food.opencook.data.local.entity.IngredientEntity
-import com.food.opencook.data.local.entity.InstructionEntity
-import com.food.opencook.data.local.entity.MessageEntity
-import com.food.opencook.data.local.entity.NutritionEntity
-import com.food.opencook.data.local.entity.RecipeEntity
-import com.food.opencook.data.local.entity.ShoppingItemEntity
 import com.food.opencook.data.discovery.ServerDiscovery
 import com.food.opencook.data.image.ImageStore
+import com.food.opencook.data.local.dao.MessageDao
+import com.food.opencook.data.local.dao.RecipeDao
+import com.food.opencook.data.local.entity.MessageEntity
 import com.food.opencook.data.remote.BaseUrlInterceptor
 import com.food.opencook.data.remote.SyncApi
-import com.food.opencook.data.remote.dto.MerkleDto
 import com.food.opencook.data.remote.dto.SyncMessageDto
 import com.food.opencook.data.remote.dto.SyncRequestDto
+import com.food.opencook.data.remote.dto.SyncResponseDto
 import com.food.opencook.data.settings.SettingsRepository
+import android.util.Log
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -56,19 +41,19 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.HttpException
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
+import javax.inject.Named
 import javax.inject.Singleton
 
-private fun Merkle.toMerkleDto(): MerkleDto =
-    MerkleDto(hash = unsignedHash(), children = children.entries.associate { it.key.toString() to it.value.toMerkleDto() })
-
-/** Below this many incoming recipes, apply silently (icon spins); at or above, show a
- *  determinate progress bar with the recipe count. Keeps everyday syncs noise-free. */
-private const val MIN_RECIPES_FOR_PROGRESS = 20
-
-/** Same idea for image downloads — a single missing image doesn't deserve a banner. */
+/** Same idea as the recipe-apply threshold — a single missing image doesn't deserve a banner. */
 private const val MIN_IMAGES_FOR_PROGRESS = 5
+
+private const val TAG = "OpenCookP2P"
+
+/** Cache key for the (single) configured server in [SyncEngine.remoteMerkles]. */
+private const val SERVER_KEY = "@server"
 
 /** How many image GETs to run at once. Recipe photos are a few hundred KB each so
  *  serial downloads burn most of the time on round-trips; 4 parallel saturates a
@@ -78,28 +63,48 @@ private const val IMAGE_DOWNLOAD_PARALLELISM = 4
 /**
  * Drives one round of delta-sync: build the local Merkle, push local messages and
  * pull the ones we're missing, then project them back into the materialised Room
- * tables. Materialisation rebuilds each touched row from its winning field
- * messages, so it converges regardless of arrival order and handles tombstones.
+ * tables (via the shared [MessageApplier]).
+ *
+ * Targets are tried in order: the configured server first (it is the household's
+ * authority and holds the AI/import features), then any peer phones discovered on
+ * the LAN — so the family's lists still flow while the desktop server is off, and
+ * serverless households (no URL configured) sync purely phone-to-phone. The log is
+ * idempotent, so syncing with several targets over time converges by construction.
  */
 @Singleton
 class SyncEngine @Inject constructor(
     private val syncApi: SyncApi,
+    @param:Named("peer") private val peerSyncApi: SyncApi,
+    @param:Named("peer") private val peerUrlInterceptor: BaseUrlInterceptor,
     private val settings: SettingsRepository,
     private val messageDao: MessageDao,
     private val recipeDao: RecipeDao,
-    private val shoppingDao: ShoppingDao,
-    private val pantryDao: PantryDao,
-    private val mealPlanDao: MealPlanDao,
-    private val mealDayDao: MealDayDao,
-    private val recipeLikeDao: RecipeLikeDao,
     private val syncClock: SyncClock,
     private val serverDiscovery: ServerDiscovery,
     private val baseUrlInterceptor: BaseUrlInterceptor,
-    private val transactor: Transactor,
     private val imageStore: ImageStore,
+    private val applier: MessageApplier,
 ) {
+    /** When the server just proved unreachable, skip re-probing it for this long and go
+     *  straight to peers. Keeps the foreground 30-s sync cadence snappy while the desktop
+     *  is off; the server is picked up again at most a minute after it comes back. */
+    private val serverBackoffMs = 60_000L
+
+    @Volatile
+    private var lastServerFailureMs = 0L
+
+    /**
+     * Last known Merkle trie of each sync target (from its previous response), so we
+     * push only the messages the target is likely missing instead of the whole log
+     * every round. Staleness is safe in both directions: too old ⇒ we push a superset
+     * (idempotent); too new (target lost data) ⇒ its next response carries the real
+     * trie, refreshing the cache, and the following round heals the gap. In-memory
+     * only — first contact after process start pushes the full log, like before.
+     */
+    private val remoteMerkles = ConcurrentHashMap<String, Merkle>()
+
     sealed interface Result {
-        data class Ok(val pulled: Int) : Result
+        data class Ok(val pulled: Int, val via: SyncVia) : Result
         data object NoHousehold : Result
         data class Failed(val message: String) : Result
 
@@ -123,47 +128,129 @@ class SyncEngine @Inject constructor(
      */
     suspend fun sync(onProgress: (Progress) -> Unit = {}): Result {
         val code = settings.householdCodeOnce()?.takeIf { it.isNotBlank() } ?: return Result.NoHousehold
+        val serverConfigured = !settings.serverUrlOnce().isNullOrBlank()
 
-        // Push any device-local images (bundle imports) to the server first, so the
+        val inServerBackoff = System.currentTimeMillis() - lastServerFailureMs < serverBackoffMs
+        if (serverConfigured && !inServerBackoff) {
+            // First try the stored address. A 404 means the server doesn't know this
+            // household (reset/reinstalled) — surface that rather than retrying. If the
+            // call merely failed (unreachable), the server may have moved (new DHCP IP) —
+            // re-discover it on the LAN once and retry.
+            var attempt = runCatching { exchange(syncApi, code, isPeer = false, SERVER_KEY, onProgress) }
+            if (attempt.exceptionOrNull().isUnknownHousehold()) return Result.UnknownHousehold
+            if (attempt.isFailure && rediscoverServer()) {
+                attempt = runCatching { exchange(syncApi, code, isPeer = false, SERVER_KEY, onProgress) }
+                if (attempt.exceptionOrNull().isUnknownHousehold()) return Result.UnknownHousehold
+            }
+            attempt.getOrNull()?.let { pulled ->
+                lastServerFailureMs = 0L
+                return Result.Ok(pulled, SyncVia.Server)
+            }
+            lastServerFailureMs = System.currentTimeMillis()
+        }
+
+        // Server unreachable (or serverless household): fall back to peer phones on the
+        // LAN — but only when the household's P2P switch is on (off means: behave
+        // exactly like the pre-P2P app, no discovery, no peer traffic). A peer
+        // answering 404 simply doesn't know our household (someone else's openCook in
+        // the same Wi-Fi) — skip it, never surface UnknownHousehold for peers.
+        if (!settings.p2pEnabledOnce()) return Result.Failed("")
+        for (peer in serverDiscovery.discoverPeers()) {
+            peerUrlInterceptor.setBaseUrl(peer.baseUrl())
+            // Keyed by service name, not address: the ephemeral port changes with every
+            // foreground session, the advertised name stays stable.
+            val attempt = runCatching { exchange(peerSyncApi, code, isPeer = true, peer.name, onProgress) }
+            attempt.exceptionOrNull()?.let {
+                Log.w(TAG, "peer sync with '${peer.name}' (${peer.baseUrl()}) failed", it)
+            }
+            val pulled = attempt.getOrNull() ?: continue
+            return Result.Ok(pulled, SyncVia.Peer(peer.name))
+        }
+
+        // Empty message → the UI renders a localized generic "sync failed" (see SettingsViewModel).
+        return Result.Failed("")
+    }
+
+    /**
+     * One full exchange with one target: push local images (where allowed), push the
+     * whole log + our Merkle, adopt the household meta from the response, apply the
+     * missing messages, then pull image files. Throws on transport errors so the
+     * caller can decide between retry, fallback and surfacing the failure.
+     */
+    private suspend fun exchange(
+        api: SyncApi,
+        code: String,
+        isPeer: Boolean,
+        targetKey: String,
+        onProgress: (Progress) -> Unit,
+    ): Int {
+        // Push any device-local images (bundle imports, camera shots) first, so the
         // imageRef they emit travels in this same round. Best-effort: a failure here
-        // (server down) must not abort the message sync below.
-        runCatching { uploadLocalImages(code) }
+        // must not abort the message sync below. To a peer this only happens in
+        // serverless households — with a server configured it stays the image
+        // authority, and marking an image "uploaded" after pushing it to a phone
+        // would leave the server permanently without the bytes.
+        if (!isPeer || settings.serverUrlOnce().isNullOrBlank()) {
+            runCatching { uploadLocalImages(api, code) }
+        }
 
         val local = messageDao.all()
-        val request = SyncRequestDto(
-            merkle = MerkleTrie.build(local.map { it.timestamp }).toMerkleDto(),
-            messages = local.map { SyncMessageDto(it.timestamp, it.dataset, it.rowId, it.column, it.value) },
-        )
-
-        // First try the stored address. A 404 means the server doesn't know this
-        // household (reset/reinstalled) — surface that rather than retrying. If the
-        // call merely failed (unreachable), the server may have moved (new DHCP IP) —
-        // re-discover it on the LAN once and retry.
-        var attempt = runCatching { syncApi.sync(code, request) }
-        if (attempt.exceptionOrNull().isUnknownHousehold()) return Result.UnknownHousehold
-        if (attempt.isFailure && rediscoverServer()) {
-            attempt = runCatching { syncApi.sync(code, request) }
-            if (attempt.exceptionOrNull().isUnknownHousehold()) return Result.UnknownHousehold
+        val localTrie = MerkleTrie.build(local.map { it.timestamp })
+        // Push only what the target is missing according to its last known trie —
+        // the full log travels just once per target and process, not every 30 s.
+        val cached = remoteMerkles[targetKey]
+        val pushCursor = cached?.let { MerkleTrie.diff(localTrie, it) }
+        val toPush = when {
+            cached == null -> local
+            pushCursor == null -> emptyList()
+            else -> local.filter { Hlc.parse(it.timestamp).millis >= pushCursor }
         }
-        // Empty message → the UI renders a localized generic "sync failed" (see SettingsViewModel).
-        val response = attempt.getOrNull() ?: return Result.Failed("")
+        val request = SyncRequestDto(
+            merkle = localTrie.toDto(),
+            messages = toPush.map { SyncMessageDto(it.timestamp, it.dataset, it.rowId, it.column, it.value) },
+        )
+        val response = api.sync(code, request)
+        response.merkle?.let { remoteMerkles[targetKey] = it.toMerkle() }
 
         // Adopt household-wide state (name + settings like person count) so all
         // devices converge on it without a separate poll.
+        if (isPeer) adoptPeerMeta(response) else adoptServerMeta(response)
+
+        applier.apply(response.messages) { recipes, fraction ->
+            onProgress(Progress(SyncStatus.Phase.APPLY, recipes, recipes, fraction))
+        }
+        // Pull synced images down to local storage so they stay visible after the
+        // target goes offline. Best-effort: any image we can't fetch right now
+        // (a peer may not hold every file) retries on the next sync round.
+        runCatching { downloadRemoteImages(api, onProgress) }
+        return response.messages.size
+    }
+
+    /** The server materialises household meta authoritatively — adopt unconditionally. */
+    private suspend fun adoptServerMeta(response: SyncResponseDto) {
         response.householdName?.let { settings.setHouseholdName(it) }
         response.householdSettings?.let {
             settings.setHouseholdSize(it.householdSize)
             settings.setContentLanguage(it.contentLanguage)
         }
+    }
 
-        applyRemote(response.messages) { recipes, fraction ->
-            onProgress(Progress(SyncStatus.Phase.APPLY, recipes, recipes, fraction))
+    /**
+     * Between peers no copy is authoritative, so the meta travels with an HLC stamp
+     * and the newest one wins everywhere — without the stamp gate, two phones holding
+     * different copies would overwrite each other on alternating rounds forever.
+     */
+    private suspend fun adoptPeerMeta(response: SyncResponseDto) {
+        val remoteHlc = response.householdHlc ?: return
+        val localHlc = settings.householdMetaHlcOnce()
+        if (localHlc != null && remoteHlc <= localHlc) return
+        response.householdName?.let { settings.setHouseholdName(it) }
+        response.householdSettings?.let {
+            settings.setHouseholdSize(it.householdSize)
+            settings.setContentLanguage(it.contentLanguage)
         }
-        // Pull synced images down to local storage so they stay visible after the
-        // server goes offline (it's a desktop that's often off). Best-effort: any
-        // image we can't fetch right now retries on the next sync round.
-        runCatching { downloadRemoteImages(onProgress) }
-        return Result.Ok(response.messages.size)
+        settings.setHouseholdPin(response.householdPin)
+        settings.setHouseholdMetaHlc(remoteHlc)
     }
 
     /** A 404 from the sync endpoint means the server has no such household
@@ -179,7 +266,7 @@ class SyncEngine @Inject constructor(
     private suspend fun rediscoverServer(): Boolean {
         val current = settings.serverUrlOnce()
         val found = serverDiscovery.discoverFirst() ?: return false
-        val newUrl = "http://${found.host}:${found.port}"
+        val newUrl = found.baseUrl()
         if (newUrl == current) return false
         settings.setServerUrl(newUrl)
         baseUrlInterceptor.setBaseUrl(newUrl)
@@ -188,13 +275,13 @@ class SyncEngine @Inject constructor(
 
     /**
      * Upload device-local images (a recipe's primary photo from a bundle import) to the
-     * server so other devices can fetch them via GET /images/{name} and they survive a
-     * reinstall. Each upload sets the row's [remoteName] and emits an `imageRef` message
+     * sync target so other devices can fetch them via GET /images/{name} and they survive
+     * a reinstall. Each upload sets the row's [remoteName] and emits an `imageRef` message
      * (freshly stamped, so it wins) — exactly the shape AI photo crops already sync in.
-     * Per-image best-effort: one failure (unreadable file / server error) skips that
+     * Per-image best-effort: one failure (unreadable file / target error) skips that
      * image and leaves it local-only for the next round.
      */
-    private suspend fun uploadLocalImages(code: String) {
+    private suspend fun uploadLocalImages(api: SyncApi, code: String) {
         val locals = recipeDao.localOnlyImages()
         if (locals.isEmpty()) return
         val now = System.currentTimeMillis()
@@ -202,7 +289,7 @@ class SyncEngine @Inject constructor(
             val file = img.localPath?.let(::File)?.takeIf { it.exists() } ?: continue
             val bytes = runCatching { file.readBytes() }.getOrNull() ?: continue
             val name = runCatching {
-                syncApi.uploadImage(code, bytes.toRequestBody("image/jpeg".toMediaType()))
+                api.uploadImage(code, bytes.toRequestBody("image/jpeg".toMediaType()))
             }.getOrNull()?.name ?: continue
             recipeDao.setImageRemoteName(img.id, name)
             if (img.isPrimary) {
@@ -221,17 +308,17 @@ class SyncEngine @Inject constructor(
     }
 
     /**
-     * Download images that arrived via sync (we know the server filename but have no
-     * local copy yet) so they keep rendering when the server is unreachable. Per-image
-     * best-effort — a failure leaves the row remote-only and the next sync round retries.
-     * Runs after [applyRemote] while the server is known reachable.
+     * Download images that arrived via sync (we know the content-addressed filename but
+     * have no local copy yet) so they keep rendering when the target is unreachable.
+     * Per-image best-effort — a failure leaves the row remote-only and the next sync
+     * round retries. Runs after the message apply while the target is known reachable.
      *
      * Parallelised behind a [IMAGE_DOWNLOAD_PARALLELISM]-permit semaphore so a fresh
      * household (dozens of photos at once) feels minutes, not tens of minutes, on a
      * typical home LAN. Emits a [Progress] update after each finished file so the UI
      * can show "Bilder laden … 17/50" instead of pretending the sync is done.
      */
-    private suspend fun downloadRemoteImages(onProgress: (Progress) -> Unit) = coroutineScope {
+    private suspend fun downloadRemoteImages(api: SyncApi, onProgress: (Progress) -> Unit) = coroutineScope {
         val remotes = recipeDao.remoteOnlyImages()
         if (remotes.isEmpty()) return@coroutineScope
         val total = remotes.size
@@ -245,10 +332,15 @@ class SyncEngine @Inject constructor(
             async {
                 gate.withPermit {
                     val name = img.remoteName ?: return@withPermit
-                    val bytes = runCatching { syncApi.downloadImage(name).use { it.bytes() } }
-                        .getOrNull() ?: return@withPermit
-                    val path = runCatching { imageStore.saveDownloadedImage(name, bytes) }
-                        .getOrNull() ?: return@withPermit
+                    // A peer may have pushed the bytes to us already (POST /images) —
+                    // reuse the file instead of downloading our own copy back.
+                    val existing = imageStore.existingDownload(name)
+                    val path = existing ?: run {
+                        val bytes = runCatching { api.downloadImage(name).use { it.bytes() } }
+                            .getOrNull() ?: return@withPermit
+                        runCatching { imageStore.saveDownloadedImage(name, bytes) }
+                            .getOrNull() ?: return@withPermit
+                    }
                     recipeDao.setImageLocalPath(img.id, path)
                 }
                 if (reportProgress) {
@@ -257,248 +349,5 @@ class SyncEngine @Inject constructor(
                 }
             }
         }.awaitAll()
-    }
-
-    private suspend fun applyRemote(
-        messages: List<SyncMessageDto>,
-        onProgress: (recipes: Int, fraction: Float) -> Unit,
-    ) {
-        if (messages.isEmpty()) return
-        // One transaction for the whole apply: ~30k individual auto-commit writes collapse
-        // into a single commit — far faster and atomic (no partial state if it aborts). The
-        // onProgress callback only updates a StateFlow (not the DB), so the bar still
-        // animates live; Room's recipe Flow emits once on commit (recipes appear together).
-        transactor.withTransaction {
-            val now = System.currentTimeMillis()
-            val sorted = messages.sortedBy { it.timestamp }
-            // Bulk-insert in a single statement (vs ~25k individual DAO calls crossing the
-            // coroutine/JNI boundary), idempotent via the DAO's IGNORE-on-conflict.
-            messageDao.insertAll(
-                sorted.map { MessageEntity(it.timestamp, it.dataset, it.rowId, it.column, it.value, createdAt = now) },
-            )
-            // Note the touched rows (in-memory, cheap) so projection knows what to rebuild,
-            // then advance our clock ONCE past the newest remote stamp. Observing every
-            // message persisted the clock to settings ~25k times (~60s on a real device);
-            // the packed HLC sorts lexicographically, so the last sorted entry is the
-            // maximum — observing just it keeps the local clock past every remote stamp.
-            val touched = LinkedHashSet<Pair<String, String>>()
-            sorted.forEach { touched += it.dataset to it.rowId }
-            sorted.lastOrNull()?.let { syncClock.observe(Hlc.parse(it.timestamp)) }
-            // Project parents before children so foreign keys resolve.
-            val recipeRows = touched.filter { it.first == SyncDatasets.RECIPES }
-            val otherRows = touched.filter { it.first != SyncDatasets.RECIPES }
-
-            // Surface a determinate bar only for large pulls (an initial household sync);
-            // small syncs just spin the icon. The fraction spans *all* projected rows so it
-            // tracks real work — most of which is the ingredient/instruction tail — while the
-            // recipe count (projected first) climbs early and then caps. Throttled to one
-            // emission per whole percent so a 1000-recipe pull updates ~100×, not thousands.
-            val total = touched.size
-            val report = recipeRows.size >= MIN_RECIPES_FOR_PROGRESS
-            var applied = 0
-            var lastPct = -1
-            fun tick() {
-                applied++
-                if (!report) return
-                val pct = applied * 100 / total
-                if (pct != lastPct) {
-                    lastPct = pct
-                    onProgress(minOf(applied, recipeRows.size), applied.toFloat() / total)
-                }
-            }
-            recipeRows.forEach { project(it.first, it.second); tick() }
-            otherRows.forEach { project(it.first, it.second); tick() }
-        }
-    }
-
-    /** Rebuild one materialised row from the winning (max-HLC) value of each field. */
-    private suspend fun project(dataset: String, rowId: String) {
-        val winning = messageDao.forRow(dataset, rowId)
-            .groupBy { it.column }
-            .mapValues { (_, msgs) -> msgs.maxBy { it.timestamp }.value }
-        if (winning.isEmpty()) return
-
-        fun str(col: String) = MessageCodec.decodeString(winning[col])
-
-        when (dataset) {
-            SyncDatasets.RECIPES -> {
-                if (MessageCodec.isTrue(winning[SyncDatasets.COLUMN_DELETED])) {
-                    recipeDao.deleteRecipe(rowId) // tombstone wins; row + children removed
-                    return
-                }
-                val now = System.currentTimeMillis()
-                recipeDao.upsertRecipeEntity(
-                    RecipeEntity(
-                        id = rowId,
-                        name = str("name"),
-                        description = str("description"),
-                        recipeYield = str("recipeYield"),
-                        prepTime = str("prepTime"),
-                        cookTime = str("cookTime"),
-                        totalTime = str("totalTime"),
-                        notes = str("notes"),
-                        tags = str("tags"),
-                        lastCookedAt = str("lastCookedAt"),
-                        cookbook = str("cookbook"),
-                        servings = MessageCodec.decodeNullableInt(winning["servings"]),
-                        category = str("category"),
-                        // Link back to the server job whose original photo this recipe
-                        // came from (kept so it can be re-extracted with a better model).
-                        sourcePhotoId = str("sourcePhotoId"),
-                        createdAt = now,
-                        updatedAt = now,
-                    ),
-                )
-                str("imageRef")?.let { remoteName ->
-                    // Collapse the recipe to a single canonical image row keyed by the
-                    // recipe id. Local creation/edit paths key images with random UUIDs,
-                    // so without this a remote imageRef change would spawn a *second*
-                    // isPrimary row and leave the device's own (stale) one behind — the
-                    // unordered @Relation could then keep showing the pre-edit image
-                    // (e.g. a crop made on another device never appearing here).
-                    //
-                    // Preserve a localPath only from a row whose remoteName already matches
-                    // (a text-only edit re-emits the same imageRef, and the editing device
-                    // keeps its just-uploaded local file) — otherwise wipe it so
-                    // downloadRemoteImages fetches the new crop.
-                    val existing = recipeDao.imagesForRecipe(rowId)
-                    val keepLocal = existing.firstOrNull { it.remoteName == remoteName }?.localPath
-                    recipeDao.deleteImagesForRecipe(rowId)
-                    recipeDao.upsertImageRow(
-                        ImageEntity("sync-$rowId", rowId, 0, remoteName = remoteName, localPath = keepLocal, isPrimary = true),
-                    )
-                }
-            }
-            SyncDatasets.INGREDIENTS -> {
-                if (MessageCodec.isTrue(winning[SyncDatasets.COLUMN_DELETED])) {
-                    recipeDao.deleteIngredientById(rowId)
-                    return
-                }
-                val recipeId = str("recipeId") ?: return
-                if (!recipeDao.recipeExists(recipeId)) return
-                recipeDao.upsertIngredientRow(
-                    IngredientEntity(
-                        id = rowId,
-                        recipeId = recipeId,
-                        position = MessageCodec.decodeInt(winning["position"]),
-                        quantity = MessageCodec.decodeNullableDouble(winning["quantity"]),
-                        unit = str("unit"),
-                        name = str("name") ?: "",
-                    ),
-                )
-            }
-            SyncDatasets.INSTRUCTIONS -> {
-                if (MessageCodec.isTrue(winning[SyncDatasets.COLUMN_DELETED])) {
-                    recipeDao.deleteInstructionById(rowId)
-                    return
-                }
-                val recipeId = str("recipeId") ?: return
-                if (!recipeDao.recipeExists(recipeId)) return
-                recipeDao.upsertInstructionRow(
-                    InstructionEntity(rowId, recipeId, MessageCodec.decodeInt(winning["position"]), str("text") ?: ""),
-                )
-            }
-            SyncDatasets.NUTRITION -> {
-                if (!recipeDao.recipeExists(rowId)) return
-                recipeDao.upsertNutritionRow(
-                    NutritionEntity(
-                        recipeId = rowId,
-                        calories = str("calories"),
-                        proteinContent = str("proteinContent"),
-                        fatContent = str("fatContent"),
-                        carbohydrateContent = str("carbohydrateContent"),
-                        fiberContent = str("fiberContent"),
-                        sugarContent = str("sugarContent"),
-                        basis = str("basis"),
-                    ),
-                )
-            }
-            SyncDatasets.SHOPPING -> {
-                if (MessageCodec.isTrue(winning[SyncDatasets.COLUMN_DELETED])) {
-                    shoppingDao.deleteById(rowId)
-                    return
-                }
-                val now = System.currentTimeMillis()
-                shoppingDao.upsert(
-                    ShoppingItemEntity(
-                        id = rowId,
-                        text = str("text") ?: "",
-                        quantity = MessageCodec.decodeNullableDouble(winning["quantity"]),
-                        unit = str("unit"),
-                        checked = MessageCodec.isTrue(winning["checked"]),
-                        position = MessageCodec.decodeInt(winning["position"]),
-                        sourceRecipeId = str("sourceRecipeId"),
-                        sourceDate = str("sourceDate"),
-                        manual = MessageCodec.isTrue(winning["manual"]),
-                        sourceRecipeIds = str("sourceRecipeIds"),
-                        createdAt = now,
-                        updatedAt = now,
-                    ),
-                )
-            }
-            SyncDatasets.PANTRY -> {
-                if (MessageCodec.isTrue(winning[SyncDatasets.COLUMN_DELETED])) {
-                    pantryDao.deleteById(rowId)
-                    return
-                }
-                val now = System.currentTimeMillis()
-                pantryDao.upsert(PantryItemEntity(id = rowId, name = str("name") ?: "", createdAt = now, updatedAt = now))
-            }
-            SyncDatasets.MEALPLAN -> {
-                if (MessageCodec.isTrue(winning[SyncDatasets.COLUMN_DELETED])) {
-                    mealPlanDao.deleteById(rowId)
-                    return
-                }
-                val date = str("date") ?: return
-                val recipeId = str("recipeId") ?: return
-                val now = System.currentTimeMillis()
-                mealPlanDao.upsert(
-                    MealPlanEntity(
-                        id = rowId,
-                        date = date,
-                        recipeId = recipeId,
-                        pinned = MessageCodec.isTrue(winning["pinned"]),
-                        // Field is optional and may be absent on entries written by an
-                        // older app version — treat as "no reasons" rather than failing.
-                        reasonsJson = str("reasonsJson"),
-                        // Optional/absent-tolerant like reasonsJson — older apps never sent it.
-                        cookedAt = str("cookedAt"),
-                        createdAt = now,
-                        updatedAt = now,
-                    ),
-                )
-            }
-            SyncDatasets.MEAL_DAYS -> {
-                if (MessageCodec.isTrue(winning[SyncDatasets.COLUMN_DELETED])) {
-                    mealDayDao.deleteByDate(rowId)
-                    return
-                }
-                val now = System.currentTimeMillis()
-                mealDayDao.upsert(
-                    MealDayEntity(
-                        date = rowId,
-                        skipped = MessageCodec.isTrue(winning["skipped"]),
-                        createdAt = now,
-                        updatedAt = now,
-                    ),
-                )
-            }
-            SyncDatasets.RECIPE_LIKES -> {
-                // recipeId/nodeId come from fields (rowId is "recipeId:nodeId" and
-                // recipe ids may themselves contain no ':' — but reading the fields is robust).
-                val recipeId = str("recipeId") ?: return
-                val nodeId = str("nodeId") ?: return
-                val now = System.currentTimeMillis()
-                recipeLikeDao.upsert(
-                    RecipeLikeEntity(
-                        recipeId = recipeId,
-                        nodeId = nodeId,
-                        liked = MessageCodec.isTrue(winning["liked"]),
-                        createdAt = now,
-                        updatedAt = now,
-                    ),
-                )
-            }
-        }
     }
 }

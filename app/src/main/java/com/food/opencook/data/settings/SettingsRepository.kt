@@ -144,12 +144,53 @@ class SettingsRepository @Inject constructor(
             it.remove(HOUSEHOLD_CODE)
             it.remove(HOUSEHOLD_ID)
             it.remove(HOUSEHOLD_NAME)
+            it.remove(HOUSEHOLD_META_HLC)
+            it.remove(HOUSEHOLD_PIN)
         }
     }
 
     suspend fun householdIdOnce(): String? = dataStore.data.first()[HOUSEHOLD_ID]
     suspend fun householdCodeOnce(): String? = dataStore.data.first()[HOUSEHOLD_CODE]
     suspend fun serverUrlOnce(): String? = dataStore.data.first()[SERVER_URL]
+    suspend fun householdNameOnce(): String? = dataStore.data.first()[HOUSEHOLD_NAME]
+
+    /**
+     * HLC stamp of the household meta (name/settings/PIN) this device holds. Serverless
+     * households have no authoritative store, so peers exchange their meta with this
+     * stamp and everyone adopts the newest copy (see SyncEngine/SyncResponder).
+     */
+    suspend fun householdMetaHlcOnce(): String? = dataStore.data.first()[HOUSEHOLD_META_HLC]
+    suspend fun setHouseholdMetaHlc(packed: String) {
+        dataStore.edit { it[HOUSEHOLD_META_HLC] = packed }
+    }
+
+    /** Join-PIN of a serverless household (empty/null = open). Server-backed households
+     *  keep their PIN on the server; this is only consulted by the peer join endpoint. */
+    suspend fun householdPinOnce(): String? = dataStore.data.first()[HOUSEHOLD_PIN]
+    suspend fun setHouseholdPin(pin: String?) {
+        dataStore.edit {
+            if (pin.isNullOrBlank()) it.remove(HOUSEHOLD_PIN) else it[HOUSEHOLD_PIN] = pin
+        }
+    }
+
+    /**
+     * The phone-to-phone sync master switch: peer fallback in the engine, mDNS
+     * visibility and the standby foreground service all hang on it. Unset means
+     * "default by household kind": ON for serverless households (P2P is their only
+     * transport), OFF when a server is configured (it covers the job invisibly).
+     */
+    val p2pEnabled: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[P2P_ENABLED] ?: prefs[SERVER_URL].isNullOrBlank()
+    }
+
+    suspend fun p2pEnabledOnce(): Boolean {
+        val prefs = dataStore.data.first()
+        return prefs[P2P_ENABLED] ?: prefs[SERVER_URL].isNullOrBlank()
+    }
+
+    suspend fun setP2pEnabled(enabled: Boolean) {
+        dataStore.edit { it[P2P_ENABLED] = enabled }
+    }
 
     /** This device's stable sync node id, generated once on first use. */
     suspend fun ensureNodeId(): String {
@@ -180,6 +221,9 @@ class SettingsRepository @Inject constructor(
         val CONTENT_LANGUAGE = stringPreferencesKey("content_language")
         val NODE_ID = stringPreferencesKey("node_id")
         val LAST_HLC = stringPreferencesKey("last_hlc")
+        val HOUSEHOLD_META_HLC = stringPreferencesKey("household_meta_hlc")
+        val HOUSEHOLD_PIN = stringPreferencesKey("household_pin")
+        val P2P_ENABLED = booleanPreferencesKey("p2p_enabled")
     }
 }
 

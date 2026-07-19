@@ -33,6 +33,7 @@ import com.food.opencook.data.remote.dto.HouseholdSummaryDto
 import com.food.opencook.data.remote.dto.JoinHouseholdRequest
 import com.food.opencook.data.settings.SettingsRepository
 import com.food.opencook.repository.PantryRepository
+import com.food.opencook.sync.SyncClock
 import com.food.opencook.sync.SyncTrigger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -42,7 +43,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.security.SecureRandom
+import java.util.Base64
+import java.util.UUID
 import javax.inject.Inject
+import javax.inject.Named
 
 enum class OnboardingStep { MODE, SERVER, HOUSEHOLD, CREATE }
 
@@ -53,6 +58,11 @@ data class OnboardingUiState(
     val loadingHouseholds: Boolean = false,
     /** Non-null shows the PIN dialog for that protected household. */
     val pinPromptFor: HouseholdSummaryDto? = null,
+    /** Non-null while joining through a peer phone instead of the server: its endpoints
+     *  answer the household list/join, and no server URL must be persisted. */
+    val viaPeer: DiscoveredServer? = null,
+    /** CREATE step is minting a serverless household (no server involved at all). */
+    val serverless: Boolean = false,
     val busy: Boolean = false,
     val error: String? = null,
 )
@@ -63,9 +73,12 @@ class OnboardingViewModel @Inject constructor(
     private val settings: SettingsRepository,
     private val serverDiscovery: ServerDiscovery,
     private val syncApi: SyncApi,
+    @param:Named("peer") private val peerSyncApi: SyncApi,
     private val baseUrlInterceptor: BaseUrlInterceptor,
+    @param:Named("peer") private val peerUrlInterceptor: BaseUrlInterceptor,
     private val syncTrigger: SyncTrigger,
     private val pantryRepository: PantryRepository,
+    private val syncClock: SyncClock,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(OnboardingUiState())
@@ -91,6 +104,8 @@ class OnboardingViewModel @Inject constructor(
                     busy = false,
                     error = null,
                     pinPromptFor = null,
+                    viaPeer = null,
+                    serverless = false,
                     serverUrl = url,
                     step = OnboardingStep.MODE,
                 )
@@ -116,6 +131,25 @@ class OnboardingViewModel @Inject constructor(
         }
     }
 
+    /** From the mode picker: found a household without any server — phones only. */
+    fun chooseServerlessMode() {
+        _state.update { it.copy(step = OnboardingStep.CREATE, serverless = true, error = null) }
+    }
+
+    /**
+     * A peer phone was picked from the discovery list: run the household list/join
+     * against its endpoints. Unlike [chooseServer] this must NOT persist a server URL —
+     * a phone is a transient counterpart, not this household's server.
+     */
+    fun choosePeer(peer: DiscoveredServer) {
+        peerUrlInterceptor.setBaseUrl(peer.baseUrl())
+        _state.update { it.copy(viaPeer = peer, step = OnboardingStep.HOUSEHOLD, error = null) }
+        loadHouseholds()
+    }
+
+    /** The endpoint set the current join flow talks to (a peer phone or the server). */
+    private fun api(): SyncApi = if (_state.value.viaPeer != null) peerSyncApi else syncApi
+
     fun chooseServer(rawUrl: String) {
         val url = normalizeUrl(rawUrl) ?: run {
             _state.update { it.copy(error = context.getString(R.string.onboarding_error_invalid_address)) }
@@ -133,7 +167,7 @@ class OnboardingViewModel @Inject constructor(
     fun loadHouseholds() {
         viewModelScope.launch {
             _state.update { it.copy(loadingHouseholds = true, error = null) }
-            runCatching { syncApi.listHouseholds() }
+            runCatching { api().listHouseholds() }
                 .onSuccess { list -> _state.update { it.copy(households = list, loadingHouseholds = false) } }
                 .onFailure { e -> _state.update { it.copy(loadingHouseholds = false, error = errorText(e)) } }
         }
@@ -157,7 +191,7 @@ class OnboardingViewModel @Inject constructor(
     private fun join(id: String, pin: String?) {
         viewModelScope.launch {
             _state.update { it.copy(busy = true, error = null) }
-            runCatching { syncApi.joinHousehold(id, JoinHouseholdRequest(pin)) }
+            runCatching { api().joinHousehold(id, JoinHouseholdRequest(pin)) }
                 .onSuccess { adopt(it) }
                 .onFailure { e -> _state.update { it.copy(busy = false, error = errorText(e)) } }
         }
@@ -168,6 +202,10 @@ class OnboardingViewModel @Inject constructor(
     fun createHousehold(name: String, size: Int, pin: String?, adminPassword: String?) {
         if (name.isBlank()) {
             _state.update { it.copy(error = context.getString(R.string.onboarding_error_name_required)) }
+            return
+        }
+        if (_state.value.serverless) {
+            createServerlessHousehold(name, size, pin)
             return
         }
         viewModelScope.launch {
@@ -190,12 +228,41 @@ class OnboardingViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Mint a household right on this phone — no server involved. The id/invite code are
+     * generated locally in the exact shapes the server uses (uuid / ~16 url-safe chars),
+     * so a server can adopt this household later ("attach a server" in Settings) and
+     * other phones join through the peer endpoints ([PeerSyncServer]) with the standard
+     * flow. The meta HLC stamp makes this device's name/settings the newest copy.
+     */
+    private fun createServerlessHousehold(name: String, size: Int, pin: String?) {
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null) }
+            val bytes = ByteArray(12).also { SecureRandom().nextBytes(it) }
+            val code = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
+            settings.setHousehold(code = code, id = UUID.randomUUID().toString(), name = name.trim())
+            settings.setHouseholdSize(size)
+            settings.setHouseholdPin(pin?.takeIf { it.isNotBlank() })
+            settings.setHouseholdMetaHlc(syncClock.stamp().pack())
+            // P2P is a serverless household's only transport — switch it on explicitly
+            // so it stays on even if a server is attached later.
+            settings.setP2pEnabled(true)
+            settings.setLocalOnly(false)
+            // Pre-fill the pantry with curated staples — creator path only, like on the server.
+            pantryRepository.seedDefaults()
+            _state.update { it.copy(busy = false, error = null) }
+        }
+    }
+
     /** Persist membership + household-wide settings; AppViewModel then flips to Onboarded. */
     private suspend fun adopt(dto: HouseholdDto) {
         // Clear busy now so the (host-scoped) VM isn't left "busy" after the screen leaves.
         _state.update { it.copy(busy = false, error = null) }
         settings.setHousehold(code = dto.inviteCode, id = dto.householdId, name = dto.name)
         settings.setHouseholdSize(dto.settings.householdSize)
+        // Joining through a peer phone = joining a serverless household: P2P is its
+        // only transport, so switch it on explicitly (like the founding phone does).
+        if (_state.value.viaPeer != null) settings.setP2pEnabled(true)
         // A real household supersedes local-only mode; clear the flag so it stays accurate.
         settings.setLocalOnly(false)
         // Pull existing household data right away — without this the first sync would
@@ -205,8 +272,10 @@ class OnboardingViewModel @Inject constructor(
 
     fun back() = _state.update {
         when (it.step) {
-            OnboardingStep.CREATE -> it.copy(step = OnboardingStep.HOUSEHOLD, error = null)
-            OnboardingStep.HOUSEHOLD -> it.copy(step = OnboardingStep.SERVER, error = null)
+            OnboardingStep.CREATE ->
+                if (it.serverless) it.copy(step = OnboardingStep.MODE, serverless = false, error = null)
+                else it.copy(step = OnboardingStep.HOUSEHOLD, error = null)
+            OnboardingStep.HOUSEHOLD -> it.copy(step = OnboardingStep.SERVER, viaPeer = null, error = null)
             OnboardingStep.SERVER -> it.copy(step = OnboardingStep.MODE, error = null)
             OnboardingStep.MODE -> it
         }

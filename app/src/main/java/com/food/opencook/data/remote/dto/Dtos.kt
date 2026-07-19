@@ -75,6 +75,16 @@ data class SyncResponseDto(
     /** Household-wide state pushed with every sync so all devices converge. */
     @SerialName("household_name") val householdName: String? = null,
     @SerialName("household_settings") val householdSettings: HouseholdSettings? = null,
+    /**
+     * Peer-only (absent in server responses): HLC stamp of the responder's household
+     * meta (name/settings/PIN). Between two peers there is no authoritative store, so
+     * the initiator adopts the piggybacked meta only when this stamp is newer than its
+     * own — otherwise two differing copies would ping-pong on every round.
+     */
+    @SerialName("household_hlc") val householdHlc: String? = null,
+    /** Peer-only: the household join-PIN, so every member's phone gates joins the same
+     *  way. Travels only to holders of the invite code (the sync credential). */
+    @SerialName("household_pin") val householdPin: String? = null,
 )
 
 /**
@@ -130,6 +140,10 @@ data class CreateHouseholdRequest(
     val pin: String? = null,
     /** Optional: sets the server's admin password (gates backup/restore) on first use. */
     @SerialName("admin_password") val adminPassword: String? = null,
+    /** Optional (attach-a-server flow): keep the id/invite code a serverless household
+     *  already uses, so existing members stay valid without re-joining. */
+    val id: String? = null,
+    @SerialName("invite_code") val inviteCode: String? = null,
 )
 
 @Serializable

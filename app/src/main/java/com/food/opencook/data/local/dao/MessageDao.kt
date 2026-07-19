@@ -48,6 +48,12 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE dataset = :dataset AND rowId = :rowId")
     suspend fun forRow(dataset: String, rowId: String): List<MessageEntity>
 
+    /** Which of these timestamps are already in the log. Lets the applier skip messages
+     *  it has seen — peers push their whole log each round, and re-projecting every row
+     *  inside one big transaction stalled all other DB writes (UI froze during sync). */
+    @Query("SELECT timestamp FROM messages WHERE timestamp IN (:timestamps)")
+    suspend fun existingTimestamps(timestamps: List<String>): List<String>
+
     @Query("SELECT COUNT(*) FROM messages")
     suspend fun count(): Int
 }

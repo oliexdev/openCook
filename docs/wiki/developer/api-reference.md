@@ -7,6 +7,13 @@ All endpoints are served by the FastAPI server (`server/app/api/`). Interactive 
 image endpoints are scoped to a household via the `X-Household-Code` header (the invite code). Admin
 endpoints require the `X-Admin-Password` header. **Do not expose the server to the internet.**
 
+**Peer phones speak a subset of this API too.** With the phone-to-phone switch enabled (app in
+the foreground or held by the standby service), a phone serves `POST /sync`, `POST /images`,
+`GET /images/{name}`, `GET /households` and
+`POST /households/{id}/join` with identical wire shapes (`app/.../data/peer/PeerSyncServer.kt`),
+but requires `X-Household-Code` on everything except the household list/join — including image
+GETs. Jobs, imports and admin are server-only.
+
 ## Health
 
 | Method | Path | Purpose |
@@ -24,7 +31,7 @@ endpoints require the `X-Admin-Password` header. **Do not expose the server to t
 
 | Method | Path | Headers | Purpose |
 |---|---|---|---|
-| POST | `/sync` | `X-Household-Code` | Delta sync. Body `{merkle, messages[]}`; response `{messages, merkle, household_name, household_settings}`. Pushed messages are stored idempotently (timestamp = PK); the Merkle diff returns only messages from the divergence point on. See [Sync engine](sync.md). |
+| POST | `/sync` | `X-Household-Code` | Delta sync. Body `{merkle, messages[]}`; response `{messages, merkle, household_name, household_settings}`. Pushed messages are stored idempotently (timestamp = PK); the Merkle diff returns only messages from the divergence point on. Peer phones answer the same route and additionally piggyback `household_hlc` + `household_pin` (HLC-stamped household meta; the server sends neither). See [Sync engine](sync.md). |
 
 ## Imports — browser-extension inbox (`api/imports.py`)
 
@@ -40,7 +47,7 @@ endpoints require the `X-Admin-Password` header. **Do not expose the server to t
 | Method | Path | Headers | Purpose |
 |---|---|---|---|
 | GET | `/households` | — | List households for the join picker (`id, name, settings, protected, created_at`). Invite codes are never exposed here. |
-| POST | `/households` | — | Create a household (`name, settings, pin, admin_password`). → `201` `{household_id, invite_code, name, settings}`. Sets the server admin password only on first create. |
+| POST | `/households` | — | Create a household (`name, settings, pin, admin_password`, optional `id` + `invite_code`). → `201` `{household_id, invite_code, name, settings}`. Sets the server admin password only on first create. Client-supplied `id`/`invite_code` serve the attach-a-server flow for serverless households — idempotent for an existing id with the matching code, `409` on a code mismatch or an invite-code collision. |
 | POST | `/households/{household_id}/join` | — | Join (`pin` if protected). → `{… invite_code}`. |
 | PATCH | `/households/{household_id}` | `X-Household-Code` | Partial update of `name`/`settings`/`pin`. |
 

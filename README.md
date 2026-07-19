@@ -42,20 +42,28 @@ A recipe and meal-planning app that:
 * **Import from the web** — browsing a recipe on your phone (Chefkoch, Lecker, …)? Just **Share →
   openCook** and it's saved, no server needed. On the desktop a small browser extension does the
   same. See [`extension/`](extension/README.md).
-* **Stay in sync** — every family member's phone stays up to date through
-  your own server; changes merge automatically, even after someone's been offline.
+* **Stay in sync** — every family member's phone stays up to date, with or without a
+  server: with **phone-to-phone sync** (one switch) devices on the same Wi-Fi sync
+  **directly with each other**, even while the app is closed; a self-hosted server (if
+  you run one) covers everything else. Changes merge automatically, even after
+  someone's been offline.
 
 # How it works :gear:
 
 openCook comes in two parts:
 
 * **The app** does the whole job on its own — recipes, meal planning and shopping lists all work
-  with **no server at all**.
-* **An optional server** you host at home adds the two things a phone can't do alone: reading recipes
-  from photos (the AI runs only on *your* machine) and keeping the family's phones in sync.
+  with **no server at all**. A family household can even be founded entirely on a phone: other
+  phones join over the home Wi-Fi, and everyone's lists sync **phone-to-phone** (no pairing —
+  the household invite code is the shared secret). The phone-to-phone switch keeps each phone
+  reachable for the family even with the app closed, at the cost of a small silent notification.
+* **An optional server** you host at home adds what phones can't do alone: reading recipes
+  from photos (the AI runs only on *your* machine), browser import, backups — and sync that
+  also works while nobody has the app open. You can add it to a serverless household later
+  in Settings, keeping the same invite code.
 
-If the server is off or out of reach, the app keeps working and simply queues your photo scans;
-they're processed automatically the next time the server is available.
+If the server is off or out of reach, the app keeps working: photo scans queue until it's back,
+and the family's lists keep syncing directly between phones on the same Wi-Fi.
 
 # Building & Running :hammer:
 

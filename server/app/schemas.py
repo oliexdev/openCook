@@ -70,6 +70,12 @@ class HouseholdCreateRequest(BaseModel):
     # the first time one is provided; later creates carrying a password are ignored
     # for it (the household is still created). Change it via POST /admin/password.
     admin_password: str | None = None
+    # Optional (attach-a-server flow): a household founded serverless on a phone keeps
+    # its locally minted id + invite code, so every member's stored credential stays
+    # valid when the household is handed over to this server. Idempotent: re-attaching
+    # the same id/code returns the existing household.
+    id: str | None = None
+    invite_code: str | None = None
 
 
 class HouseholdJoinRequest(BaseModel):
