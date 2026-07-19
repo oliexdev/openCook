@@ -23,6 +23,7 @@ import com.food.opencook.data.remote.dto.HowToStepDto
 import com.food.opencook.data.remote.dto.IngredientDto
 import com.food.opencook.data.remote.dto.NutritionDto
 import com.food.opencook.data.remote.dto.RecipeDto
+import kotlinx.serialization.Serializable
 
 /**
  * Turns a saved recipe back into the same schema.org/Recipe + openCook-extension shape
@@ -73,6 +74,56 @@ object RecipeExport {
         )
     }
 
+    /** Generates a human-readable Markdown version of the recipe. */
+    fun toMarkdown(data: RecipeWithDetails): String {
+        val r = data.recipe
+        val sb = StringBuilder()
+        sb.append("# ${r.name ?: "Unbenanntes Rezept"}\n\n")
+        if (!r.cookbook.isNullOrBlank()) sb.append("**Kochbuch:** ${r.cookbook}\n")
+        if (!r.category.isNullOrBlank()) sb.append("**Kategorie:** ${r.category}\n")
+
+        val servings = r.servings?.toString() ?: r.recipeYield
+        if (servings != null) sb.append("**Portionen:** $servings\n")
+
+        val times = listOfNotNull(
+            r.prepTime?.let { "Vorbereitung: ${DurationFormat.toHuman(it)}" },
+            r.cookTime?.let { "Zubereitung: ${DurationFormat.toHuman(it)}" }
+        ).joinToString(" · ")
+        if (times.isNotEmpty()) sb.append("**Zeit:** $times\n")
+
+        sb.append("\n## Zutaten\n\n")
+        data.ingredients.sortedBy { it.position }.forEach { ing ->
+            sb.append("- ${ingredientLine(ing.quantity, ing.unit, ing.name)}\n")
+        }
+
+        sb.append("\n## Zubereitung\n\n")
+        data.instructions.sortedBy { it.position }.forEachIndexed { i, step ->
+            sb.append("${i + 1}. ${step.text}\n")
+        }
+
+        if (!r.notes.isNullOrBlank()) {
+            sb.append("\n## Notizen\n\n${r.notes}\n")
+        }
+
+        val n = data.nutrition
+        if (n != null) {
+            sb.append("\n## Nährwerte\n\n")
+            if (!n.basis.isNullOrBlank()) sb.append("*${n.basis}*\n\n")
+            listOfNotNull(
+                n.calories?.let { "Kalorien: $it" },
+                n.proteinContent?.let { "Eiweiß: $it" },
+                n.fatContent?.let { "Fett: $it" },
+                n.carbohydrateContent?.let { "Kohlenhydrate: $it" }
+            ).forEach { sb.append("- $it\n") }
+        }
+
+        if (!r.tags.isNullOrBlank()) {
+            sb.append("\n---\n*Tags: ${r.tags.replace("\n", ", ")}*")
+        }
+
+        return sb.toString()
+    }
+
     /** "400 g Nudeln" / "3 Eier" / "etwas Salz" — the flattened text line kept alongside the
      *  structured fields, for any importer that only understands plain recipeIngredient text. */
     private fun ingredientLine(quantity: Double?, unit: String?, name: String): String =
@@ -82,3 +133,46 @@ object RecipeExport {
     private fun formatQuantity(quantity: Double): String =
         if (quantity == quantity.toLong().toDouble()) quantity.toLong().toString() else quantity.toString()
 }
+
+/** Comprehensive export of all household data. */
+@Serializable
+data class BulkExportDto(
+    val recipes: List<RecipeDto> = emptyList(),
+    val mealPlan: List<MealPlanExportDto> = emptyList(),
+    val mealDays: List<MealDayExportDto> = emptyList(),
+    val shoppingList: List<ShoppingItemExportDto> = emptyList(),
+    val pantry: List<PantryItemExportDto> = emptyList(),
+)
+
+@Serializable
+data class MealPlanExportDto(
+    val date: String,
+    val slot: String = "dinner",
+    val recipeId: String,
+    val pinned: Boolean = false,
+    val reasonsJson: String? = null,
+    val cookedAt: String? = null,
+)
+
+@Serializable
+data class MealDayExportDto(
+    val date: String,
+    val skipped: Boolean = false,
+)
+
+@Serializable
+data class ShoppingItemExportDto(
+    val text: String,
+    val quantity: Double? = null,
+    val unit: String? = null,
+    val checked: Boolean = false,
+    val sourceRecipeId: String? = null,
+    val sourceDate: String? = null,
+    val manual: Boolean = false,
+)
+
+@Serializable
+data class PantryItemExportDto(
+    val name: String,
+)
+

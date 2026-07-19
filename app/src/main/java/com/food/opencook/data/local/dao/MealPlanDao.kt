@@ -40,6 +40,9 @@ interface MealPlanDao {
     @Query("SELECT * FROM meal_plan WHERE id = :id")
     suspend fun getById(id: String): MealPlanEntity?
 
+    @Query("SELECT * FROM meal_plan ORDER BY date ASC, createdAt ASC")
+    suspend fun getAll(): List<MealPlanEntity>
+
     @Upsert
     suspend fun upsert(entry: MealPlanEntity)
 

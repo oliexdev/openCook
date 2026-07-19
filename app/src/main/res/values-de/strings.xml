@@ -247,6 +247,10 @@
     <string name="mealplan_pin">Anpinnen (bleibt beim Würfeln)</string>
     <string name="mealplan_unpin">Lösen</string>
     <string name="mealplan_reroll">Anderes Gericht würfeln</string>
+    <string name="mealplan_month">Monat</string>
+    <string name="mealplan_slot_breakfast">Frühstück</string>
+    <string name="mealplan_slot_lunch">Mittagessen</string>
+    <string name="mealplan_slot_dinner">Abendessen</string>
     <string name="mealplan_cooked">Gekocht</string>
     <string name="mealplan_uncooked">Doch nicht gekocht</string>
 
@@ -329,6 +333,9 @@
     <!-- Settings: grouped sections + admin -->
     <string name="settings_household_section_label">Haushalt</string>
     <string name="settings_server_label">Server &amp; Verbindung</string>
+    <string name="settings_export_section_label">Backup &amp; Export</string>
+    <string name="settings_export_all_data">Alle Daten exportieren (ZIP)</string>
+    <string name="settings_export_all_data_hint">Rezepte (JSON + Markdown), Wochenplan und Einkaufsliste</string>
     <string name="settings_admin">Admin-Bereich</string>
     <string name="settings_admin_subtitle">Server-Backups verwalten (Passwort nötig)</string>
 

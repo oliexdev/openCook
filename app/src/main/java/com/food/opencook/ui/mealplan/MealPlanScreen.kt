@@ -35,6 +35,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -114,6 +116,7 @@ import com.food.opencook.ui.AppBarViewModel
 import com.food.opencook.ui.components.AppTopBar
 import com.food.opencook.ui.components.AvailabilityBadge
 import com.food.opencook.ui.components.CookedBadge
+import com.food.opencook.data.local.entity.MealSlot
 import com.food.opencook.ui.theme.Spacing
 import java.time.LocalDate
 import com.food.opencook.util.DateLabels
@@ -126,12 +129,12 @@ import kotlinx.coroutines.launch
 @Composable
 fun MealPlanScreen(
     onOpenRecipe: (String) -> Unit = {},
-    onPickRecipe: (String) -> Unit = {},
+    onPickRecipe: (String, String) -> Unit = { _, _ -> },
     viewModel: MealPlanViewModel = hiltViewModel(),
 ) {
-    val week by viewModel.week.collectAsStateWithLifecycle()
+    val plan by viewModel.plan.collectAsStateWithLifecycle()
     val options by viewModel.recipeOptions.collectAsStateWithLifecycle()
-    val selectedWeek by viewModel.selectedWeek.collectAsStateWithLifecycle()
+    val selectedWindow by viewModel.selectedWindow.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -156,13 +159,13 @@ fun MealPlanScreen(
         viewModel.remove(planned.entryId)
         scope.launch {
             if (snackbarHostState.showSnackbar(deletedMsg, undoMsg, withDismissAction = true, duration = SnackbarDuration.Long) == SnackbarResult.ActionPerformed) {
-                viewModel.addRecipe(date, planned.recipeId)
+                viewModel.addRecipe(date, planned.recipeId, planned.slot)
             }
         }
     }
 
     // "Suggest week" overwrites every day, so warn first when a plan exists.
-    val hasPlan = week.any { it.entries.isNotEmpty() }
+    val hasPlan = plan.any { it.entries.isNotEmpty() }
     val onSuggest: () -> Unit = {
         when {
             options.isEmpty() -> { scope.launch { snackbarHostState.showSnackbar(noRecipesMsg) } }
@@ -170,15 +173,14 @@ fun MealPlanScreen(
             else -> { viewModel.generateWeek() }
         }
     }
-    // One-shot .ics export of the visible week (see IcsExport for why this isn't a
-    // live subscription): nothing to export on an empty week, so just tell the user.
+    // One-shot .ics export of the visible window: nothing to export on an empty plan.
     val onExport: () -> Unit = {
         if (!hasPlan) {
             scope.launch { snackbarHostState.showSnackbar(emptyExportMsg) }
         } else {
-            val monday = week.first().date
-            val ics = IcsExport.buildWeekIcs(week)
-            val intent = IcsShare.shareIntent(context, ics, "opencook-meal-plan-$monday")
+            val label = if (selectedWindow == PlanningWindow.MONTH) "month" else plan.first().date
+            val ics = IcsExport.buildWeekIcs(plan)
+            val intent = IcsShare.shareIntent(context, ics, "opencook-meal-plan-$label")
             context.startActivity(Intent.createChooser(intent, exportChooserTitle))
         }
     }
@@ -219,10 +221,10 @@ fun MealPlanScreen(
             if (generating) {
                 LinearProgressIndicator(Modifier.fillMaxWidth().padding(bottom = Spacing.sm))
             }
-            WeekSelector(
-                selected = selectedWeek,
-                week = week,
-                onSelect = viewModel::selectWeek,
+            WindowSelector(
+                selected = selectedWindow,
+                plan = plan,
+                onSelect = viewModel::selectWindow,
             )
             Spacer(Modifier.height(Spacing.sm))
 
@@ -304,11 +306,11 @@ fun MealPlanScreen(
                     ),
                 verticalArrangement = Arrangement.spacedBy(Spacing.md),
             ) {
-                items(week, key = { it.date }) { day ->
+                items(plan, key = { it.date }) { day ->
                     DayCard(
                         day = day,
                         isDropTarget = hoveredDate.value == day.date,
-                        onAdd = { onPickRecipe(day.date) },
+                        onAdd = { slot -> onPickRecipe(day.date, slot.key) },
                         onSmartPick = { viewModel.reroll(day.date) },
                         onRemoveDish = removeDishWithUndo,
                         onToggleCooked = { planned -> viewModel.toggleCooked(planned, day.date) },
@@ -341,30 +343,31 @@ fun MealPlanScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun WeekSelector(
-    selected: WeekSelection,
-    week: List<DayPlan>,
-    onSelect: (WeekSelection) -> Unit,
+private fun WindowSelector(
+    selected: PlanningWindow,
+    plan: List<DayPlan>,
+    onSelect: (PlanningWindow) -> Unit,
 ) {
     Column(Modifier.fillMaxWidth()) {
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
             val options = listOf(
-                WeekSelection.CURRENT to stringResource(R.string.mealplan_week_current),
-                WeekSelection.NEXT to stringResource(R.string.mealplan_week_next),
+                PlanningWindow.CURRENT_WEEK to stringResource(R.string.mealplan_week_current),
+                PlanningWindow.NEXT_WEEK to stringResource(R.string.mealplan_week_next),
+                PlanningWindow.MONTH to stringResource(R.string.mealplan_month),
             )
             options.forEachIndexed { index, (value, label) ->
                 SegmentedButton(
                     selected = selected == value,
                     onClick = { onSelect(value) },
                     shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
-                ) { Text(label) }
+                ) {
+                    Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
         }
-        // Spell out the actual Mon–Sun range so the user always knows which days the
-        // toggle currently maps to — segmented control alone could be ambiguous mid-week.
-        if (week.isNotEmpty()) {
-            val first = runCatching { LocalDate.parse(week.first().date) }.getOrNull()
-            val last = runCatching { LocalDate.parse(week.last().date) }.getOrNull()
+        if (plan.isNotEmpty()) {
+            val first = runCatching { LocalDate.parse(plan.first().date) }.getOrNull()
+            val last = runCatching { LocalDate.parse(plan.last().date) }.getOrNull()
             if (first != null && last != null) {
                 val fmt = remember { DateLabels.weekdayDayMonth() }
                 Text(
@@ -382,7 +385,7 @@ private fun WeekSelector(
 private fun DayCard(
     day: DayPlan,
     isDropTarget: Boolean,
-    onAdd: () -> Unit,
+    onAdd: (MealSlot) -> Unit,
     onSmartPick: () -> Unit,
     onRemoveDish: (String, PlannedRecipe) -> Unit,
     onToggleCooked: (PlannedRecipe) -> Unit,
@@ -390,11 +393,8 @@ private fun DayCard(
 ) {
     val today = LocalDate.now().toString()
     val isToday = day.date == today
-    // Past = the day has gone by; only then does "cooked yet?" make sense.
     val isPast = day.date < today
 
-    // Highlighted while a dragged dish hovers this day (the list-level drop target tracks
-    // which day is under the finger and passes it down here).
     Card(
         Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -412,48 +412,95 @@ private fun DayCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(day.label, style = MaterialTheme.typography.titleMedium)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // One dish per day: offer "add" when empty, "remove" when set.
-                    val existing = day.entries.firstOrNull()
-                    if (existing != null) {
-                        // Optional 1-tap "cooked" — only on today/past, where it can have happened.
-                        if (isToday || isPast) {
-                            // Same restaurant glyph + green as the recipe-detail "cooked" toggle.
-                            TooltipIcon(
-                                tooltip = stringResource(
-                                    if (existing.cooked) R.string.mealplan_uncooked else R.string.mealplan_cooked,
-                                ),
-                                icon = Icons.Outlined.Restaurant,
-                                onClick = { onToggleCooked(existing) },
-                                tint = if (existing.cooked) MaterialTheme.colorScheme.secondary else null,
-                            )
-                        }
-                        TooltipIcon(
-                            tooltip = stringResource(R.string.mealplan_remove_dish),
-                            icon = Icons.Outlined.DeleteOutline,
-                            onClick = { onRemoveDish(day.date, existing) },
-                        )
-                    } else {
-                        // Empty day: a manual "+" plus a one-tap smart pick that scores
-                        // this single day against the rest of the week (neighbours, pantry,
-                        // recency) and drops in the best fit immediately.
-                        TooltipIcon(
-                            tooltip = stringResource(R.string.mealplan_smart_pick),
-                            icon = Icons.Outlined.AutoAwesome, // same "magic" icon as "Woche vorschlagen"
-                            onClick = onSmartPick,
-                        )
-                        TooltipIcon(
-                            tooltip = stringResource(R.string.mealplan_add_recipe),
-                            icon = Icons.Outlined.Add,
-                            onClick = onAdd,
-                        )
-                    }
+                // Smart pick only for Dinner for now.
+                val hasDinner = day.entries.any { it.slot == MealSlot.DINNER }
+                if (!hasDinner) {
+                    TooltipIcon(
+                        tooltip = stringResource(R.string.mealplan_smart_pick),
+                        icon = Icons.Outlined.AutoAwesome,
+                        onClick = onSmartPick,
+                    )
                 }
             }
-            day.entries.forEach { planned ->
-                // A past day that was never confirmed cooked is shown faded: it's over,
-                // and the app makes no assumption about whether it actually happened.
-                PlannedRow(planned, day.date, onOpenRecipe, faded = isPast && !planned.cooked)
+
+            MealSlot.entries.forEach { slot ->
+                val planned = day.entries.find { it.slot == slot }
+                SlotRow(
+                    slot = slot,
+                    planned = planned,
+                    isToday = isToday,
+                    isPast = isPast,
+                    onAdd = { onAdd(slot) },
+                    onRemove = { onRemoveDish(day.date, it) },
+                    onToggleCooked = onToggleCooked,
+                    onOpenRecipe = onOpenRecipe,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SlotRow(
+    slot: MealSlot,
+    planned: PlannedRecipe?,
+    isToday: Boolean,
+    isPast: Boolean,
+    onAdd: () -> Unit,
+    onRemove: (PlannedRecipe) -> Unit,
+    onToggleCooked: (PlannedRecipe) -> Unit,
+    onOpenRecipe: (String) -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = Spacing.xs),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+    ) {
+        val slotLabel = when (slot) {
+            MealSlot.BREAKFAST -> stringResource(R.string.mealplan_slot_breakfast)
+            MealSlot.LUNCH -> stringResource(R.string.mealplan_slot_lunch)
+            MealSlot.DINNER -> stringResource(R.string.mealplan_slot_dinner)
+        }
+        Text(
+            slotLabel.take(1).uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(16.dp),
+        )
+
+        if (planned != null) {
+            Box(Modifier.weight(1f)) {
+                PlannedRow(planned, planned.slot.key, onOpenRecipe, faded = isPast && !planned.cooked)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (isToday || isPast) {
+                    TooltipIcon(
+                        tooltip = stringResource(if (planned.cooked) R.string.mealplan_uncooked else R.string.mealplan_cooked),
+                        icon = Icons.Outlined.Restaurant,
+                        onClick = { onToggleCooked(planned) },
+                        tint = if (planned.cooked) MaterialTheme.colorScheme.secondary else null,
+                    )
+                }
+                TooltipIcon(
+                    tooltip = stringResource(R.string.mealplan_remove_dish),
+                    icon = Icons.Outlined.DeleteOutline,
+                    onClick = { onRemove(planned) },
+                )
+            }
+        } else {
+            TextButton(
+                onClick = onAdd,
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(0.dp),
+            ) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Text(
+                        stringResource(R.string.mealplan_add_recipe),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
             }
         }
     }

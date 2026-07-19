@@ -22,6 +22,8 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.content.FileProvider
 import java.io.File
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 
 /**
  * Writes an exported recipe (schema.org/Recipe JSON, see [RecipeExport]) to a cache file
@@ -50,4 +52,29 @@ object RecipeShare {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
     }
+
+    /** Bundles multiple strings (file content) into a zip and shares it. [files] is a map of
+     *  filePathInZip -> content. */
+    fun shareZipIntent(context: Context, files: Map<String, String>, zipName: String): Intent {
+        val dir = File(context.cacheDir, "exports")
+        dir.deleteRecursively()
+        dir.mkdirs()
+        val zipFile = File(dir, "$zipName.zip")
+
+        ZipOutputStream(zipFile.outputStream()).use { out ->
+            files.forEach { (path, content) ->
+                out.putNextEntry(ZipEntry(path))
+                out.write(content.toByteArray())
+                out.closeEntry()
+            }
+        }
+
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", zipFile)
+        return Intent(Intent.ACTION_SEND).apply {
+            type = "application/zip"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+    }
 }
+

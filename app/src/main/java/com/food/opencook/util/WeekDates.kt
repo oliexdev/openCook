@@ -37,4 +37,11 @@ object WeekDates {
     /** The Monday of the week containing [reference], shifted by [weekOffset] weeks. */
     fun mondayOf(reference: LocalDate = LocalDate.now(), weekOffset: Int = 0): LocalDate =
         reference.with(DayOfWeek.MONDAY).plusWeeks(weekOffset.toLong())
+
+    /** All days of the month containing [reference]. */
+    fun monthOf(reference: LocalDate = LocalDate.now()): List<LocalDate> {
+        val first = reference.withDayOfMonth(1)
+        val last = reference.lengthOfMonth()
+        return (0 until last).map { first.plusDays(it.toLong()) }
+    }
 }

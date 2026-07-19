@@ -30,6 +30,7 @@ object MealPlanMessageEncoder {
     fun encode(entry: MealPlanEntity): List<FieldChange> {
         val out = mutableListOf(
             FieldChange(d, entry.id, "date", json.encodeToString(String.serializer(), entry.date)),
+            FieldChange(d, entry.id, "slot", json.encodeToString(String.serializer(), entry.slot)),
             FieldChange(d, entry.id, "recipeId", json.encodeToString(String.serializer(), entry.recipeId)),
             FieldChange(d, entry.id, "pinned", entry.pinned.toString()),
             FieldChange(d, entry.id, SyncDatasets.COLUMN_DELETED, "false"),

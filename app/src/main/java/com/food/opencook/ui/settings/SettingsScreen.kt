@@ -33,6 +33,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.Dns
+import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Key
@@ -221,6 +222,20 @@ fun SettingsScreen(
                     onClick = { showLeaveConfirm = true },
                 )
             }
+
+            HorizontalDivider()
+
+            // --- Backup & Export ---
+            SectionHeader(
+                stringResource(R.string.settings_export_section_label),
+                modifier = Modifier.padding(horizontal = Spacing.screen, vertical = Spacing.sm),
+            )
+            SettingsRow(
+                icon = Icons.Outlined.FileDownload,
+                title = stringResource(R.string.settings_export_all_data),
+                subtitle = stringResource(R.string.settings_export_all_data_hint),
+                onClick = { viewModel.exportData() },
+            )
 
             HorizontalDivider()
 

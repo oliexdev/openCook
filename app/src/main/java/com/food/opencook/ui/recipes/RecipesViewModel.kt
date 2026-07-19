@@ -37,12 +37,12 @@ import javax.inject.Inject
 
 @HiltViewModel
 class RecipesViewModel @Inject constructor(
-    repository: RecipeRepository,
-    settings: SettingsRepository,
+    recipeRepository: RecipeRepository,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
 
     private val all: StateFlow<List<RecipeWithDetails>> =
-        repository.observeRecipes()
+        recipeRepository.observeRecipes()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _query = MutableStateFlow("")
@@ -68,13 +68,13 @@ class RecipesViewModel @Inject constructor(
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val serverBaseUrl: StateFlow<String?> =
-        settings.serverUrl.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+        settingsRepository.serverUrl.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     /** Recipe list layout (list vs. album grid); per-device, see [SettingsRepository.recipeViewMode]. */
     val viewMode: StateFlow<RecipeViewMode> =
-        settings.recipeViewMode.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecipeViewMode.LIST)
+        settingsRepository.recipeViewMode.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecipeViewMode.LIST)
 
-    fun setViewMode(mode: RecipeViewMode) = viewModelScope.launch { settings.setRecipeViewMode(mode) }
+    fun setViewMode(mode: RecipeViewMode) = viewModelScope.launch { settingsRepository.setRecipeViewMode(mode) }
 
     fun setQuery(value: String) { _query.value = value }
     fun selectCookbook(value: String?) { _cookbook.value = value }

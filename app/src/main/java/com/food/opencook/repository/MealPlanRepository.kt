@@ -22,6 +22,7 @@ import com.food.opencook.data.local.dao.MealDayDao
 import com.food.opencook.data.local.dao.MealPlanDao
 import com.food.opencook.data.local.entity.MealDayEntity
 import com.food.opencook.data.local.entity.MealPlanEntity
+import com.food.opencook.data.local.entity.MealSlot
 import com.food.opencook.sync.MealDayMessageEncoder
 import com.food.opencook.sync.MealPlanMessageEncoder
 import com.food.opencook.sync.MessageRecorder
@@ -62,11 +63,15 @@ class MealPlanRepository @Inject constructor(
         mealPlanDao.getForDateRange(start, end)
     suspend fun skippedDates(dates: List<String>): Set<String> = mealDayDao.skippedDates(dates).toSet()
 
-    suspend fun addEntry(date: String, recipeId: String) {
+    suspend fun getAllEntries(): List<MealPlanEntity> = mealPlanDao.getAll()
+    suspend fun getAllDays(): List<MealDayEntity> = mealDayDao.getAll()
+
+    suspend fun addEntry(date: String, recipeId: String, slot: MealSlot = MealSlot.DINNER) {
         val now = System.currentTimeMillis()
         val entry = MealPlanEntity(
             id = UUID.randomUUID().toString(),
             date = date,
+            slot = slot.key,
             recipeId = recipeId,
             pinned = false,
             // Manual add → no reasons; the "?" icon stays hidden for this dish.
@@ -85,11 +90,12 @@ class MealPlanRepository @Inject constructor(
 
     /** Add a dish to [date] already marked cooked — used when you cook something off-plan and
      *  record it as today's actual meal. Returns the new entry id (for undo). */
-    suspend fun addCookedEntry(date: String, recipeId: String): String {
+    suspend fun addCookedEntry(date: String, recipeId: String, slot: MealSlot = MealSlot.DINNER): String {
         val now = System.currentTimeMillis()
         val entry = MealPlanEntity(
             id = UUID.randomUUID().toString(),
             date = date,
+            slot = slot.key,
             recipeId = recipeId,
             pinned = false,
             cookedAt = date,
@@ -119,10 +125,11 @@ class MealPlanRepository @Inject constructor(
     }
 
     /** Roll an un-cooked planned dish forward to [newDate] (self-healing carry-forward). */
-    suspend fun moveEntry(entryId: String, newDate: String) {
+    suspend fun moveEntry(entryId: String, newDate: String, newSlot: MealSlot? = null) {
         val entry = mealPlanDao.getById(entryId) ?: return
-        if (entry.date == newDate) return
-        val updated = entry.copy(date = newDate, updatedAt = System.currentTimeMillis())
+        val updatedSlot = newSlot?.key ?: entry.slot
+        if (entry.date == newDate && entry.slot == updatedSlot) return
+        val updated = entry.copy(date = newDate, slot = updatedSlot, updatedAt = System.currentTimeMillis())
         mealPlanDao.upsert(updated)
         messageRecorder.record(MealPlanMessageEncoder.encode(updated))
     }
@@ -145,33 +152,39 @@ class MealPlanRepository @Inject constructor(
     suspend fun generateAndSaveWeek(
         generated: Map<String, String>,
         dateKeys: List<String>,
+        slot: MealSlot = MealSlot.DINNER,
         reasons: Map<String, List<ReasonContribution>> = emptyMap(),
     ) {
-        val pinnedDates = mealPlanDao.getForDates(dateKeys).filter { it.pinned }.map { it.date }.toSet()
-        clearNonPinned(dateKeys)
+        val pinnedDates = mealPlanDao.getForDates(dateKeys)
+            .filter { it.pinned && it.slot == slot.key }
+            .map { it.date }.toSet()
+        clearNonPinned(dateKeys, listOf(slot))
         generated.forEach { (date, recipeId) ->
-            if (date !in pinnedDates) insertGenerated(date, recipeId, encodeReasons(reasons[date].orEmpty()))
+            if (date !in pinnedDates) insertGenerated(date, recipeId, slot, encodeReasons(reasons[date].orEmpty()))
         }
     }
 
     /** Swap out a single day's (non-pinned) meal — used by "re-roll this day". */
-    suspend fun replaceDay(date: String, recipeId: String, reasons: List<ReasonContribution> = emptyList()) {
-        clearNonPinned(listOf(date))
-        insertGenerated(date, recipeId, encodeReasons(reasons))
+    suspend fun replaceDay(date: String, recipeId: String, slot: MealSlot = MealSlot.DINNER, reasons: List<ReasonContribution> = emptyList()) {
+        clearNonPinned(listOf(date), listOf(slot))
+        insertGenerated(date, recipeId, slot, encodeReasons(reasons))
     }
 
-    private suspend fun clearNonPinned(dates: List<String>) {
-        mealPlanDao.getForDates(dates).filter { !it.pinned }.forEach { e ->
-            mealPlanDao.deleteById(e.id)
-            messageRecorder.record(MealPlanMessageEncoder.tombstone(e.id))
-        }
+    private suspend fun clearNonPinned(dates: List<String>, slots: List<MealSlot>? = null) {
+        mealPlanDao.getForDates(dates)
+            .filter { !it.pinned && (slots == null || MealSlot.fromKey(it.slot) in slots) }
+            .forEach { e ->
+                mealPlanDao.deleteById(e.id)
+                messageRecorder.record(MealPlanMessageEncoder.tombstone(e.id))
+            }
     }
 
-    private suspend fun insertGenerated(date: String, recipeId: String, reasonsJson: String? = null) {
+    private suspend fun insertGenerated(date: String, recipeId: String, slot: MealSlot, reasonsJson: String? = null) {
         val now = System.currentTimeMillis()
         val entry = MealPlanEntity(
             id = UUID.randomUUID().toString(),
             date = date,
+            slot = slot.key,
             recipeId = recipeId,
             pinned = false,
             reasonsJson = reasonsJson,

@@ -50,9 +50,10 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): OpenCookDatabase =
-        // v1 is the released baseline schema (see OpenCookDatabase): no migrations yet.
-        // Real migrations must be added here as the schema evolves past v1.
+        // v1 is the released baseline schema; v2 adds meal slots. Destructive
+        // migration is fine here since data re-syncs from the server log.
         Room.databaseBuilder(context, OpenCookDatabase::class.java, "opencook.db")
+            .fallbackToDestructiveMigration()
             .build()
 
     @Provides

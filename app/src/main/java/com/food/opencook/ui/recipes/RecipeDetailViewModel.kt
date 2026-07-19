@@ -23,6 +23,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.food.opencook.data.local.relation.RecipeWithDetails
 import com.food.opencook.data.remote.dto.RecipeDto
+import com.food.opencook.data.local.entity.MealSlot
 import com.food.opencook.data.settings.SettingsRepository
 import com.food.opencook.repository.MealPlanRepository
 import com.food.opencook.repository.PantryRepository
@@ -48,17 +49,17 @@ import kotlinx.serialization.json.Json
 import java.time.LocalDate
 import javax.inject.Inject
 
-/** A dish already planned on a given day, with the bits the picker sheet needs to render. */
-data class PlannedDish(val name: String, val imageModel: Any?)
+/** A dish already planned on a given day/slot, with the bits the picker sheet needs to render. */
+data class PlannedDish(val name: String, val imageModel: Any?, val slot: MealSlot = MealSlot.DINNER)
 
 @HiltViewModel
 class RecipeDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val repository: RecipeRepository,
+    private val recipeRepository: RecipeRepository,
     private val shoppingRepository: ShoppingRepository,
     private val pantryRepository: PantryRepository,
     private val mealPlanRepository: MealPlanRepository,
-    private val settings: SettingsRepository,
+    private val settingsRepository: SettingsRepository,
     private val json: Json,
 ) : ViewModel() {
 
@@ -70,7 +71,7 @@ class RecipeDetailViewModel @Inject constructor(
 
     /** Delete the recipe (emits a tombstone so the deletion syncs), then leave. */
     fun delete(onDeleted: () -> Unit) = viewModelScope.launch {
-        repository.deleteRecipe(recipeId)
+        recipeRepository.deleteRecipe(recipeId)
         onDeleted()
     }
 
@@ -81,11 +82,11 @@ class RecipeDetailViewModel @Inject constructor(
     }
 
     val recipe: StateFlow<RecipeWithDetails?> =
-        repository.observeRecipe(recipeId)
+        recipeRepository.observeRecipe(recipeId)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val serverBaseUrl: StateFlow<String?> =
-        settings.serverUrl.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+        settingsRepository.serverUrl.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     /** Target portions for the scaling stepper; null = show the recipe's own servings. */
     private val _targetServings = MutableStateFlow<Int?>(null)
@@ -96,19 +97,19 @@ class RecipeDetailViewModel @Inject constructor(
     /** This device's own "liked" state for the heart toggle. */
     @OptIn(ExperimentalCoroutinesApi::class)
     val liked: StateFlow<Boolean> =
-        flow { emit(settings.ensureNodeId()) }
-            .flatMapLatest { node -> repository.observeLike(recipeId, node) }
+        flow { emit(settingsRepository.ensureNodeId()) }
+            .flatMapLatest { node -> recipeRepository.observeLike(recipeId, node) }
             .map { it?.liked == true }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     fun toggleLiked() = viewModelScope.launch {
-        repository.setLiked(recipeId, settings.ensureNodeId(), !liked.value)
+        recipeRepository.setLiked(recipeId, settingsRepository.ensureNodeId(), !liked.value)
     }
 
     /** Whether this recipe was cooked **today** — a per-day mark, not a sticky "ever cooked" flag,
      *  so the same dish can be re-marked the next time it's cooked. */
     val cooked: StateFlow<Boolean> =
-        repository.observeRecipe(recipeId)
+        recipeRepository.observeRecipe(recipeId)
             .map { it?.recipe?.lastCookedAt == LocalDate.now().toString() }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
@@ -146,13 +147,13 @@ class RecipeDetailViewModel @Inject constructor(
         val today = LocalDate.now().toString()
         if (cooked.value) {
             // Already cooked today → un-mark, restoring whatever the last-cooked date was before.
-            repository.restoreLastCookedAt(recipeId, previousCooked)
+            recipeRepository.restoreLastCookedAt(recipeId, previousCooked)
             return@launch
         }
         // Remember the prior date (for undo), then stamp today + consume the pantry.
-        val prev = repository.getRecipeOnce(recipeId)?.recipe?.lastCookedAt
+        val prev = recipeRepository.getRecipeOnce(recipeId)?.recipe?.lastCookedAt
         previousCooked = prev
-        repository.markCookedOn(recipeId, today)
+        recipeRepository.markCookedOn(recipeId, today)
         val planned = mealPlanRepository.getForDates(listOf(today)).firstOrNull() ?: return@launch
         when {
             // Cooked exactly what was planned → just confirm that day's entry.
@@ -171,7 +172,7 @@ class RecipeDetailViewModel @Inject constructor(
      * the displaced dish is simply removed from today.
      */
     private suspend fun swapTodayWith(displacedEntryId: String, displacedRecipeId: String, today: String, prevCooked: String?) {
-        val name = repository.getRecipeOnce(displacedRecipeId)?.recipe?.name ?: "Gericht"
+        val name = recipeRepository.getRecipeOnce(displacedRecipeId)?.recipe?.name ?: "Gericht"
         val procured = shoppingRepository.hasItemsFor(displacedRecipeId, today) || fullyInPantry(displacedRecipeId)
 
         val moves = mutableListOf<SwapMove>()
@@ -226,13 +227,13 @@ class RecipeDetailViewModel @Inject constructor(
         }
         undo.readd.forEach { (rid, date) -> mealPlanRepository.addEntry(date, rid) }
         // Also un-mark today's cook, back to whatever the recipe's last-cooked date was before.
-        repository.restoreLastCookedAt(recipeId, undo.previousCooked)
+        recipeRepository.restoreLastCookedAt(recipeId, undo.previousCooked)
         _lastSwap.value = null
     }
 
     /** All of a recipe's ingredients are covered by the pantry — same notion as the "Alles da" badge. */
     private suspend fun fullyInPantry(rid: String): Boolean {
-        val r = repository.getRecipeOnce(rid) ?: return false
+        val r = recipeRepository.getRecipeOnce(rid) ?: return false
         val pantry = pantryRepository.stockedNames()
         val names = r.ingredients.map { it.name.trim() }.filter { it.isNotEmpty() }
         return names.isNotEmpty() && names.all { IngredientMatch.containsLike(pantry, it) }
@@ -246,32 +247,35 @@ class RecipeDetailViewModel @Inject constructor(
         WeekDates.weekOf(weekOffset = 1).map(LocalDate::toString),
     )
 
-    /** date (ISO) → the currently planned dish (name + thumbnail), if any. */
-    val plannedDishes: StateFlow<Map<String, PlannedDish>> =
+    /** date (ISO) -> the currently planned dishes (one per slot), if any. */
+    val plannedDishes: StateFlow<Map<String, List<PlannedDish>>> =
         combine(
             mealPlanRepository.observeForDates(planWeekDates.flatten()),
-            repository.observeRecipes(),
-            settings.serverUrl,
+            recipeRepository.observeRecipes(),
+            settingsRepository.serverUrl,
         ) { entries, recipes, baseUrl ->
             val byId = recipes.associateBy { it.recipe.id }
-            entries.associate { entry ->
-                val r = byId[entry.recipeId]
-                entry.date to PlannedDish(
-                    name = r?.recipe?.name ?: "Rezept",
-                    imageModel = imageModelFor(r?.images.orEmpty(), baseUrl),
-                )
+            entries.groupBy { it.date }.mapValues { (_, dayEntries) ->
+                dayEntries.map { entry ->
+                    val r = byId[entry.recipeId]
+                    PlannedDish(
+                        name = r?.recipe?.name ?: "Rezept",
+                        imageModel = imageModelFor(r?.images.orEmpty(), baseUrl),
+                        slot = MealSlot.fromKey(entry.slot)
+                    )
+                }
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
-    /** Add the current recipe to [date] as a fresh entry (used when the day is empty). */
-    fun assignToMealPlan(date: String, onDone: () -> Unit) = viewModelScope.launch {
-        mealPlanRepository.addEntry(date, recipeId)
+    /** Add the current recipe to [date] and [slot] as a fresh entry. */
+    fun assignToMealPlan(date: String, slot: MealSlot, onDone: () -> Unit) = viewModelScope.launch {
+        mealPlanRepository.addEntry(date, recipeId, slot)
         onDone()
     }
 
-    /** Replace whatever is planned on [date] with the current recipe (used when occupied). */
-    fun replaceOnMealPlan(date: String, onDone: () -> Unit) = viewModelScope.launch {
-        mealPlanRepository.replaceDay(date, recipeId)
+    /** Replace whatever is planned on [date]/[slot] with the current recipe. */
+    fun replaceOnMealPlan(date: String, slot: MealSlot, onDone: () -> Unit) = viewModelScope.launch {
+        mealPlanRepository.replaceDay(date, recipeId, slot)
         onDone()
     }
 }

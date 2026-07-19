@@ -20,12 +20,25 @@ package com.food.opencook.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
-/** A recipe planned for a given day. [date] is ISO "yyyy-MM-dd". Syncs like recipes. */
+/** The three fixed meal slots of a day. */
+enum class MealSlot(val key: String) {
+    BREAKFAST("breakfast"),
+    LUNCH("lunch"),
+    DINNER("dinner"),
+    ;
+    companion object {
+        fun fromKey(key: String?) = entries.find { it.key == key } ?: DINNER
+    }
+}
+
+/** A recipe planned for a given day and slot. [date] is ISO "yyyy-MM-dd". Syncs like recipes. */
 @Entity(tableName = "meal_plan")
 data class MealPlanEntity(
     @PrimaryKey val id: String,
     val date: String,
+    val slot: String = MealSlot.DINNER.key,
     val recipeId: String,
     /** Pinned entries survive auto-regeneration ("Woche vorschlagen" / re-roll). */
     val pinned: Boolean = false,

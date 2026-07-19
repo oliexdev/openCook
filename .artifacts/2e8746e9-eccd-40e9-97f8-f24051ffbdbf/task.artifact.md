@@ -1,0 +1,9 @@
+- [x] Add `slot` to `MealPlanEntity` and bump database version
+- [x] Update `MealPlanRepository` and `Sync` logic for slots
+- [x] Add Month planning support to `WeekDates`
+- [x] Update `MealPlanViewModel` for `PlanningWindow` and multi-meal grouping
+- [x] Update `MealPlanScreen` to display Breakfast, Lunch, Dinner slots
+- [x] Update `MealPlanPickScreen` and `AddToMealPlanSheet` to handle slot selection
+- [x] Add month option to the plan selector
+- [x] Update `RecipeExport` to include slot data
+- [x] Verify build and functionality
