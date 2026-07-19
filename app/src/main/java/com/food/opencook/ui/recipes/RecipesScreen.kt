@@ -34,7 +34,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.FilterChip
@@ -46,15 +48,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.food.opencook.R
+import com.food.opencook.data.settings.RecipeViewMode
 import com.food.opencook.ui.AppBarViewModel
 import com.food.opencook.ui.components.AppTopBar
 import com.food.opencook.ui.components.EmptyState
 import com.food.opencook.ui.components.RecipeCard
 import com.food.opencook.ui.theme.Spacing
+import com.food.opencook.util.RecipesLayout
 
 @Composable
 fun RecipesScreen(
@@ -67,6 +70,7 @@ fun RecipesScreen(
     val query by viewModel.query.collectAsStateWithLifecycle()
     val cookbooks by viewModel.cookbooks.collectAsStateWithLifecycle()
     val selectedCookbook by viewModel.selectedCookbook.collectAsStateWithLifecycle()
+    val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
     val appBar: AppBarViewModel = hiltViewModel()
     val syncStatus by appBar.status.collectAsStateWithLifecycle()
 
@@ -82,6 +86,18 @@ fun RecipesScreen(
                 syncStatus = syncStatus,
                 onSync = appBar::sync,
                 actions = {
+                    IconButton(
+                        onClick = {
+                            viewModel.setViewMode(if (viewMode == RecipeViewMode.LIST) RecipeViewMode.GRID else RecipeViewMode.LIST)
+                        },
+                    ) {
+                        // Icon shows the mode a tap switches TO, not the current one.
+                        if (viewMode == RecipeViewMode.LIST) {
+                            Icon(Icons.Outlined.GridView, contentDescription = stringResource(R.string.recipes_view_grid))
+                        } else {
+                            Icon(Icons.Outlined.ViewAgenda, contentDescription = stringResource(R.string.recipes_view_list))
+                        }
+                    }
                     IconButton(onClick = onAddRecipe) {
                         Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.recipes_add))
                     }
@@ -131,14 +147,10 @@ fun RecipesScreen(
                 onAction = if (query.isBlank()) onAddRecipe else null,
             )
         } else {
-            // Tablet landscape has room for tiles: 1 column on a phone, 2 on a medium width,
-            // 3 on a wide tablet. maxWidth measures the real content width (after the nav rail).
+            // Tablet landscape has room for tiles: columns scale with width and view mode
+            // (see RecipesLayout). maxWidth measures the real content width (after the nav rail).
             BoxWithConstraints(Modifier.fillMaxSize()) {
-                val cols = when {
-                    maxWidth < 600.dp -> 1
-                    maxWidth < 900.dp -> 2
-                    else -> 3
-                }
+                val cols = RecipesLayout.columnsFor(maxWidth.value, viewMode)
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(cols),
                     contentPadding = PaddingValues(vertical = Spacing.md),
@@ -151,6 +163,7 @@ fun RecipesScreen(
                             subtitle = listOfNotNull(recipe.recipe.recipeYield, recipe.recipe.cookbook).joinToString(" · ").ifBlank { null },
                             imageModel = imageModelFor(recipe.images, baseUrl),
                             onClick = { onRecipeClick(recipe.recipe.id) },
+                            squareImage = viewMode == RecipeViewMode.GRID,
                         )
                     }
                 }

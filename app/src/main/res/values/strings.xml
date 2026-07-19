@@ -93,6 +93,8 @@
     <string name="recipes_filter_all">All</string>
     <string name="recipe_delete">Delete</string>
     <string name="recipe_edit">Edit</string>
+    <string name="recipe_export">Export recipe</string>
+    <string name="recipe_export_not_ready">Still loading — try again in a moment</string>
     <string name="recipe_like">Liked</string>
     <string name="recipe_cookbook_label">Cookbook</string>
     <string name="recipe_cooked_mark">Mark as cooked</string>
@@ -221,6 +223,8 @@
     <!-- Meal plan -->
     <string name="mealplan_title">Week plan</string>
     <string name="mealplan_to_shopping">Generate shopping list</string>
+    <string name="mealplan_export_calendar">Export week to calendar</string>
+    <string name="mealplan_export_empty">Nothing planned this week to export</string>
     <string name="mealplan_add_recipe">Add recipe</string>
     <string name="mealplan_smart_pick">Roll a matching dish</string>
     <string name="mealplan_pick_recipe">Choose recipe</string>
@@ -241,6 +245,10 @@
     <string name="mealplan_pin">Pin (kept when rolling)</string>
     <string name="mealplan_unpin">Unpin</string>
     <string name="mealplan_reroll">Roll another dish</string>
+    <string name="mealplan_month">Month</string>
+    <string name="mealplan_slot_breakfast">Breakfast</string>
+    <string name="mealplan_slot_lunch">Lunch</string>
+    <string name="mealplan_slot_dinner">Dinner</string>
     <string name="mealplan_cooked">Cooked</string>
     <string name="mealplan_uncooked">Not cooked after all</string>
 
@@ -318,10 +326,19 @@
     <string name="settings_connect_server_hint">Unlock photo scanning and family sync — your data is kept.</string>
     <string name="settings_appearance_section">Appearance</string>
     <string name="settings_dynamic_color">Material You (system colors)</string>
+    <string name="settings_text_size">Text size</string>
+    <string name="settings_text_size_normal">Normal</string>
+    <string name="settings_text_size_large">Large</string>
+    <string name="settings_text_size_extra_large">Extra large</string>
 
     <!-- Settings: grouped sections + admin -->
     <string name="settings_household_section_label">Household</string>
     <string name="settings_server_label">Server &amp; connection</string>
+<<<<<<< HEAD
+    <string name="settings_export_section_label">Backup &amp; export</string>
+    <string name="settings_export_all_data">Export all data (ZIP)</string>
+    <string name="settings_export_all_data_hint">Recipes (JSON + Markdown), meal plan and shopping list</string>
+=======
     <string name="settings_p2p_title">Phone-to-phone sync</string>
     <string name="settings_p2p_subtitle">Sync directly over Wi-Fi, even with the app closed</string>
     <string name="standby_channel_name">Family sync standby</string>
@@ -330,6 +347,7 @@
     <string name="settings_attach_server">Add a server</string>
     <string name="settings_attach_server_hint">Optional: photo scanning, backups and browser import need a home server.</string>
     <string name="settings_attach_server_action">Add server</string>
+>>>>>>> upstream/main
     <string name="settings_admin">Admin area</string>
     <string name="settings_admin_subtitle">Manage server backups (password required)</string>
 
@@ -410,6 +428,8 @@
 
     <!-- Recipes list -->
     <string name="recipes_add">Add recipe</string>
+    <string name="recipes_view_grid">Switch to grid view</string>
+    <string name="recipes_view_list">Switch to list view</string>
     <string name="recipes_empty_title">No recipes yet</string>
     <string name="recipes_empty_msg">Add a recipe or create one.</string>
     <string name="recipes_search_empty_title">Nothing found</string>

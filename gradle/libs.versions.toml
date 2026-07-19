@@ -1,9 +1,9 @@
 [versions]
-agp = "9.2.1"
+agp = "9.3.0"
 # Kotlin version is provided built-in by AGP 9 (KGP 2.2.10). The Compose compiler
 # plugin and KSP must match this exact version.
 kotlin = "2.2.10"
-ksp = "2.2.10-2.0.2"
+ksp = "2.3.2"
 
 # AndroidX core
 coreKtx = "1.19.0"

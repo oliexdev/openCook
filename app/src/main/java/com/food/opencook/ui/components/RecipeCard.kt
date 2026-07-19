@@ -21,6 +21,7 @@ package com.food.opencook.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -48,6 +49,8 @@ import com.food.opencook.ui.theme.Spacing
 /**
  * Photo-forward recipe card: large image (with a warm placeholder + heart overlay when
  * liked), title and a meta line. [imageModel] is a Coil model (File / URL) or null.
+ * [squareImage] swaps the fixed-height image for a 1:1 tile — the "album grid" look
+ * ([com.food.opencook.data.settings.RecipeViewMode.GRID]) — instead of [imageHeight].
  */
 @Composable
 fun RecipeCard(
@@ -58,13 +61,16 @@ fun RecipeCard(
     modifier: Modifier = Modifier,
     liked: Boolean = false,
     imageHeight: Int = 150,
+    squareImage: Boolean = false,
 ) {
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
-        Box(Modifier.fillMaxWidth().height(imageHeight.dp)) {
+        Box(
+            Modifier.fillMaxWidth().let { if (squareImage) it.aspectRatio(1f) else it.height(imageHeight.dp) },
+        ) {
             if (imageModel != null) {
                 AsyncImage(
                     model = imageModel,

@@ -275,7 +275,7 @@ private fun AppNavHost(navController: NavHostController, navigateToTab: (String)
         composable(TopLevelDestination.PLAN.route) {
             MealPlanScreen(
                 onOpenRecipe = { navController.navigate(Routes.recipeDetail(it)) },
-                onPickRecipe = { date -> navController.navigate(Routes.planPick(date)) },
+                onPickRecipe = { date, slot -> navController.navigate(Routes.planPick(date, slot)) },
             )
         }
         composable(TopLevelDestination.SHOPPING.route) {
@@ -292,10 +292,14 @@ private fun AppNavHost(navController: NavHostController, navigateToTab: (String)
         }
         composable(
             Routes.PLAN_PICK,
-            arguments = listOf(navArgument(Routes.ARG_DATE) { type = NavType.StringType }),
+            arguments = listOf(
+                navArgument(Routes.ARG_DATE) { type = NavType.StringType },
+                navArgument(Routes.ARG_SLOT) { type = NavType.StringType },
+            ),
         ) { entry ->
             MealPlanPickScreen(
                 date = entry.arguments?.getString(Routes.ARG_DATE).orEmpty(),
+                slotKey = entry.arguments?.getString(Routes.ARG_SLOT).orEmpty(),
                 onBack = { navController.popBackStack() },
             )
         }

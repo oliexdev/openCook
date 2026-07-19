@@ -42,11 +42,13 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.food.opencook.R
+import com.food.opencook.data.local.entity.MealSlot
 import com.food.opencook.ui.components.EmptyState
 import com.food.opencook.ui.components.RecipeCard
 import com.food.opencook.ui.recipes.RecipesViewModel
@@ -54,7 +56,7 @@ import com.food.opencook.ui.recipes.imageModelFor
 import com.food.opencook.ui.theme.Spacing
 
 /**
- * Pick a recipe for a meal-plan [date] — the full recipe list with search and
+ * Pick a recipe for a meal-plan [date] and [slotKey] — the full recipe list with search and
  * cookbook filters (reuses [RecipesViewModel]); tapping a recipe assigns it and
  * returns. Adding goes through a fresh [MealPlanViewModel]; it writes to the
  * repository, so the plan screen updates via its own observed flow.
@@ -63,6 +65,7 @@ import com.food.opencook.ui.theme.Spacing
 @Composable
 fun MealPlanPickScreen(
     date: String,
+    slotKey: String,
     onBack: () -> Unit,
     recipesViewModel: RecipesViewModel = hiltViewModel(),
     mealPlanViewModel: MealPlanViewModel = hiltViewModel(),
@@ -72,6 +75,8 @@ fun MealPlanPickScreen(
     val query by recipesViewModel.query.collectAsStateWithLifecycle()
     val cookbooks by recipesViewModel.cookbooks.collectAsStateWithLifecycle()
     val selectedCookbook by recipesViewModel.selectedCookbook.collectAsStateWithLifecycle()
+
+    val slot = remember(slotKey) { MealSlot.fromKey(slotKey) }
 
     Scaffold(
         topBar = {
@@ -140,7 +145,7 @@ fun MealPlanPickScreen(
                             subtitle = listOfNotNull(recipe.recipe.recipeYield, recipe.recipe.cookbook).joinToString(" · ").ifBlank { null },
                             imageModel = imageModelFor(recipe.images, baseUrl),
                             onClick = {
-                                mealPlanViewModel.addRecipe(date, recipe.recipe.id)
+                                mealPlanViewModel.addRecipe(date, recipe.recipe.id, slot)
                                 onBack()
                             },
                         )

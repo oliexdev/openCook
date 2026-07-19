@@ -37,6 +37,8 @@ class PantryRepository @Inject constructor(
 ) {
     fun observeItems(): Flow<List<PantryItemEntity>> = pantryDao.observeAll()
 
+    suspend fun getAllItems(): List<PantryItemEntity> = pantryDao.getAll()
+
     /** Lower-cased staple names, for skipping owned ingredients. */
     suspend fun stockedNames(): Set<String> = pantryDao.allNames().map { it.lowercase().trim() }.toSet()
 

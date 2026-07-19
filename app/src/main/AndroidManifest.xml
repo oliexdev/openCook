@@ -61,6 +61,19 @@
                 tools:node="remove" />
         </provider>
 
+<<<<<<< HEAD
+        <!-- Serves generated files (currently: .ics meal-plan exports) to other apps via a
+             content:// URI, without granting access to the rest of the app's storage. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+=======
         <!-- Phone-to-phone sync standby (see PeerStandbyService). -->
         <service
             android:name=".data.peer.PeerStandbyService"
@@ -70,6 +83,7 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Keeps this phone answerable for household peer-to-peer sync over the home Wi-Fi while the app is closed (user-enabled)." />
         </service>
+>>>>>>> upstream/main
     </application>
 
 </manifest>

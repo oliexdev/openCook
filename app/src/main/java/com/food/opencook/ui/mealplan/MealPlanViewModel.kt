@@ -20,6 +20,7 @@ package com.food.opencook.ui.mealplan
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.food.opencook.data.local.entity.MealSlot
 import com.food.opencook.data.settings.SettingsRepository
 import com.food.opencook.repository.MealPlanRepository
 import com.food.opencook.repository.PantryRepository
@@ -42,15 +43,15 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import javax.inject.Inject
 
-/** Which 7-day window the user is currently looking at. We expose exactly two —
- *  the current week (still being cooked) and the next week (being planned). */
-enum class WeekSelection { CURRENT, NEXT }
+/** Which window the user is currently looking at. We expose current/next week and a month view. */
+enum class PlanningWindow { CURRENT_WEEK, NEXT_WEEK, MONTH }
 
 data class PlannedRecipe(
     val entryId: String,
     val recipeId: String,
     val name: String,
     val pinned: Boolean,
+    val slot: MealSlot = MealSlot.DINNER,
     val imageModel: Any? = null,
     val missing: Int = 0,
     val missingItems: List<String> = emptyList(),
@@ -75,21 +76,24 @@ class MealPlanViewModel @Inject constructor(
 
     private val labelFormat = DateLabels.weekdayDayMonth()
 
-    private val _selectedWeek = MutableStateFlow(WeekSelection.CURRENT)
-    val selectedWeek: StateFlow<WeekSelection> = _selectedWeek.asStateFlow()
+    private val _selectedWindow = MutableStateFlow(PlanningWindow.CURRENT_WEEK)
+    val selectedWindow: StateFlow<PlanningWindow> = _selectedWindow.asStateFlow()
 
-    fun selectWeek(selection: WeekSelection) {
-        _selectedWeek.value = selection
+    fun selectWindow(selection: PlanningWindow) {
+        _selectedWindow.value = selection
     }
 
-    /** Always Monday–Sunday; selection offsets by full weeks. */
-    private fun daysFor(selection: WeekSelection): List<LocalDate> =
-        WeekDates.weekOf(weekOffset = if (selection == WeekSelection.NEXT) 1 else 0)
+    /** Returns all days for the chosen window. */
+    private fun daysFor(selection: PlanningWindow): List<LocalDate> = when (selection) {
+        PlanningWindow.CURRENT_WEEK -> WeekDates.weekOf(weekOffset = 0)
+        PlanningWindow.NEXT_WEEK -> WeekDates.weekOf(weekOffset = 1)
+        PlanningWindow.MONTH -> WeekDates.monthOf()
+    }
 
-    private fun currentDays(): List<LocalDate> = daysFor(_selectedWeek.value)
+    private fun currentDays(): List<LocalDate> = daysFor(_selectedWindow.value)
     private fun currentDateKeys(): List<String> = currentDays().map(LocalDate::toString)
 
-    val week: StateFlow<List<DayPlan>> = _selectedWeek
+    val plan: StateFlow<List<DayPlan>> = _selectedWindow
         .flatMapLatest { selection ->
             val days = daysFor(selection)
             val dateKeys = days.map(LocalDate::toString)
@@ -106,29 +110,34 @@ class MealPlanViewModel @Inject constructor(
                     DayPlan(
                         date = key,
                         label = day.format(labelFormat),
-                        entries = entries.filter { it.date == key }.map { entry ->
-                            val recipe = byId[entry.recipeId]
-                            val missingItems = recipe?.ingredients?.mapNotNull { ing ->
-                                ing.name.trim().takeIf { it.isNotEmpty() && !IngredientMatch.containsLike(pantryNames, it) }
-                            }.orEmpty()
-                            PlannedRecipe(
-                                entryId = entry.id,
-                                recipeId = entry.recipeId,
-                                name = recipe?.recipe?.name ?: "Rezept",
-                                pinned = entry.pinned,
-                                imageModel = com.food.opencook.ui.recipes.imageModelFor(recipe?.images.orEmpty(), baseUrl),
-                                missing = missingItems.size,
-                                missingItems = missingItems,
-                                // Reasons travel on the entity via reasonsJson — sync, restart-safe.
-                                reasons = mealPlanRepository.decodeReasons(entry.reasonsJson),
-                                cooked = entry.cookedAt != null,
-                            )
-                        },
+                        entries = entries.filter { it.date == key }
+                            .map { entry ->
+                                val recipe = byId[entry.recipeId]
+                                val missingItems = recipe?.ingredients?.mapNotNull { ing ->
+                                    ing.name.trim().takeIf { it.isNotEmpty() && !IngredientMatch.containsLike(pantryNames, it) }
+                                }.orEmpty()
+                                PlannedRecipe(
+                                    entryId = entry.id,
+                                    recipeId = entry.recipeId,
+                                    name = recipe?.recipe?.name ?: "Rezept",
+                                    pinned = entry.pinned,
+                                    slot = MealSlot.fromKey(entry.slot),
+                                    imageModel = com.food.opencook.ui.recipes.imageModelFor(recipe?.images.orEmpty(), baseUrl),
+                                    missing = missingItems.size,
+                                    missingItems = missingItems,
+                                    reasons = mealPlanRepository.decodeReasons(entry.reasonsJson),
+                                    cooked = entry.cookedAt != null,
+                                )
+                            }
+                            .sortedBy { it.slot.ordinal },
                     )
                 }
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Legacy binding for the UI during refactor. */
+    val week: StateFlow<List<DayPlan>> = plan
 
     /** True while a week is being generated / shopping list built — drives a loading UI. */
     private val _generating = MutableStateFlow(false)
@@ -140,29 +149,28 @@ class MealPlanViewModel @Inject constructor(
             .map { list -> list.map { RecipeOption(it.recipe.id, it.recipe.name ?: "—") } }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    fun addRecipe(date: String, recipeId: String) = viewModelScope.launch {
-        mealPlanRepository.addEntry(date, recipeId)
+    fun addRecipe(date: String, recipeId: String, slot: MealSlot = MealSlot.DINNER) = viewModelScope.launch {
+        mealPlanRepository.addEntry(date, recipeId, slot)
     }
 
     fun remove(entryId: String) = viewModelScope.launch { mealPlanRepository.deleteEntry(entryId) }
 
     /**
-     * Drag-and-drop a planned dish onto another day. On an empty target the dish
-     * just moves; on an occupied target the two days swap their dishes (the model is
-     * one dish per day). Shopping-list provenance follows each dish via [moveSource],
-     * so already-listed ingredients keep pointing at the day they're cooked.
+     * Drag-and-drop a planned dish onto another day/slot. On an empty target the dish
+     * just moves; on an occupied target the two slots swap their dishes.
      */
-    fun moveDish(entryId: String, fromDate: String, toDate: String) = viewModelScope.launch {
-        if (fromDate == toDate) return@launch
+    fun moveDish(entryId: String, fromDate: String, toDate: String, toSlot: MealSlot? = null) = viewModelScope.launch {
         val entries = mealPlanRepository.getForDates(listOf(fromDate, toDate))
         val dragged = entries.firstOrNull { it.id == entryId } ?: return@launch
-        // Swap partner: an existing dish on the target day (excluding the dragged one).
-        val target = entries.firstOrNull { it.date == toDate && it.id != entryId }
+        val targetSlot = toSlot ?: MealSlot.fromKey(dragged.slot)
+        
+        // Swap partner: an existing dish on the target day and slot.
+        val target = entries.firstOrNull { it.date == toDate && it.slot == targetSlot.key && it.id != entryId }
 
-        mealPlanRepository.moveEntry(dragged.id, toDate)
+        mealPlanRepository.moveEntry(dragged.id, toDate, targetSlot)
         shoppingRepository.moveSource(dragged.recipeId, fromDate, toDate)
         if (target != null) {
-            mealPlanRepository.moveEntry(target.id, fromDate)
+            mealPlanRepository.moveEntry(target.id, fromDate, MealSlot.fromKey(dragged.slot))
             shoppingRepository.moveSource(target.recipeId, toDate, fromDate)
         }
     }
@@ -226,7 +234,9 @@ class MealPlanViewModel @Inject constructor(
         val days = currentDays()
         val dateKeys = days.map(LocalDate::toString)
         val existing = mealPlanRepository.getForDates(dateKeys)
-        val pinned = existing.filter { it.pinned }.associate { LocalDate.parse(it.date) to it.recipeId }
+        // Currently, auto-generation ONLY fills the Dinner slot.
+        val pinned = existing.filter { it.pinned && it.slot == MealSlot.DINNER.key }
+            .associate { LocalDate.parse(it.date) to it.recipeId }
         val generated = MealPlanner.generateWeekBest(
             dates = days,
             skipped = emptySet(),
@@ -242,11 +252,11 @@ class MealPlanViewModel @Inject constructor(
         )
         val ids = generated.mapKeys { it.key.toString() }.mapValues { it.value.recipeId }
         val reasons = generated.mapKeys { it.key.toString() }.mapValues { it.value.reasons }
-        mealPlanRepository.generateAndSaveWeek(ids, dateKeys, reasons)
+        mealPlanRepository.generateAndSaveWeek(ids, dateKeys, MealSlot.DINNER, reasons)
         } finally { _generating.value = false }
     }
 
-    /** Re-roll a single day: pin the rest of the week, avoid the current dish, repick one day. */
+    /** Re-roll a single day's dinner: pin the rest of the week, avoid the current dish, repick. */
     fun reroll(dateKey: String) = viewModelScope.launch {
         val candidates = recipeRepository.getAllRecipesOnce()
         if (candidates.isEmpty()) return@launch
@@ -255,7 +265,8 @@ class MealPlanViewModel @Inject constructor(
         val days = currentDays()
         val dateKeys = days.map(LocalDate::toString)
         val existing = mealPlanRepository.getForDates(dateKeys)
-        val currentByDate = existing.associate { LocalDate.parse(it.date) to it.recipeId }
+        val currentByDate = existing.filter { it.slot == MealSlot.DINNER.key }
+            .associate { LocalDate.parse(it.date) to it.recipeId }
         val others = currentByDate.filterKeys { it != target } // treat as fixed so only target changes
         // Penalise the current dish so the re-roll yields something different.
         val recently = recentlyPlanned(days.first()).toMutableMap()
@@ -273,7 +284,7 @@ class MealPlanViewModel @Inject constructor(
             liked = recipeRepository.likedRecipeIds(),
             lastCookedAt = cookedMap(candidates),
         )
-        generated[target]?.let { mealPlanRepository.replaceDay(dateKey, it.recipeId, it.reasons) }
+        generated[target]?.let { mealPlanRepository.replaceDay(dateKey, it.recipeId, MealSlot.DINNER, it.reasons) }
     }
 
     /** recipeId -> the most recent date it was planned in the few weeks *before* [weekStart].

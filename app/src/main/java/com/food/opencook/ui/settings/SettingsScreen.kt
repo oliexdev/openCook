@@ -34,6 +34,7 @@ import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Dns
+import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Key
@@ -41,6 +42,7 @@ import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
@@ -76,6 +78,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import com.food.opencook.R
 import com.food.opencook.data.settings.ContentLanguages
+import com.food.opencook.data.settings.TextScale
 import com.food.opencook.sync.SyncStatus
 import com.food.opencook.sync.SyncVia
 import com.food.opencook.ui.AppBarViewModel
@@ -90,6 +93,7 @@ fun SettingsScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val dynamicColor by viewModel.dynamicColor.collectAsStateWithLifecycle()
+    val textScale by viewModel.textScale.collectAsStateWithLifecycle()
     val contentLanguage by viewModel.contentLanguage.collectAsStateWithLifecycle()
     val appBar: AppBarViewModel = hiltViewModel()
     val syncStatus by appBar.status.collectAsStateWithLifecycle()
@@ -100,12 +104,21 @@ fun SettingsScreen(
     var serverExpanded by remember { mutableStateOf(false) }
     var showLeaveConfirm by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var showTextScaleDialog by remember { mutableStateOf(false) }
 
     if (showLanguageDialog) {
         ContentLanguageDialog(
             current = contentLanguage,
             onPick = { viewModel.setContentLanguage(it); showLanguageDialog = false },
             onDismiss = { showLanguageDialog = false },
+        )
+    }
+
+    if (showTextScaleDialog) {
+        TextScaleDialog(
+            current = textScale,
+            onPick = { viewModel.setTextScale(it); showTextScaleDialog = false },
+            onDismiss = { showTextScaleDialog = false },
         )
     }
 
@@ -222,6 +235,20 @@ fun SettingsScreen(
 
             HorizontalDivider()
 
+            // --- Backup & Export ---
+            SectionHeader(
+                stringResource(R.string.settings_export_section_label),
+                modifier = Modifier.padding(horizontal = Spacing.screen, vertical = Spacing.sm),
+            )
+            SettingsRow(
+                icon = Icons.Outlined.FileDownload,
+                title = stringResource(R.string.settings_export_all_data),
+                subtitle = stringResource(R.string.settings_export_all_data_hint),
+                onClick = { viewModel.exportData() },
+            )
+
+            HorizontalDivider()
+
             // --- Darstellung ---
             SectionHeader(
                 stringResource(R.string.settings_appearance_section),
@@ -231,6 +258,13 @@ fun SettingsScreen(
                 icon = Icons.Outlined.Palette,
                 title = stringResource(R.string.settings_dynamic_color),
                 trailing = { Switch(checked = dynamicColor, onCheckedChange = { viewModel.setDynamicColor(it) }) },
+            )
+            SettingsRow(
+                icon = Icons.Outlined.TextFields,
+                title = stringResource(R.string.settings_text_size),
+                subtitle = textScaleLabel(textScale),
+                onClick = { showTextScaleDialog = true },
+                showChevron = true,
             )
 
             // --- Server --- (only meaningful once a household/server is in use; hidden in
@@ -351,6 +385,43 @@ private fun ContentLanguageDialog(current: String?, onPick: (String?) -> Unit, o
                     ) {
                         RadioButton(selected = current == code, onClick = { onPick(code) })
                         Text(contentLanguageLabel(code))
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss) { Text(stringResource(R.string.processing_cancel)) }
+        },
+    )
+}
+
+@Composable
+private fun textScaleLabel(scale: TextScale): String = when (scale) {
+    TextScale.NORMAL -> stringResource(R.string.settings_text_size_normal)
+    TextScale.LARGE -> stringResource(R.string.settings_text_size_large)
+    TextScale.EXTRA_LARGE -> stringResource(R.string.settings_text_size_extra_large)
+}
+
+/** Picker for the global text-size step — mainly for reading recipe steps while cooking. */
+@Composable
+private fun TextScaleDialog(current: TextScale, onPick: (TextScale) -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_text_size)) },
+        text = {
+            Column {
+                TextScale.entries.forEach { scale ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { onPick(scale) }
+                            .padding(vertical = Spacing.xs),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    ) {
+                        RadioButton(selected = current == scale, onClick = { onPick(scale) })
+                        Text(textScaleLabel(scale))
                     }
                 }
             }

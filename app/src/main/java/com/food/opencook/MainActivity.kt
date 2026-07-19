@@ -47,7 +47,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             val themeViewModel: ThemeViewModel = hiltViewModel()
             val dynamicColor by themeViewModel.dynamicColor.collectAsStateWithLifecycle()
-            OpenCookTheme(dynamicColor = dynamicColor) {
+            val textScale by themeViewModel.textScale.collectAsStateWithLifecycle()
+            OpenCookTheme(dynamicColor = dynamicColor, textScale = textScale) {
                 OpenCookApp()
             }
         }

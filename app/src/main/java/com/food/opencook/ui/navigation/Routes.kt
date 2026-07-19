@@ -33,10 +33,11 @@ object Routes {
     /** Password-gated server admin (backup/restore), opened from Settings. */
     const val ADMIN = "admin"
 
-    /** Pick a recipe for a meal-plan day (full list + search). */
+    /** Pick a recipe for a meal-plan day and slot (full list + search). */
     const val ARG_DATE = "date"
-    const val PLAN_PICK = "plan_pick/{$ARG_DATE}"
-    fun planPick(date: String) = "plan_pick/$date"
+    const val ARG_SLOT = "slot"
+    const val PLAN_PICK = "plan_pick/{$ARG_DATE}/{$ARG_SLOT}"
+    fun planPick(date: String, slot: String) = "plan_pick/$date/$slot"
 
     /** Result key set on the review back-stack entry by [REVIEW_CAMERA]. */
     const val RESULT_CAPTURED_PATH = "captured_path"

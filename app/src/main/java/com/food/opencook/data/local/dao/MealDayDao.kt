@@ -36,6 +36,9 @@ interface MealDayDao {
     @Query("SELECT * FROM meal_days WHERE date = :date")
     suspend fun getByDate(date: String): MealDayEntity?
 
+    @Query("SELECT * FROM meal_days ORDER BY date ASC")
+    suspend fun getAll(): List<MealDayEntity>
+
     @Upsert
     suspend fun upsert(day: MealDayEntity)
 

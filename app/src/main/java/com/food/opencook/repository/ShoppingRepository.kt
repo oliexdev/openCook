@@ -39,6 +39,8 @@ class ShoppingRepository @Inject constructor(
 ) {
     fun observeItems(): Flow<List<ShoppingItemEntity>> = shoppingDao.observeAll()
 
+    suspend fun getAllItems(): List<ShoppingItemEntity> = shoppingDao.getAll()
+
     /**
      * "Were this dish's ingredients procured?" for the self-healing roll-forward:
      * a shopping list was generated for (recipe, day) and nothing is left unchecked.

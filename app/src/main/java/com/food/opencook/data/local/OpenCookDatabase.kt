@@ -59,12 +59,9 @@ import com.food.opencook.data.local.entity.ShoppingItemEntity
         RecipeLikeEntity::class,
         ProductCacheEntity::class,
     ],
-    // v1: the final, collapsed schema for the first public release. The dev-time
-    // migration chain (2..17) was squashed here since no published version ever
-    // shipped and old local data is disposable (it re-syncs from the server log).
-    // exportSchema=true commits app/schemas/.../1.json as the baseline for real
-    // migrations from this version onward.
-    version = 1,
+    // v1: the final, collapsed schema for the first public release.
+    // v2: added 'slot' (breakfast/lunch/dinner) to meal_plan table.
+    version = 2,
     exportSchema = true,
 )
 abstract class OpenCookDatabase : RoomDatabase() {

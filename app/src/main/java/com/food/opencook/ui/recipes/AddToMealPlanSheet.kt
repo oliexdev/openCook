@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -58,27 +59,27 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.food.opencook.R
+import com.food.opencook.data.local.entity.MealSlot
 import com.food.opencook.ui.theme.Spacing
 import java.time.LocalDate
 import com.food.opencook.util.DateLabels
 
 /**
  * Sheet that lets the user assign the current recipe to any day in the current
- * or next calendar week. Occupied days surface their currently-planned dish and
- * ask for confirmation before being overwritten.
+ * or next calendar week.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddToMealPlanSheet(
     weeks: List<List<String>>,
-    planned: Map<String, PlannedDish>,
-    onAssign: (date: String, onDone: () -> Unit) -> Unit,
-    onReplace: (date: String, onDone: () -> Unit) -> Unit,
+    planned: Map<String, List<PlannedDish>>, // Changed to List for slots
+    onAssign: (date: String, slot: MealSlot, onDone: () -> Unit) -> Unit,
+    onReplace: (date: String, slot: MealSlot, onDone: () -> Unit) -> Unit,
     onDismiss: () -> Unit,
     onAssigned: (String) -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var replaceTarget by remember { mutableStateOf<Pair<String, PlannedDish>?>(null) }
+    var replaceTarget by remember { mutableStateOf<Triple<String, MealSlot, PlannedDish>?>(null) }
     val today = remember { LocalDate.now().toString() }
     val dayLabelFmt = remember { DateLabels.weekdayDayMonth(fullWeekday = true) }
     val shortLabelFmt = remember { DateLabels.weekdayDayMonth() }
@@ -109,21 +110,22 @@ fun AddToMealPlanSheet(
                         )
                     }
                     items(dates, key = { it }) { date ->
-                        DayPickRow(
-                            label = LocalDate.parse(date).format(dayLabelFmt),
-                            planned = planned[date],
+                        val dayPlanned = planned[date].orEmpty()
+                        DayPickSection(
+                            dateLabel = LocalDate.parse(date).format(dayLabelFmt),
+                            planned = dayPlanned,
                             isToday = date == today,
-                            onClick = {
-                                val existing = planned[date]
+                            onPick = { slot ->
+                                val existing = dayPlanned.find { it.slot == slot }
                                 if (existing == null) {
-                                    onAssign(date) {
+                                    onAssign(date, slot) {
                                         onAssigned(LocalDate.parse(date).format(shortLabelFmt))
                                         onDismiss()
                                     }
                                 } else {
-                                    replaceTarget = date to existing
+                                    replaceTarget = Triple(date, slot, existing)
                                 }
-                            },
+                            }
                         )
                     }
                 }
@@ -131,7 +133,7 @@ fun AddToMealPlanSheet(
         }
     }
 
-    replaceTarget?.let { (date, existing) ->
+    replaceTarget?.let { (date, slot, existing) ->
         AlertDialog(
             onDismissRequest = { replaceTarget = null },
             title = { Text(stringResource(R.string.recipe_plan_replace_title)) },
@@ -147,8 +149,9 @@ fun AddToMealPlanSheet(
             confirmButton = {
                 Button(onClick = {
                     val d = date
+                    val s = slot
                     replaceTarget = null
-                    onReplace(d) {
+                    onReplace(d, s) {
                         onAssigned(LocalDate.parse(d).format(shortLabelFmt))
                         onDismiss()
                     }
@@ -164,59 +167,58 @@ fun AddToMealPlanSheet(
 }
 
 @Composable
-private fun DayPickRow(
-    label: String,
-    planned: PlannedDish?,
+private fun DayPickSection(
+    dateLabel: String,
+    planned: List<PlannedDish>,
     isToday: Boolean,
-    onClick: () -> Unit,
+    onPick: (MealSlot) -> Unit,
 ) {
-    val container = when {
-        isToday -> MaterialTheme.colorScheme.primaryContainer
-        planned != null -> MaterialTheme.colorScheme.surfaceVariant
-        else -> MaterialTheme.colorScheme.surfaceContainer
-    }
-    Row(
+    Column(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(container)
-            .clickable(onClick = onClick)
-            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            .background(if (isToday) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer)
+            .padding(Spacing.sm),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Column(Modifier.weight(1f)) {
-            Text(label, style = MaterialTheme.typography.titleSmall)
-            Text(
-                planned?.name ?: stringResource(R.string.recipe_plan_day_free),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        // Small thumbnail of the dish currently planned for this day — empty days show nothing.
-        if (planned != null) {
-            Box(
+        Text(dateLabel, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(horizontal = Spacing.xs))
+        MealSlot.entries.forEach { slot ->
+            val dish = planned.find { it.slot == slot }
+            val slotLabel = when(slot) {
+                MealSlot.BREAKFAST -> stringResource(R.string.mealplan_slot_breakfast)
+                MealSlot.LUNCH -> stringResource(R.string.mealplan_slot_lunch)
+                MealSlot.DINNER -> stringResource(R.string.mealplan_slot_dinner)
+            }
+            Row(
                 Modifier
-                    .size(44.dp)
+                    .fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center,
+                    .clickable { onPick(slot) }
+                    .padding(horizontal = Spacing.xs, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
             ) {
-                if (planned.imageModel != null) {
+                Text(
+                    slotLabel.take(1).uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.width(16.dp)
+                )
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        dish?.name ?: stringResource(R.string.recipe_plan_day_free),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (dish != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                if (dish != null) {
                     AsyncImage(
-                        model = planned.imageModel,
+                        model = dish.imageModel,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                } else {
-                    Icon(
-                        Icons.Outlined.Restaurant,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(32.dp).clip(RoundedCornerShape(6.dp)),
                     )
                 }
             }

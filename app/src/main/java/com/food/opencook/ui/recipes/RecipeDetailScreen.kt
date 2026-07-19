@@ -38,6 +38,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import android.content.Intent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
@@ -50,6 +51,7 @@ import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -82,6 +84,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
@@ -106,6 +109,7 @@ import com.food.opencook.ui.theme.Spacing
 import com.food.opencook.util.DateLabels
 import com.food.opencook.util.DurationFormat
 import com.food.opencook.util.Numbers
+import com.food.opencook.util.RecipeShare
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
@@ -132,7 +136,10 @@ fun RecipeDetailScreen(
     }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val addedMessage = stringResource(R.string.shopping_added)
+    val exportChooserTitle = stringResource(R.string.recipe_export)
+    val exportNotReadyMsg = stringResource(R.string.recipe_export_not_ready)
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showPlanSheet by remember { mutableStateOf(false) }
     val planAddedFormat = stringResource(R.string.recipe_plan_added)
@@ -195,6 +202,20 @@ fun RecipeDetailScreen(
                     scrolledContainerColor = MaterialTheme.colorScheme.background,
                 ),
                 actions = {
+                    IconButton(
+                        onClick = {
+                            val json = viewModel.exportJson()
+                            if (json == null) {
+                                scope.launch { snackbarHostState.showSnackbar(exportNotReadyMsg) }
+                            } else {
+                                val fileNameHint = recipe?.recipe?.name?.ifBlank { null } ?: recipeId
+                                val intent = RecipeShare.shareIntent(context, json, fileNameHint)
+                                context.startActivity(Intent.createChooser(intent, exportChooserTitle))
+                            }
+                        },
+                    ) {
+                        Icon(Icons.Outlined.Share, contentDescription = stringResource(R.string.recipe_export))
+                    }
                     IconButton(onClick = onEdit) {
                         Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.recipe_edit))
                     }

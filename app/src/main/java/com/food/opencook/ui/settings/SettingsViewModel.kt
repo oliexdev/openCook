@@ -19,6 +19,7 @@
 package com.food.opencook.ui.settings
 
 import android.content.Context
+import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.food.opencook.R
@@ -29,10 +30,27 @@ import com.food.opencook.data.remote.SyncApi
 import com.food.opencook.data.remote.dto.CreateHouseholdRequest
 import com.food.opencook.data.remote.dto.HouseholdSettings
 import com.food.opencook.data.remote.dto.PatchHouseholdRequest
+import com.food.opencook.data.remote.dto.RecipeDto
 import com.food.opencook.data.settings.SettingsRepository
+<<<<<<< HEAD
+import com.food.opencook.data.settings.TextScale
+import com.food.opencook.repository.MealPlanRepository
+import com.food.opencook.repository.PantryRepository
+import com.food.opencook.repository.RecipeRepository
+import com.food.opencook.repository.ShoppingRepository
+import com.food.opencook.sync.SyncEngine
+import com.food.opencook.util.BulkExportDto
+import com.food.opencook.util.MealDayExportDto
+import com.food.opencook.util.MealPlanExportDto
+import com.food.opencook.util.PantryItemExportDto
+import com.food.opencook.util.RecipeExport
+import com.food.opencook.util.RecipeShare
+import com.food.opencook.util.ShoppingItemExportDto
+=======
 import com.food.opencook.sync.SyncClock
 import com.food.opencook.sync.SyncEngine
 import com.food.opencook.sync.SyncTrigger
+>>>>>>> upstream/main
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,6 +61,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.Json
 import javax.inject.Inject
 
 data class SettingsUiState(
@@ -58,13 +78,21 @@ data class SettingsUiState(
 class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val settings: SettingsRepository,
+    private val recipeRepository: RecipeRepository,
+    private val mealPlanRepository: MealPlanRepository,
+    private val shoppingRepository: ShoppingRepository,
+    private val pantryRepository: PantryRepository,
     private val syncApi: SyncApi,
     private val syncEngine: SyncEngine,
     private val wiper: LocalDataWiper,
+<<<<<<< HEAD
+    private val json: Json,
+=======
     private val syncClock: SyncClock,
     private val syncTrigger: SyncTrigger,
     private val recipeDao: RecipeDao,
     private val baseUrlInterceptor: BaseUrlInterceptor,
+>>>>>>> upstream/main
 ) : ViewModel() {
 
     val uiState: StateFlow<SettingsUiState> =
@@ -95,6 +123,12 @@ class SettingsViewModel @Inject constructor(
     fun setP2pEnabled(enabled: Boolean) = viewModelScope.launch { settings.setP2pEnabled(enabled) }
 
     fun setDynamicColor(enabled: Boolean) = viewModelScope.launch { settings.setDynamicColor(enabled) }
+
+    /** Text-size step for the whole app (Settings > Appearance); local to this device. */
+    val textScale: StateFlow<TextScale> =
+        settings.textScale.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TextScale.NORMAL)
+
+    fun setTextScale(scale: TextScale) = viewModelScope.launch { settings.setTextScale(scale) }
 
     /** Household-wide recipe content language (null = follow each device's system language). */
     val contentLanguage: StateFlow<String?> =
@@ -215,6 +249,38 @@ class SettingsViewModel @Inject constructor(
     /** Leave local-only mode: with no household joined this sends the app back to
      *  onboarding (server → household), where the offline data syncs up after joining. */
     fun connectToServer() = viewModelScope.launch { settings.setLocalOnly(false) }
+
+    /** Comprehensive export of all data (Recipes, Meal Plan, Shopping List, Pantry) as a ZIP. */
+    fun exportData() = viewModelScope.launch {
+        val recipes = recipeRepository.getAllRecipesOnce()
+        val mealPlan = mealPlanRepository.getAllEntries()
+        val mealDays = mealPlanRepository.getAllDays()
+        val shopping = shoppingRepository.getAllItems()
+        val pantry = pantryRepository.getAllItems()
+
+        val bulk = BulkExportDto(
+            recipes = recipes.map { RecipeExport.toDto(it) },
+            mealPlan = mealPlan.map { MealPlanExportDto(it.date, it.slot, it.recipeId, it.pinned, it.reasonsJson, it.cookedAt) },
+            mealDays = mealDays.map { MealDayExportDto(it.date, it.skipped) },
+            shoppingList = shopping.map { ShoppingItemExportDto(it.text, it.quantity, it.unit, it.checked, it.sourceRecipeId, it.sourceDate, it.manual) },
+            pantry = pantry.map { PantryItemExportDto(it.name) }
+        )
+
+        val files = mutableMapOf<String, String>()
+        files["data.json"] = json.encodeToString(BulkExportDto.serializer(), bulk)
+        files["recipes.json"] = json.encodeToString(ListSerializer(RecipeDto.serializer()), bulk.recipes)
+        files["meal_plan.json"] = json.encodeToString(ListSerializer(MealPlanExportDto.serializer()), bulk.mealPlan)
+        files["shopping_list.json"] = json.encodeToString(ListSerializer(ShoppingItemExportDto.serializer()), bulk.shoppingList)
+        files["pantry.json"] = json.encodeToString(ListSerializer(PantryItemExportDto.serializer()), bulk.pantry)
+
+        recipes.forEach { r ->
+            val name = r.recipe.name?.replace(Regex("[^A-Za-z0-9-_ ]"), "_")?.trim()?.ifEmpty { null } ?: r.recipe.id
+            files["recipes/$name.md"] = RecipeExport.toMarkdown(r)
+        }
+
+        val intent = RecipeShare.shareZipIntent(context, files, "openCook_export")
+        context.startActivity(Intent.createChooser(intent, context.getString(R.string.recipe_export)))
+    }
 
     fun synchronize() = run {
         _message.update { null }
