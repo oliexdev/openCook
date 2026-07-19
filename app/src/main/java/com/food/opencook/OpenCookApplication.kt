@@ -28,6 +28,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.food.opencook.data.localization.LocalizedLists
 import com.food.opencook.data.notification.JobNotifier
+import com.food.opencook.data.peer.PeerAdvertiser
 import com.food.opencook.data.remote.BaseUrlInterceptor
 import com.food.opencook.data.settings.SettingsRepository
 import com.food.opencook.sync.SyncManager
@@ -50,6 +51,7 @@ class OpenCookApplication : Application(), Configuration.Provider {
     @Inject lateinit var jobNotifier: JobNotifier
     @Inject lateinit var syncManager: SyncManager
     @Inject lateinit var localizedLists: LocalizedLists
+    @Inject lateinit var peerAdvertiser: PeerAdvertiser
 
     private val appScope = CoroutineScope(SupervisorJob())
 
@@ -72,6 +74,8 @@ class OpenCookApplication : Application(), Configuration.Provider {
             .launchIn(appScope)
         // Auto-sync while the app is alive: initial + periodic + after local changes.
         syncManager.start()
+        // Answer peer-to-peer sync (embedded server + mDNS) while foregrounded on Wi-Fi.
+        peerAdvertiser.install()
         // Background sync even when the app is closed. The server (a desktop PC) is
         // often off, so we spread cheap attempts across the day and let WorkManager
         // run them only while connected — see SyncWorker.

@@ -82,6 +82,7 @@ private class NoopMessageDao : com.food.opencook.data.local.dao.MessageDao {
     override suspend fun all(): List<com.food.opencook.data.local.entity.MessageEntity> = emptyList()
     override suspend fun since(cursor: String): List<com.food.opencook.data.local.entity.MessageEntity> = emptyList()
     override suspend fun forRow(dataset: String, rowId: String): List<com.food.opencook.data.local.entity.MessageEntity> = emptyList()
+    override suspend fun existingTimestamps(timestamps: List<String>): List<String> = emptyList()
     override suspend fun count(): Int = 0
 }
 

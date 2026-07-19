@@ -93,6 +93,11 @@ private class FakeRecipeDao : RecipeDao {
     override suspend fun setImageRemoteName(id: String, name: String) {
         images.replaceAll { if (it.id == id) it.copy(remoteName = name) else it }
     }
+    override suspend fun localPathForRemoteName(name: String): String? =
+        images.firstOrNull { it.remoteName == name && it.localPath != null }?.localPath
+    override suspend fun resetRemoteNamesForReupload() {
+        images.replaceAll { if (it.localPath != null) it.copy(remoteName = null) else it }
+    }
     override suspend fun setImageLocalPath(id: String, path: String) {
         images.replaceAll { if (it.id == id) it.copy(localPath = path) else it }
     }
@@ -154,6 +159,8 @@ private class FakeMessageDao : MessageDao {
     override suspend fun all(): List<MessageEntity> = messages.sortedBy { it.timestamp }
     override suspend fun since(cursor: String): List<MessageEntity> = messages.filter { it.timestamp > cursor }.sortedBy { it.timestamp }
     override suspend fun forRow(dataset: String, rowId: String): List<MessageEntity> = messages.filter { it.dataset == dataset && it.rowId == rowId }
+    override suspend fun existingTimestamps(timestamps: List<String>): List<String> =
+        messages.map { it.timestamp }.filter { it in timestamps.toSet() }
     override suspend fun count(): Int = messages.size
 }
 

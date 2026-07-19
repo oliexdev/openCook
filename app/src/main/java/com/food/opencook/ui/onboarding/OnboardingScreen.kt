@@ -40,6 +40,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.ExpandLess
@@ -80,6 +81,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.food.opencook.R
+import com.food.opencook.data.discovery.DiscoveredRole
 import com.food.opencook.data.remote.dto.HouseholdSummaryDto
 import com.food.opencook.ui.theme.Spacing
 
@@ -200,6 +202,12 @@ private fun ModeStep(viewModel: OnboardingViewModel) {
             subtitle = stringResource(R.string.onboarding_mode_server_subtitle),
             onClick = viewModel::chooseServerMode,
         )
+        ChoiceCard(
+            icon = Icons.Outlined.Devices,
+            title = stringResource(R.string.onboarding_mode_serverless_title),
+            subtitle = stringResource(R.string.onboarding_mode_serverless_subtitle),
+            onClick = viewModel::chooseServerlessMode,
+        )
     }
 }
 
@@ -225,11 +233,24 @@ private fun ServerStep(viewModel: OnboardingViewModel) {
             }
         } else {
             servers.forEach { server ->
+                // Peer phones advertise the same service with role=peer: joining through
+                // one uses its endpoints directly and never stores it as "the server".
+                val isPeer = server.role == DiscoveredRole.PEER
                 ChoiceCard(
-                    icon = Icons.Outlined.Dns,
+                    icon = if (isPeer) Icons.Outlined.Smartphone else Icons.Outlined.Dns,
                     title = server.name,
-                    subtitle = "${server.host}:${server.port}",
-                    onClick = { viewModel.chooseServer("${server.host}:${server.port}") },
+                    subtitle = if (isPeer) {
+                        stringResource(R.string.onboarding_peer_subtitle)
+                    } else {
+                        "${server.host}:${server.port}"
+                    },
+                    onClick = {
+                        if (isPeer) {
+                            viewModel.choosePeer(server)
+                        } else {
+                            viewModel.chooseServer("${server.host}:${server.port}")
+                        }
+                    },
                 )
             }
         }
@@ -403,15 +424,18 @@ private fun CreateStep(state: OnboardingUiState, viewModel: OnboardingViewModel)
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
             modifier = Modifier.fillMaxWidth(),
         )
-        OutlinedTextField(
-            value = adminPassword,
-            onValueChange = { adminPassword = it },
-            label = { Text(stringResource(R.string.onboarding_admin_password_optional_label)) },
-            supportingText = { Text(stringResource(R.string.onboarding_admin_password_hint)) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            modifier = Modifier.fillMaxWidth(),
-        )
+        // The admin password protects server backup/restore — meaningless without a server.
+        if (!state.serverless) {
+            OutlinedTextField(
+                value = adminPassword,
+                onValueChange = { adminPassword = it },
+                label = { Text(stringResource(R.string.onboarding_admin_password_optional_label)) },
+                supportingText = { Text(stringResource(R.string.onboarding_admin_password_hint)) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
         Button(
             onClick = { viewModel.createHousehold(name, size, pin, adminPassword) },
             enabled = !state.busy && name.isNotBlank(),

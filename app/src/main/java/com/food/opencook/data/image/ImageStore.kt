@@ -85,6 +85,15 @@ class ImageStore @Inject constructor(
         dest.absolutePath
     }
 
+    /** Absolute path of an already-stored download for this content-addressed name, or
+     *  null. Lets sync skip re-downloading bytes a peer already pushed to us. */
+    suspend fun existingDownload(serverName: String): String? = withContext(Dispatchers.IO) {
+        // Reject any name that isn't a plain filename — [serverName] reaches the peer
+        // HTTP endpoint from the network, and this guard keeps traversal out of filesDir.
+        if (serverName.contains('/') || serverName.contains('\\') || serverName == "..") return@withContext null
+        File(downloadsDir, serverName).takeIf { it.isFile }?.absolutePath
+    }
+
     /** Wipe every image file this device owns (captures and downloads). Used when
      *  leaving the household so household photos don't linger on disk. */
     suspend fun wipeAll(): Unit = withContext(Dispatchers.IO) {

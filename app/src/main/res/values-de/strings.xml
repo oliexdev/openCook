@@ -286,6 +286,9 @@
     <string name="onboarding_mode_local_subtitle">Rezepte, Pläne und Einkaufsliste bleiben offline auf diesem Gerät.</string>
     <string name="onboarding_mode_server_title">Mit Heim-Server verbinden</string>
     <string name="onboarding_mode_server_subtitle">Foto-Scan und Familien-Sync freischalten (Server im Haushalt nötig).</string>
+    <string name="onboarding_mode_serverless_title">Haushalt ohne Server</string>
+    <string name="onboarding_mode_serverless_subtitle">Handys synchronisieren sich direkt im WLAN. Ein Server kann später dazukommen.</string>
+    <string name="onboarding_peer_subtitle">Handy in diesem WLAN</string>
     <string name="onboarding_server_step_title">Server wählen</string>
     <string name="onboarding_searching">Suche im Netzwerk…</string>
     <string name="onboarding_manual_hint">Nicht gefunden? Server-Adresse manuell eingeben:</string>
@@ -321,6 +324,14 @@
     <!-- Settings: grouped sections + admin -->
     <string name="settings_household_section_label">Haushalt</string>
     <string name="settings_server_label">Server &amp; Verbindung</string>
+    <string name="settings_p2p_title">Handy-zu-Handy-Sync</string>
+    <string name="settings_p2p_subtitle">Direkter Abgleich im WLAN, auch bei geschlossener App</string>
+    <string name="standby_channel_name">Familien-Sync-Bereitschaft</string>
+    <string name="standby_notification_title">Für die Familie erreichbar</string>
+    <string name="standby_notification_text">Haushaltsgeräte können sich mit diesem Handy synchronisieren (nur im WLAN).</string>
+    <string name="settings_attach_server">Server hinzufügen</string>
+    <string name="settings_attach_server_hint">Optional: Foto-Scan, Backups und Browser-Import brauchen einen Heim-Server.</string>
+    <string name="settings_attach_server_action">Server hinzufügen</string>
     <string name="settings_admin">Admin-Bereich</string>
     <string name="settings_admin_subtitle">Server-Backups verwalten (Passwort nötig)</string>
 
@@ -418,6 +429,7 @@
 
     <!-- Sync status (shared top bar) -->
     <string name="sync_status_ok">Synchronisiert</string>
+    <string name="sync_status_ok_peer">Synchronisiert (über %1$s)</string>
     <string name="sync_status_not_configured">Kein Server – tippen für Einstellungen</string>
     <string name="sync_status_syncing">Synchronisiere…</string>
     <string name="sync_status_failed">Nicht verbunden – tippen zum Synchronisieren</string>
@@ -474,6 +486,8 @@
     <!-- Settings sync messages -->
     <string name="settings_msg_size_update_failed">Konnte Server nicht aktualisieren — wird beim nächsten Sync nachgeholt.</string>
     <string name="settings_msg_synced">Synchronisiert (%1$d empfangen)</string>
+    <string name="settings_msg_server_attached">Server hinzugefügt — Haushalt wird jetzt dorthin synchronisiert</string>
+    <string name="settings_msg_attach_failed">Server nicht erreichbar</string>
     <string name="settings_msg_no_household">Kein Haushalt — erst beitreten.</string>
     <string name="settings_msg_household_missing">Haushalt auf dem Server nicht gefunden — evtl. neu aufgesetzt. Bitte neu beitreten.</string>
     <string name="settings_msg_sync_failed">Sync fehlgeschlagen: %1$s</string>

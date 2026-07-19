@@ -101,13 +101,31 @@ def list_households(session: Session = Depends(get_session)) -> list[HouseholdSu
 def create_household(
     body: HouseholdCreateRequest, session: Session = Depends(get_session)
 ) -> HouseholdResponse:
+    # Attach-a-server flow: a serverless household brings its own id + invite code so
+    # existing members stay valid. Idempotent when the id already exists (a second
+    # member repeating the attach), guarded by the matching code.
+    if body.id is not None:
+        existing = session.get(Household, body.id)
+        if existing is not None:
+            if body.invite_code != existing.invite_code:
+                raise HTTPException(status_code=409, detail="Household exists with a different code")
+            return _to_response(existing)
+        if body.invite_code is not None:
+            clash = session.scalars(
+                select(Household).where(Household.invite_code == body.invite_code)
+            ).first()
+            if clash is not None:
+                raise HTTPException(status_code=409, detail="Invite code already in use")
+
     # token_urlsafe(12) -> ~16 chars of entropy: long/random, as the code is the
     # shared sync credential (don't expose to the internet without VPN/TLS).
     household = Household(
-        invite_code=secrets.token_urlsafe(12),
+        invite_code=body.invite_code or secrets.token_urlsafe(12),
         name=body.name.strip(),
         settings_json=json.dumps(_normalize_settings(body.settings)),
     )
+    if body.id is not None:
+        household.id = body.id
     _set_pin(household, body.pin)
     session.add(household)
     _set_admin_password_if_unset(body.admin_password, session)

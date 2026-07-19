@@ -13,9 +13,10 @@ Under `app/src/main/java/com/food/opencook/`:
 | `data/local/` | Room database, entities, DAOs, migrations |
 | `data/remote/` | Retrofit APIs + `BaseUrlInterceptor` |
 | `data/settings/` | DataStore-backed settings (server URL, household code) |
-| `data/discovery/` | mDNS server discovery (`ServerDiscovery`) |
+| `data/discovery/` | mDNS discovery of sync partners — the server and peer phones, told apart by the TXT `role` (`ServerDiscovery`) |
+| `data/peer/` | phone-as-responder: embedded Ktor server speaking the sync API (`PeerSyncServer`), switch/Wi-Fi-gated mDNS advertising (`PeerAdvertiser`), standby foreground service for reachability with the app closed (`PeerStandbyService`) |
 | `data/image/`, `data/notification/`, `data/recipeimport/` | image store, job notifications, import inbox |
-| `sync/` | CRDT sync engine (see [Sync engine](sync.md)) |
+| `sync/` | CRDT sync engine, initiator + responder (see [Sync engine](sync.md)) |
 | `work/` | WorkManager workers |
 | `repository/` | business logic (`RecipeRepository`, `JobRepository`) |
 | `di/` | Hilt modules |

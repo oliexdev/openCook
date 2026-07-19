@@ -37,3 +37,10 @@
 
 # Room entities / enums used in DB + serialization.
 -keepclassmembers enum * { *; }
+
+# --- Ktor embedded server (peer-to-peer sync) ---
+# Ktor's IntellijIdeaDebugDetector probes java.lang.management.* (a JVM-only API that
+# doesn't exist on Android) inside a try/catch — safe to ignore, R8 just needs to be
+# told the classes are knowingly absent.
+-dontwarn java.lang.management.ManagementFactory
+-dontwarn java.lang.management.RuntimeMXBean

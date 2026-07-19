@@ -32,6 +32,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.Logout
+import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Home
@@ -76,6 +77,7 @@ import kotlinx.coroutines.launch
 import com.food.opencook.R
 import com.food.opencook.data.settings.ContentLanguages
 import com.food.opencook.sync.SyncStatus
+import com.food.opencook.sync.SyncVia
 import com.food.opencook.ui.AppBarViewModel
 import com.food.opencook.ui.components.AppTopBar
 import com.food.opencook.ui.components.SectionHeader
@@ -91,6 +93,7 @@ fun SettingsScreen(
     val contentLanguage by viewModel.contentLanguage.collectAsStateWithLifecycle()
     val appBar: AppBarViewModel = hiltViewModel()
     val syncStatus by appBar.status.collectAsStateWithLifecycle()
+    val busy by viewModel.busy.collectAsStateWithLifecycle()
 
     var serverUrl by remember { mutableStateOf(state.serverUrl) }
     LaunchedEffect(state.serverUrl) { serverUrl = state.serverUrl }
@@ -203,6 +206,13 @@ fun SettingsScreen(
                     subtitle = syncStatusLabel(syncStatus),
                     onClick = appBar::sync,
                 )
+                val p2pEnabled by viewModel.p2pEnabled.collectAsStateWithLifecycle()
+                SettingsRow(
+                    icon = Icons.Outlined.Devices,
+                    title = stringResource(R.string.settings_p2p_title),
+                    subtitle = stringResource(R.string.settings_p2p_subtitle),
+                    trailing = { Switch(checked = p2pEnabled, onCheckedChange = { viewModel.setP2pEnabled(it) }) },
+                )
                 SettingsRow(
                     icon = Icons.AutoMirrored.Outlined.Logout,
                     title = stringResource(R.string.settings_household_leave),
@@ -232,10 +242,22 @@ fun SettingsScreen(
                     stringResource(R.string.settings_server_section),
                     modifier = Modifier.padding(horizontal = Spacing.screen, vertical = Spacing.sm),
                 )
+                // A blank URL on a joined household = founded serverless (phones sync
+                // directly). Offer attaching a server; admin (backup/restore) only makes
+                // sense once one exists.
+                val serverless = state.serverUrl.isBlank()
                 SettingsRow(
                     icon = Icons.Outlined.Dns,
-                    title = stringResource(R.string.settings_server_label),
-                    subtitle = state.serverUrl.ifBlank { stringResource(R.string.settings_server_hint) },
+                    title = if (serverless) {
+                        stringResource(R.string.settings_attach_server)
+                    } else {
+                        stringResource(R.string.settings_server_label)
+                    },
+                    subtitle = if (serverless) {
+                        stringResource(R.string.settings_attach_server_hint)
+                    } else {
+                        state.serverUrl
+                    },
                     onClick = { serverExpanded = !serverExpanded },
                 )
                 AnimatedVisibility(serverExpanded) {
@@ -249,18 +271,31 @@ fun SettingsScreen(
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                             modifier = Modifier.fillMaxWidth(),
                         )
-                        Button(onClick = { viewModel.saveServerUrl(serverUrl) }) {
-                            Text(stringResource(R.string.settings_save))
+                        Button(
+                            onClick = {
+                                if (serverless) viewModel.attachServer(serverUrl) else viewModel.saveServerUrl(serverUrl)
+                            },
+                            enabled = !busy,
+                        ) {
+                            Text(
+                                if (serverless) {
+                                    stringResource(R.string.settings_attach_server_action)
+                                } else {
+                                    stringResource(R.string.settings_save)
+                                },
+                            )
                         }
                     }
                 }
-                SettingsRow(
-                    icon = Icons.Outlined.Lock,
-                    title = stringResource(R.string.settings_admin),
-                    subtitle = stringResource(R.string.settings_admin_subtitle),
-                    onClick = onOpenAdmin,
-                    showChevron = true,
-                )
+                if (!serverless) {
+                    SettingsRow(
+                        icon = Icons.Outlined.Lock,
+                        title = stringResource(R.string.settings_admin),
+                        subtitle = stringResource(R.string.settings_admin_subtitle),
+                        onClick = onOpenAdmin,
+                        showChevron = true,
+                    )
+                }
             }
         }
     }
@@ -272,7 +307,11 @@ private fun syncStatusLabel(status: SyncStatus): String = when (status) {
     is SyncStatus.Syncing -> stringResource(R.string.sync_status_syncing)
     is SyncStatus.Failed -> stringResource(R.string.sync_status_failed)
     SyncStatus.HouseholdMissing -> stringResource(R.string.sync_status_household_missing)
-    is SyncStatus.Idle -> stringResource(R.string.sync_status_ok)
+    is SyncStatus.Idle -> when (val via = status.via) {
+        // Name the peer phone so it's visible the data came phone-to-phone, not via server.
+        is SyncVia.Peer -> stringResource(R.string.sync_status_ok_peer, via.name)
+        else -> stringResource(R.string.sync_status_ok)
+    }
 }
 
 /** Human label for a content-language code (null = follow the device's system language). */

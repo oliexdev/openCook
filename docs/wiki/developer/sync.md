@@ -45,9 +45,10 @@ greater than the stored timestamp for that exact `(dataset, row_id, col_key)`. S
 
 To avoid resending the whole log every sync, both sides build an incremental **Merkle trie** over
 message timestamps (minute-floor buckets, FNV-1a 32-bit hashes). `POST /sync` carries the client's
-trie; the server diffs it against its own to find the **earliest divergence point** and returns only
-the messages from there onward, plus its current trie and the household name/settings. The server
-caches its trie per household (keyed by message count).
+trie; the responder diffs it against its own to find the **earliest divergence point** and returns
+only the messages from there onward, plus its current trie and the household name/settings. The
+Python server caches its trie per household (keyed by message count); the phone responder rebuilds
+it per exchange (phone logs are small).
 
 ## Images
 
@@ -56,11 +57,49 @@ Images are **not** in the log. They're content-addressed by SHA-256 and synced o
 The client downloads missing images in the background (a few in parallel) after the owning entity
 syncs.
 
+## Peer-to-peer: a phone as the responder
+
+The responder role is not server-only. With the household's **phone-to-phone switch** enabled,
+each phone runs an embedded Ktor (CIO) server implementing the same wire contract — `POST /sync`,
+the image blob endpoints and the household list/join flow — and advertises `_opencook._tcp` with
+TXT `role=peer` via NSD (the Python server advertises `role=server`). Key pieces:
+
+- `data/peer/PeerSyncServer.kt` — the routes. Every endpoint except household list/join requires
+  the `X-Household-Code` (stricter than the Python server: image GETs too); an unknown code
+  answers 404 like the server's `resolve_household`.
+- `data/peer/PeerAdvertiser.kt` — lifecycle: the responder runs while the household's
+  **phone-to-phone switch** (`SettingsRepository.p2pEnabled`; default ON for serverless
+  households, OFF with a server) is enabled AND either the app is foregrounded
+  (`ProcessLifecycleOwner`) or the standby service holds it, AND an active Wi-Fi network exists.
+  Everything is torn down when the last condition drops. Switch off ⇒ the app behaves exactly
+  pre-P2P (no listener, no advertisement, no peer fallback).
+- `data/peer/PeerStandbyService.kt` — the "reachable with the app closed" half of the switch: a
+  minimal `specialUse` foreground service (silent IMPORTANCE_MIN notification; `dataSync` would
+  be runtime-capped at 6 h on Android 15+) that holds the advertiser's standby signal and fires
+  one catch-up sync when a Wi-Fi network appears ("coming home"). Started/stopped by the
+  advertiser's controller from the switch + household state; background-start denials are
+  retried on the next app open.
+- `sync/SyncResponder.kt` — the responder logic (ingest pushed messages, Merkle diff, answer with
+  the missing tail, piggyback household meta). It shares the apply/projection path with the
+  initiator via `sync/MessageApplier.kt`, which deliberately never fires a sync trigger — that's
+  what keeps two foregrounded peers from ping-ponging.
+- `SyncEngine` tries targets in order: the configured server first, then peers discovered on the
+  LAN (via a second, `@Named("peer")` OkHttp/Retrofit stack so peer calls can't reroute unrelated
+  in-flight requests). The idempotent log makes mixed server+peer rounds converge, including
+  transitively (A↔B, later B↔C ⇒ C has A's changes).
+
+Households can be founded **serverless**: the phone mints the uuid + invite code locally
+(onboarding), other phones join through the peer's household endpoints, and a server can be
+attached later — `POST /households` accepts a client-supplied `id`/`invite_code` idempotently, so
+existing members stay valid. Household meta (name/settings/PIN) has no authoritative store between
+peers, so it travels with an HLC stamp (`household_hlc`); the newest copy wins everywhere.
+
 ## What triggers a sync (client)
 
 `sync/SyncManager.kt` runs sync best-effort: on app start, shortly after a local change (debounced),
 and periodically while the app is foregrounded; `work/SyncWorker.kt` covers background runs. If the
-server is unreachable it simply retries on the next trigger — nothing blocks and nothing is lost.
+server is unreachable the round falls back to reachable peers, and otherwise simply retries on the
+next trigger — nothing blocks and nothing is lost.
 
 ## Guardrail: shared vectors
 

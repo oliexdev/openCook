@@ -47,6 +47,40 @@ def test_codes_are_unique() -> None:
         assert a != b
 
 
+def test_create_with_client_supplied_identity_is_idempotent() -> None:
+    """Attach-a-server flow: a serverless household brings its own id + invite code."""
+    with TestClient(app) as client:
+        payload = {
+            "name": "Serverlos",
+            "settings": {"household_size": 3},
+            "id": "phone-uuid-1",
+            "invite_code": "phone-code-abc",
+        }
+        created = client.post("/households", json=payload).json()
+        assert created["household_id"] == "phone-uuid-1"
+        assert created["invite_code"] == "phone-code-abc"
+
+        # A second member repeating the attach gets the same household back.
+        again = client.post("/households", json=payload)
+        assert again.status_code == 201
+        assert again.json()["household_id"] == "phone-uuid-1"
+
+        # Same id with a different code must not take the household over.
+        stolen = dict(payload, invite_code="wrong")
+        assert client.post("/households", json=stolen).status_code == 409
+
+        # A fresh id may not squat on an existing invite code either.
+        clash = {"name": "Clash", "id": "phone-uuid-2", "invite_code": "phone-code-abc"}
+        assert client.post("/households", json=clash).status_code == 409
+
+        # The synced credential works exactly like a server-minted one.
+        resp = client.post(
+            "/sync", json={"merkle": {}, "messages": []},
+            headers={"X-Household-Code": "phone-code-abc"},
+        )
+        assert resp.status_code == 200
+
+
 def test_protected_household_requires_correct_pin() -> None:
     with TestClient(app) as client:
         hid = client.post(

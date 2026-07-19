@@ -23,11 +23,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.food.opencook.R
 import com.food.opencook.data.LocalDataWiper
+import com.food.opencook.data.local.dao.RecipeDao
+import com.food.opencook.data.remote.BaseUrlInterceptor
 import com.food.opencook.data.remote.SyncApi
+import com.food.opencook.data.remote.dto.CreateHouseholdRequest
 import com.food.opencook.data.remote.dto.HouseholdSettings
 import com.food.opencook.data.remote.dto.PatchHouseholdRequest
 import com.food.opencook.data.settings.SettingsRepository
+import com.food.opencook.sync.SyncClock
 import com.food.opencook.sync.SyncEngine
+import com.food.opencook.sync.SyncTrigger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,6 +61,10 @@ class SettingsViewModel @Inject constructor(
     private val syncApi: SyncApi,
     private val syncEngine: SyncEngine,
     private val wiper: LocalDataWiper,
+    private val syncClock: SyncClock,
+    private val syncTrigger: SyncTrigger,
+    private val recipeDao: RecipeDao,
+    private val baseUrlInterceptor: BaseUrlInterceptor,
 ) : ViewModel() {
 
     val uiState: StateFlow<SettingsUiState> =
@@ -79,6 +88,12 @@ class SettingsViewModel @Inject constructor(
     val dynamicColor: StateFlow<Boolean> =
         settings.dynamicColor.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
+    /** Phone-to-phone sync master switch (effective value incl. the serverless default). */
+    val p2pEnabled: StateFlow<Boolean> =
+        settings.p2pEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    fun setP2pEnabled(enabled: Boolean) = viewModelScope.launch { settings.setP2pEnabled(enabled) }
+
     fun setDynamicColor(enabled: Boolean) = viewModelScope.launch { settings.setDynamicColor(enabled) }
 
     /** Household-wide recipe content language (null = follow each device's system language). */
@@ -86,10 +101,16 @@ class SettingsViewModel @Inject constructor(
         settings.contentLanguage.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** Persist locally + PATCH the server so the whole household converges (carries the
-     *  current size too, since the server merges the settings object as a whole). */
+     *  current size too, since the server merges the settings object as a whole). In a
+     *  serverless household there is nothing to PATCH — instead the edit stamps the
+     *  household-meta HLC, so peers adopt this device's copy on their next exchange. */
     fun setContentLanguage(lang: String?) {
         viewModelScope.launch {
             settings.setContentLanguage(lang)
+            if (settings.serverUrlOnce().isNullOrBlank()) {
+                settings.setHouseholdMetaHlc(syncClock.stamp().pack())
+                return@launch
+            }
             val id = settings.householdIdOnce()
             val code = settings.householdCodeOnce()
             if (id != null && code != null) {
@@ -120,6 +141,11 @@ class SettingsViewModel @Inject constructor(
         val clamped = size.coerceIn(1, 20)
         viewModelScope.launch {
             settings.setHouseholdSize(clamped) // optimistic local cache
+            if (settings.serverUrlOnce().isNullOrBlank()) {
+                // Serverless: stamp the meta so peers adopt the new size (see SyncResponder).
+                settings.setHouseholdMetaHlc(syncClock.stamp().pack())
+                return@launch
+            }
             val id = settings.householdIdOnce()
             val code = settings.householdCodeOnce()
             if (id != null && code != null) {
@@ -127,6 +153,56 @@ class SettingsViewModel @Inject constructor(
                     syncApi.patchHousehold(id, code, PatchHouseholdRequest(settings = HouseholdSettings(clamped)))
                 }.onFailure { _message.update { context.getString(R.string.settings_msg_size_update_failed) } }
             }
+        }
+    }
+
+    /**
+     * Attach a real server to a household that was founded serverless: create the
+     * household there under its *existing* id + invite code (the server accepts
+     * client-supplied identities for exactly this hand-over, idempotently), then make
+     * the URL this device's server and re-upload every locally held photo — images
+     * "uploaded" to peer phones never reached a server, and content-addressing makes
+     * the re-upload land under the same names the imageRef messages already carry.
+     * The next sync round pushes the whole message log up.
+     */
+    fun attachServer(rawUrl: String) {
+        val url = rawUrl.trim().ifEmpty { return }
+            .let { if (it.startsWith("http://") || it.startsWith("https://")) it else "http://$it" }
+        viewModelScope.launch {
+            _busy.update { true }
+            _message.update { null }
+            val id = settings.householdIdOnce()
+            val code = settings.householdCodeOnce()
+            if (id == null || code == null) {
+                _busy.update { false }
+                return@launch
+            }
+            baseUrlInterceptor.setBaseUrl(url)
+            runCatching {
+                syncApi.createHousehold(
+                    CreateHouseholdRequest(
+                        name = settings.householdNameOnce().orEmpty(),
+                        settings = HouseholdSettings(
+                            householdSize = settings.householdSizeOnce(),
+                            contentLanguage = settings.contentLanguageOnce(),
+                        ),
+                        pin = settings.householdPinOnce(),
+                        id = id,
+                        inviteCode = code,
+                    ),
+                )
+            }.onSuccess {
+                settings.setServerUrl(url)
+                recipeDao.resetRemoteNamesForReupload()
+                syncTrigger.requestSync()
+                _message.update { context.getString(R.string.settings_msg_server_attached) }
+            }.onFailure {
+                // Restore the interceptor to the stored (empty) address so later requests
+                // don't silently keep talking to a server the user never confirmed.
+                baseUrlInterceptor.setBaseUrl(settings.serverUrlOnce())
+                _message.update { context.getString(R.string.settings_msg_attach_failed) }
+            }
+            _busy.update { false }
         }
     }
 
