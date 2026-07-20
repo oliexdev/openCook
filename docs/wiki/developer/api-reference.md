@@ -47,7 +47,7 @@ GETs. Jobs, imports and admin are server-only.
 | Method | Path | Headers | Purpose |
 |---|---|---|---|
 | GET | `/households` | — | List households for the join picker (`id, name, settings, protected, created_at`). Invite codes are never exposed here. |
-| POST | `/households` | — | Create a household (`name, settings, pin, admin_password`, optional `id` + `invite_code`). → `201` `{household_id, invite_code, name, settings}`. Sets the server admin password only on first create. Client-supplied `id`/`invite_code` serve the attach-a-server flow for serverless households — idempotent for an existing id with the matching code, `409` on a code mismatch or an invite-code collision. |
+| POST | `/households` | — | Create a household (`name, settings, pin, admin_password`, optional `id` + `invite_code`). `admin_password` is a legacy bootstrap path kept for scripted setups; the app no longer sends it. → `201` `{household_id, invite_code, name, settings}`. Sets the server admin password only on first create. Client-supplied `id`/`invite_code` serve the attach-a-server flow for serverless households — idempotent for an existing id with the matching code, `409` on a code mismatch or an invite-code collision. |
 | POST | `/households/{household_id}/join` | — | Join (`pin` if protected). → `{… invite_code}`. |
 | PATCH | `/households/{household_id}` | `X-Household-Code` | Partial update of `name`/`settings`/`pin`. |
 
@@ -59,6 +59,8 @@ GETs. Jobs, imports and admin are server-only.
 | GET | `/images/{name}` | — | Serve a stored image (path-traversal guarded). |
 
 ## Admin (`api/admin.py`)
+
+Used by the built-in web console only — the Android app has no admin surface. A fresh server is bootstrapped by `OPENCOOK_ADMIN_PASSWORD` or by the console's first-visit set-password form.
 
 All require `X-Admin-Password` except `/admin/status`, the first `/admin/password` set, and the
 web-console HTML shell (which holds no data and prompts for the password itself).

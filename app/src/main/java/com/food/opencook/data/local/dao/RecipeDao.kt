@@ -55,6 +55,15 @@ interface RecipeDao {
     @Query("SELECT * FROM recipes")
     suspend fun getAllOnce(): List<RecipeWithDetails>
 
+    /** One page of recipes with details, ordered by id so paging is stable. Lets a backup
+     *  export stream a large library instead of materialising it all at once. */
+    @Transaction
+    @Query("SELECT * FROM recipes ORDER BY id LIMIT :limit OFFSET :offset")
+    suspend fun pageWithDetails(limit: Int, offset: Int): List<RecipeWithDetails>
+
+    @Query("SELECT COUNT(*) FROM recipes")
+    suspend fun recipeCount(): Int
+
     @Query("SELECT id FROM ingredients WHERE recipeId = :recipeId")
     suspend fun ingredientIdsFor(recipeId: String): List<String>
 

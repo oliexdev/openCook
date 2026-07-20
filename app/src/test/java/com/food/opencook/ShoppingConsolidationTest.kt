@@ -79,6 +79,7 @@ private class NoopMessageDao : com.food.opencook.data.local.dao.MessageDao {
     override suspend fun insert(message: com.food.opencook.data.local.entity.MessageEntity) {}
     override suspend fun insertAll(messages: List<com.food.opencook.data.local.entity.MessageEntity>) {}
     override suspend fun maxTimestamp(dataset: String, rowId: String, column: String): String? = null
+    override suspend fun maxTimestamp(): String? = null
     override suspend fun all(): List<com.food.opencook.data.local.entity.MessageEntity> = emptyList()
     override suspend fun since(cursor: String): List<com.food.opencook.data.local.entity.MessageEntity> = emptyList()
     override suspend fun forRow(dataset: String, rowId: String): List<com.food.opencook.data.local.entity.MessageEntity> = emptyList()

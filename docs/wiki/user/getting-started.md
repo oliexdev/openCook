@@ -3,7 +3,7 @@
 openCook is an Android app. On its own it already does a lot — managing recipes, planning meals
 and keeping a shopping list all work **with no server and no internet**. Family phones on the same
 Wi-Fi can even **sync directly with each other** (one switch, works with the app closed). An
-optional server you host at home adds photo scanning, browser import and backups.
+optional server you host at home adds photo scanning and browser import.
 
 ## Install the app
 
@@ -41,9 +41,9 @@ or, serverless, on the family's phones themselves.
 4. Done. The other phones in your family join the **same** household to share everything.
 
 > Joining from a phone needs that phone to be **reachable** (app open, or its phone-to-phone
-> sync switched on) and both devices on the same Wi-Fi. The first person to set up a *server*
-> also sets an **admin password** — keep it; it's needed for backups and server maintenance
-> (see [Family & sync](family-and-sync.md)).
+> sync switched on) and both devices on the same Wi-Fi. If you run a *server*, its maintenance
+> password is set on the server itself, not in the app — see
+> [Self-hosting](../developer/self-hosting.md#web-admin-console).
 
 ## What works offline
 
@@ -53,8 +53,9 @@ Everything except the server-backed features:
 |---|---|
 | Browse / edit / create recipes | Scanning a recipe from a photo |
 | Meal planning | Web import via browser extension |
-| Shopping list & pantry | Backups |
+| Shopping list & pantry | |
 | Search, cookbooks, barcode lookup* | |
+| [Backup & restore](backup-and-restore.md) to a file | |
 | Sync between phones (same Wi-Fi, phone-to-phone sync switched on) | |
 
 \* Barcode scanning works offline for products you've scanned before; the first lookup of a new

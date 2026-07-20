@@ -36,6 +36,10 @@ interface MealDayDao {
     @Query("SELECT * FROM meal_days WHERE date = :date")
     suspend fun getByDate(date: String): MealDayEntity?
 
+    /** All day flags — backup export. */
+    @Query("SELECT * FROM meal_days")
+    suspend fun getAll(): List<MealDayEntity>
+
     @Upsert
     suspend fun upsert(day: MealDayEntity)
 

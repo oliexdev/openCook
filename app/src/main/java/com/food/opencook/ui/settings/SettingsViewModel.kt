@@ -19,10 +19,12 @@
 package com.food.opencook.ui.settings
 
 import android.content.Context
+import android.text.format.DateUtils
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.food.opencook.R
 import com.food.opencook.data.LocalDataWiper
+import com.food.opencook.data.backup.BackupSettings
 import com.food.opencook.data.local.dao.RecipeDao
 import com.food.opencook.data.remote.BaseUrlInterceptor
 import com.food.opencook.data.remote.SyncApi
@@ -40,6 +42,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -65,7 +68,25 @@ class SettingsViewModel @Inject constructor(
     private val syncTrigger: SyncTrigger,
     private val recipeDao: RecipeDao,
     private val baseUrlInterceptor: BaseUrlInterceptor,
+    backupSettings: BackupSettings,
 ) : ViewModel() {
+
+    /** "Last backup: …" for the settings row; null until one has run, so the row falls
+     *  back to its generic subtitle. */
+    val lastBackupLabel: StateFlow<String?> = backupSettings.config
+        .map { config ->
+            config.lastRunAt.takeIf { it > 0 }?.let {
+                context.getString(
+                    R.string.settings_backup_last,
+                    DateUtils.getRelativeTimeSpanString(
+                        it,
+                        System.currentTimeMillis(),
+                        DateUtils.MINUTE_IN_MILLIS,
+                    ).toString(),
+                )
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val uiState: StateFlow<SettingsUiState> =
         combine(

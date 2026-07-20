@@ -394,7 +394,6 @@ private fun CreateStep(state: OnboardingUiState, viewModel: OnboardingViewModel)
     var name by remember { mutableStateOf("") }
     var size by remember { mutableIntStateOf(2) }
     var pin by remember { mutableStateOf("") }
-    var adminPassword by remember { mutableStateOf("") }
 
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
         StepHeader(stringResource(R.string.onboarding_create_step_title))
@@ -424,20 +423,8 @@ private fun CreateStep(state: OnboardingUiState, viewModel: OnboardingViewModel)
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
             modifier = Modifier.fillMaxWidth(),
         )
-        // The admin password protects server backup/restore — meaningless without a server.
-        if (!state.serverless) {
-            OutlinedTextField(
-                value = adminPassword,
-                onValueChange = { adminPassword = it },
-                label = { Text(stringResource(R.string.onboarding_admin_password_optional_label)) },
-                supportingText = { Text(stringResource(R.string.onboarding_admin_password_hint)) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
         Button(
-            onClick = { viewModel.createHousehold(name, size, pin, adminPassword) },
+            onClick = { viewModel.createHousehold(name, size, pin) },
             enabled = !state.busy && name.isNotBlank(),
             modifier = Modifier.fillMaxWidth(),
         ) {

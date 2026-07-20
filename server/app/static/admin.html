@@ -152,8 +152,9 @@
 <div id="gate">
   <div class="box">
     <div class="brand"><span id="logoGate"></span><span>openCook</span></div>
-    <p>Enter the server admin password.</p>
+    <p id="gateHint">Enter the server admin password.</p>
     <input id="pw" type="password" placeholder="Admin password" autocomplete="current-password" />
+    <input id="pw2" type="password" placeholder="Repeat password" autocomplete="new-password" style="display:none" />
     <button class="primary" id="unlock">Unlock</button>
     <div class="err" id="gateErr"></div>
   </div>
@@ -223,15 +224,46 @@ function lock() {
   $("app").style.display = "none"; $("gate").style.display = "flex";
   $("pw").value = ""; $("pw").focus();
 }
+// True once the server has told us it has no password yet — the gate then doubles as
+// the first-run setup form. POST /admin/password accepts a new password without a
+// current one exactly while none is set, so this is the intended bootstrap path
+// (the other being the OPENCOOK_ADMIN_PASSWORD env var).
+let needsSetup = false;
+
+function showSetup() {
+  needsSetup = true;
+  $("gateHint").textContent = "No admin password is set yet. Choose one to protect this server.";
+  $("pw").placeholder = "New admin password";
+  $("pw").setAttribute("autocomplete", "new-password");
+  $("pw2").style.display = "";
+  $("unlock").textContent = "Set password";
+}
+
 async function unlock() {
   const candidate = $("pw").value; $("gateErr").textContent = "";
+  if (needsSetup) return setPassword(candidate);
   const res = await fetch("/admin/verify", { method: "POST", headers: { "X-Admin-Password": candidate } });
   if (res.status === 204) {
     pw = candidate; sessionStorage.setItem(KEY, pw);
     $("gate").style.display = "none"; $("app").style.display = "grid"; await boot();
   } else if (res.status === 409) {
-    $("gateErr").textContent = "No admin password is set on this server yet.";
+    showSetup();
   } else { $("gateErr").textContent = "Wrong password."; }
+}
+
+async function setPassword(candidate) {
+  if (!candidate) return ($("gateErr").textContent = "Please enter a password.");
+  if (candidate !== $("pw2").value) return ($("gateErr").textContent = "The two passwords don't match.");
+  const res = await fetch("/admin/password", jpost({ new_password: candidate }));
+  if (!res.ok) {
+    $("gateErr").textContent = "Could not set the password.";
+    return;
+  }
+  needsSetup = false;
+  $("pw2").style.display = "none";
+  $("unlock").textContent = "Unlock";
+  pw = candidate; sessionStorage.setItem(KEY, pw);
+  $("gate").style.display = "none"; $("app").style.display = "grid"; await boot();
 }
 
 // ---- Boot ---------------------------------------------------------------
@@ -579,6 +611,7 @@ async function openMaintenance() {
 // ---- Wiring -------------------------------------------------------------
 $("unlock").onclick = unlock;
 $("pw").addEventListener("keydown", (e) => { if (e.key === "Enter") unlock(); });
+$("pw2").addEventListener("keydown", (e) => { if (e.key === "Enter") unlock(); });
 $("logoGate").innerHTML = LOGO_SVG;
 $("logoSide").innerHTML = LOGO_SVG;
 document.querySelectorAll('.navitem[data-view]').forEach((n) => {
@@ -597,6 +630,10 @@ document.querySelectorAll('.navitem[data-view]').forEach((n) => {
     if (res.status === 204) { $("gate").style.display = "none"; $("app").style.display = "grid"; await boot(); return; }
   }
   lock();
+  // A fresh server has no password: offer to set one instead of showing a login
+  // form nobody can satisfy.
+  const status = await fetch("/admin/status").then((r) => r.json()).catch(() => null);
+  if (status && !status.configured) showSetup();
 })();
 </script>
 </body>

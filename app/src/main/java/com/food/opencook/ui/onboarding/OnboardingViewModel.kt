@@ -199,7 +199,7 @@ class OnboardingViewModel @Inject constructor(
 
     fun goToCreate() = _state.update { it.copy(step = OnboardingStep.CREATE, error = null) }
 
-    fun createHousehold(name: String, size: Int, pin: String?, adminPassword: String?) {
+    fun createHousehold(name: String, size: Int, pin: String?) {
         if (name.isBlank()) {
             _state.update { it.copy(error = context.getString(R.string.onboarding_error_name_required)) }
             return
@@ -214,7 +214,6 @@ class OnboardingViewModel @Inject constructor(
                 name = name.trim(),
                 settings = HouseholdSettings(householdSize = size),
                 pin = pin?.takeIf { it.isNotBlank() },
-                adminPassword = adminPassword?.takeIf { it.isNotBlank() },
             )
             runCatching { syncApi.createHousehold(body) }
                 .onSuccess {

@@ -21,12 +21,15 @@ package com.food.opencook.work
 import android.content.Context
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
+import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import com.food.opencook.data.backup.BackupFrequency
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Duration
 import javax.inject.Inject
@@ -71,6 +74,32 @@ class WorkScheduler @Inject constructor(
     /** Cancel the upload+poll chain for a scan (user aborted it). */
     fun cancelScan(localJobId: String) {
         WorkManager.getInstance(context).cancelUniqueWork(uniqueName(localJobId))
+    }
+
+    /**
+     * (Re)schedule the automatic local backup. Charging + battery-not-low keeps a large
+     * write off the user's active day; deliberately **no** network constraint, since
+     * writing a file to local storage needs none.
+     */
+    fun scheduleLocalBackup(frequency: BackupFrequency) {
+        val request = PeriodicWorkRequestBuilder<LocalBackupWorker>(Duration.ofDays(frequency.days))
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiresCharging(true)
+                    .setRequiresBatteryNotLow(true)
+                    .build(),
+            )
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, Duration.ofMinutes(30))
+            .build()
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            LocalBackupWorker.UNIQUE_NAME,
+            ExistingPeriodicWorkPolicy.UPDATE,
+            request,
+        )
+    }
+
+    fun cancelLocalBackup() {
+        WorkManager.getInstance(context).cancelUniqueWork(LocalBackupWorker.UNIQUE_NAME)
     }
 
     private fun uniqueName(localJobId: String) = "scan-$localJobId"

@@ -85,7 +85,7 @@ is the household content language sent with the job. Adding a language = a new `
 
 All env vars are prefixed `OPENCOOK_` (`config.py`, `.env` supported): `DATA_DIR`, `HOST`, `PORT`,
 `SERVER_NAME`, `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `WORKER_POLL_INTERVAL`, `BACKUP_DIR`,
-`BACKUP_KEEP`. See the table in [Self-hosting](self-hosting.md).
+`BACKUP_KEEP`, `ADMIN_PASSWORD`. See the table in [Self-hosting](self-hosting.md).
 
 ## Tests
 

@@ -19,6 +19,7 @@
 package com.food.opencook.data.recipeimport
 
 import com.food.opencook.data.remote.dto.HowToStepDto
+import com.food.opencook.data.remote.dto.IngredientDto
 import com.food.opencook.data.remote.dto.NutritionDto
 import com.food.opencook.data.remote.dto.RecipeDto
 import kotlinx.serialization.json.Json
@@ -68,36 +69,66 @@ object RecipeImportParser {
 
     private fun toRecipeDto(obj: JsonObject): RecipeDto? {
         val name = obj.firstString("name", "Name", "headline", "title")?.trim()
-        val ingredientLines = extractIngredients(obj)
         val instructions = extractInstructions(obj)
-        if (name.isNullOrBlank() || (ingredientLines.isEmpty() && instructions.isEmpty())) return null
-
-        // Parse free-text ingredient lines into structured quantity/unit/name so the
-        // imported recipe can be scaled like any other (the mapper prefers these).
-        val structured = ingredientLines.map { IngredientLineParser.parse(it) }
+        // Our own backups carry the structured list verbatim (lossless, with row ids);
+        // foreign imports only have free-text lines, which IngredientLineParser splits
+        // into quantity/unit/name so the recipe can still be scaled.
+        val structured = extractStructuredIngredients(obj)
+            ?: extractIngredients(obj).map { IngredientLineParser.parse(it) }
+        if (name.isNullOrBlank() || (structured.isEmpty() && instructions.isEmpty())) return null
 
         val yieldStr = obj.firstString("recipeYield", "yield", "Portionen", "servings")
         return RecipeDto(
+            identifier = obj.firstString("identifier"),
             name = name,
+            description = obj.firstString("description"),
             recipeYield = yieldStr,
-            openCookServings = yieldStr?.let(::leadingInt),
+            openCookServings = obj.first("openCookServings")?.str()?.toIntOrNull()
+                ?: yieldStr?.let(::leadingInt),
+            openCookCategory = obj.firstString("openCookCategory"),
             openCookIngredients = structured,
             recipeInstructions = instructions,
             image = extractImages(obj), // refs resolved by the import flow (data-URI / zip path / http)
+            openCookNotes = extractStringList(obj, "openCookNotes"),
             openCookTags = extractTags(obj),
             prepTime = obj.firstString("prepTime")?.takeIf { it.startsWith("PT") },
             cookTime = obj.firstString("cookTime")?.takeIf { it.startsWith("PT") },
             totalTime = obj.firstString("totalTime")?.takeIf { it.startsWith("PT") },
             nutrition = extractNutrition(obj),
             cookbook = extractCookbook(obj),
+            openCookLastCookedAt = obj.firstString("openCookLastCookedAt"),
+            openCookCreatedAt = obj.firstString("openCookCreatedAt")?.toLongOrNull(),
+            openCookUpdatedAt = obj.firstString("openCookUpdatedAt")?.toLongOrNull(),
         )
     }
 
+    /** openCook's own structured ingredient array (a backup or an AI extraction), which
+     *  keeps quantity/unit/name apart and carries the row id. Null when absent, so the
+     *  caller falls back to parsing free-text lines. */
+    private fun extractStructuredIngredients(obj: JsonObject): List<IngredientDto>? {
+        val arr = obj["openCookIngredients"] as? JsonArray ?: return null
+        val items = arr.mapNotNull { el ->
+            val o = el as? JsonObject ?: return@mapNotNull null
+            val n = o.firstString("name")?.trim()?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+            IngredientDto(
+                quantity = o.firstString("quantity")?.toDoubleOrNull(),
+                unit = o.firstString("unit"),
+                name = n,
+                openCookId = o.firstString("openCookId"),
+            )
+        }
+        return items.ifEmpty { null }
+    }
+
+    private fun extractStringList(obj: JsonObject, key: String): List<String> =
+        (obj[key] as? JsonArray)?.mapNotNull { it.str()?.trim() }?.filter { it.isNotEmpty() }.orEmpty()
+
     /** Source cookbook from schema.org `isPartOf` (a Book/CreativeWork) — its `name`,
      *  or a bare string. schema.org/Recipe has no dedicated cookbook property, so this
-     *  is the standard way to express it; openCook stores the name in its `cookbook` column. */
+     *  is the standard way to express it; openCook stores the name in its `cookbook`
+     *  column and also writes a plain `cookbook` key in its own backups. */
     private fun extractCookbook(obj: JsonObject): String? =
-        when (val part = obj.first("isPartOf")) {
+        when (val part = obj.first("isPartOf", "cookbook")) {
             is JsonObject -> part.firstString("name")
             is JsonPrimitive -> part.str()
             else -> null
@@ -126,10 +157,12 @@ object RecipeImportParser {
     private fun extractInstructions(obj: JsonObject): List<HowToStepDto> {
         val el = obj.first("recipeInstructions", "instructions", "Instructions", "zubereitung")
             ?: return emptyList()
-        val steps = mutableListOf<String>()
+        // Steps keep their openCook row id when one is present (our own backup); foreign
+        // imports carry none and the mapper mints fresh ids.
+        val steps = mutableListOf<HowToStepDto>()
         fun add(e: JsonElement) {
             when (e) {
-                is JsonPrimitive -> e.str()?.toLines()?.forEach(steps::add)
+                is JsonPrimitive -> e.str()?.toLines()?.forEach { steps += HowToStepDto(text = it) }
                 is JsonArray -> e.forEach(::add)
                 is JsonObject -> {
                     val type = e.firstString("@type").orEmpty()
@@ -137,7 +170,11 @@ object RecipeImportParser {
                         e.first("itemListElement")?.let(::add)
                     } else {
                         val text = e.firstString("text", "name", "step", "description")
-                        if (text != null) steps.add(text) else e.first("itemListElement")?.let(::add)
+                        if (text != null) {
+                            steps += HowToStepDto(text = text, openCookId = e.firstString("openCookId"))
+                        } else {
+                            e.first("itemListElement")?.let(::add)
+                        }
                     }
                 }
                 else -> {}
@@ -145,9 +182,15 @@ object RecipeImportParser {
         }
         add(el)
         // A single blob (typical of plain imports) → split into sentences; already-stepped
-        // lists are left as-is so well-structured imports aren't over-fragmented.
-        val finalSteps = if (steps.size <= 1) splitIntoSentences(steps.firstOrNull().orEmpty()) else steps
-        return finalSteps.map { HowToStepDto(text = it.trim()) }.filter { it.text.isNotEmpty() }
+        // lists are left as-is so well-structured imports aren't over-fragmented. A lone
+        // step that carries an id is ours and must survive the round-trip unsplit.
+        val single = steps.singleOrNull()
+        val finalSteps = if (single != null && single.openCookId == null) {
+            splitIntoSentences(single.text).map { HowToStepDto(text = it) }
+        } else {
+            steps
+        }
+        return finalSteps.map { it.copy(text = it.text.trim()) }.filter { it.text.isNotEmpty() }
     }
 
     /** Split one instruction paragraph into sentence-steps; tolerant of a missing space
@@ -162,7 +205,9 @@ object RecipeImportParser {
     }
 
     private fun extractTags(obj: JsonObject): List<String> {
-        val el = obj.first("keywords", "recipeCategory", "recipeCuisine") ?: return emptyList()
+        // openCookTags first: our own backups write the tag list verbatim there, while
+        // foreign recipes only have the schema.org keyword-ish fields.
+        val el = obj.first("openCookTags", "keywords", "recipeCategory", "recipeCuisine") ?: return emptyList()
         return when (el) {
             is JsonArray -> el.mapNotNull { it.str()?.trim() }.filter { it.isNotEmpty() }
             is JsonPrimitive -> el.str()?.split(",")?.map(String::trim)?.filter(String::isNotEmpty).orEmpty()
@@ -192,7 +237,8 @@ object RecipeImportParser {
             carbohydrateContent = n.firstString("carbohydrateContent"),
             fiberContent = n.firstString("fiberContent"),
             sugarContent = n.firstString("sugarContent"),
-            openCookBasis = n.firstString("servingSize"),
+            // Our backups write openCookBasis; schema.org calls the same thing servingSize.
+            openCookBasis = n.firstString("openCookBasis", "servingSize"),
         )
         val hasValue = listOf(
             dto.calories, dto.proteinContent, dto.fatContent,

@@ -30,17 +30,13 @@
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
-    <string name="settings_server_section">Server (optional)</string>
-    <string name="settings_server_hint">Address of your self-hosted openCook server. Only needed for AI scanning and sync — the app works fully offline too.</string>
     <string name="settings_server_url_label">Server address</string>
     <string name="settings_server_url_placeholder">http://192.168.1.10:8000</string>
-    <string name="settings_household_section">Household</string>
     <string name="settings_household_hint">Your household shares recipes, shopping list and planning across all devices.</string>
     <string name="settings_household_code_label">Household code</string>
     <string name="settings_household_code_copied">Code copied</string>
     <string name="settings_sync_now">Sync now</string>
     <string name="settings_save">Save</string>
-    <string name="settings_saved">Saved</string>
 
     <!-- Scan -->
     <string name="scan_title">Scan recipe</string>
@@ -272,7 +268,6 @@
     <string name="mealplan_reasons_none">Added manually — no reasoning.</string>
 
     <!-- Settings: household size -->
-    <string name="settings_household_size_section">Household size</string>
     <string name="settings_household_size_hint">How many people to plan for. For large amounts the planner suggests leftovers the next day.</string>
     <string name="settings_household_size_label">People</string>
 
@@ -306,13 +301,10 @@
     <string name="onboarding_create_step_title">Create household</string>
     <string name="onboarding_name_label">Household name</string>
     <string name="onboarding_pin_optional_label">PIN (optional)</string>
-    <string name="onboarding_admin_password_optional_label">Admin password (optional)</string>
-    <string name="onboarding_admin_password_hint">Protects the admin area (server backups). Can be changed later.</string>
     <string name="onboarding_create">Create</string>
     <string name="onboarding_back">Back</string>
 
     <!-- Settings: household membership -->
-    <string name="settings_household_current">Household: %1$s</string>
     <string name="settings_household_leave">Leave / switch household</string>
     <string name="settings_connect_server">Connect to a server</string>
     <string name="settings_connect_server_hint">Unlock photo scanning and family sync — your data is kept.</string>
@@ -330,43 +322,8 @@
     <string name="settings_attach_server">Add a server</string>
     <string name="settings_attach_server_hint">Optional: photo scanning, backups and browser import need a home server.</string>
     <string name="settings_attach_server_action">Add server</string>
-    <string name="settings_admin">Admin area</string>
-    <string name="settings_admin_subtitle">Manage server backups (password required)</string>
 
     <!-- Admin area (server backup/restore) -->
-    <string name="admin_title">Admin area</string>
-    <string name="admin_password_label">Admin password</string>
-    <string name="admin_set_password_title">Set admin password</string>
-    <string name="admin_set_password_hint">No admin password set yet. Set one now to protect server backups.</string>
-    <string name="admin_enter_password_title">Enter admin password</string>
-    <string name="admin_unlock">Unlock</string>
-    <string name="admin_save_password">Set</string>
-    <string name="admin_wrong_password">Wrong password</string>
-    <string name="admin_not_configured_server">No server selected – connect in settings first.</string>
-    <string name="admin_backups_section">Backups</string>
-    <string name="admin_create_backup">Create backup now</string>
-    <string name="admin_no_backups">No backups yet.</string>
-    <string name="admin_restore">Restore</string>
-    <string name="admin_restore_confirm_title">Restore?</string>
-    <string name="admin_restore_confirm_text">Replaces ALL current server data with this backup. A server restart is recommended.</string>
-    <string name="admin_restore_done">Restored – please restart the server and sync again.</string>
-    <string name="admin_backup_created">Backup created</string>
-    <string name="admin_error">Action failed</string>
-    <string name="admin_confirm">OK</string>
-    <string name="admin_reset">Reset database</string>
-    <string name="admin_reset_button">Delete everything</string>
-    <string name="admin_reset_confirm_title">Really delete everything?</string>
-    <string name="admin_reset_confirm_text">Deletes all recipes, households and the entire history — on the server and on this device. Backups are kept. This device returns to first-time setup afterwards.</string>
-    <string name="admin_reset_done">Database reset</string>
-    <string name="admin_households_section">Households</string>
-    <string name="admin_no_households">No households.</string>
-    <string name="admin_delete_household_button">Delete</string>
-    <string name="admin_delete_household_confirm_title">Delete household?</string>
-    <string name="admin_delete_household_confirm_text">Deletes the household “%1$s” along with all synced data (recipes, shopping, plan, pantry) and pending imports on the server. Devices with this household can no longer sync afterwards.</string>
-    <string name="admin_household_deleted">Household deleted</string>
-    <string name="admin_maintenance_section">Maintenance</string>
-    <string name="admin_show_all">Show all %1$d</string>
-    <string name="admin_show_less">Show less</string>
 
     <!-- Recipe JSON import (button on the add-recipe screen) -->
     <string name="import_from_file">Import from JSON file</string>
@@ -492,9 +449,6 @@
     <string name="settings_msg_sync_failed_generic">Sync failed</string>
 
     <!-- Admin error messages -->
-    <string name="admin_error_unreachable">Server unreachable</string>
-    <string name="admin_error_load_backups">Couldn\'t load backups</string>
-    <string name="admin_error_load_households">Couldn\'t load households</string>
 
     <!-- Review save: duplicate-name feedback -->
     <string name="review_duplicate_one">A recipe with this name already exists.</string>
@@ -530,6 +484,64 @@
     <string name="mealplan_search_empty_title">Nothing found</string>
     <string name="mealplan_search_empty_message">Try a different search term.</string>
 
-    <!-- Admin -->
-    <string name="backup_size_kb">%1$s KB</string>
+    <!-- Backup & restore (local, on-device) -->
+    <string name="settings_backup">Backup &amp; restore</string>
+    <string name="settings_backup_subtitle">Save your recipes to a file</string>
+    <string name="settings_backup_last">Last backup: %1$s</string>
+    <string name="backup_title">Backup &amp; restore</string>
+    <string name="backup_intro">A backup holds your recipes, photos, shopping list, pantry and meal plan as a readable ZIP file. It contains no household code and no PIN, so you can store it anywhere and restore it into any household.</string>
+    <string name="backup_create">Create backup</string>
+    <string name="backup_create_hint">Write a ZIP file to a location you choose</string>
+    <string name="backup_restore">Restore backup</string>
+    <string name="backup_restore_hint">Add the contents of a backup file back in</string>
+    <string name="backup_restore_action">Restore</string>
+    <string name="backup_restore_confirm_title">Restore this backup?</string>
+    <string name="backup_restore_confirm_summary">Backup from %1$s\n%2$d recipes · %3$d photos</string>
+    <string name="backup_restore_confirm_household">From household: %1$s</string>
+    <string name="backup_restore_confirm_hint">Nothing is deleted. Missing items are added back, and anything you created since the backup stays.</string>
+    <string name="backup_export_done">Backup written: %1$d recipes, %2$d photos.</string>
+    <string name="backup_restore_done">Restored: %1$d recipes, %2$d photos.</string>
+    <string name="backup_not_readable_title">Not a backup</string>
+    <string name="backup_not_readable_text">This file isn\'t an openCook backup, or it is damaged.</string>
+    <string name="backup_error_too_new">This backup was written by a newer version of openCook. Please update the app first.</string>
+    <string name="backup_error_unsafe">This file looks unsafe and was not opened.</string>
+    <string name="backup_error_generic">Failed: %1$s</string>
+    <string name="backup_ok">OK</string>
+    <string name="backup_phase_recipes">Saving recipes…</string>
+    <string name="backup_phase_images">Saving photos…</string>
+    <string name="backup_phase_lists">Saving lists…</string>
+    <string name="backup_phase_restore_images">Restoring photos…</string>
+    <string name="backup_phase_restore_recipes">Restoring recipes…</string>
+    <string name="backup_auto_section">Automatic backup</string>
+    <string name="backup_auto_title">Back up automatically</string>
+    <string name="backup_auto_hint">Daily while charging, into a folder you pick</string>
+    <string name="backup_auto_folder_unknown">Selected folder</string>
+    <string name="backup_auto_folder_hint">Keeps the newest %1$d backups</string>
+    <string name="backup_auto_last_error">Last automatic backup failed: %1$s</string>
+    <!-- Settings hub & sub-pages -->
+    <string name="settings_hub_household_summary">%1$s · %2$d people</string>
+    <string name="settings_hub_household_local_only">This device only — connect a server or phones</string>
+    <string name="settings_hub_appearance_summary">%1$s · %2$s</string>
+    <string name="settings_hub_about_summary">Version %1$s · GPLv3</string>
+    <string name="settings_hub_sync_server_and_peers">Server and phones on Wi-Fi</string>
+    <string name="settings_hub_sync_server_only">Via your server</string>
+    <string name="settings_hub_sync_peers_only">Phone to phone on Wi-Fi</string>
+    <string name="settings_hub_sync_off">Not syncing — this device only</string>
+    <string name="settings_sync_section">Sync</string>
+    <string name="settings_sync_intro">Where this phone\'s recipes, lists and plan travel to. A server and phone-to-phone sync work together — whichever is reachable is used.</string>
+    <string name="settings_household_leave_hint">Removes all household data from this device</string>
+    <string name="settings_dynamic_color_hint">Take colours from your wallpaper</string>
+    <string name="settings_dynamic_color_on">Material You</string>
+    <string name="settings_dynamic_color_off">openCook colours</string>
+    <string name="settings_about">About openCook</string>
+    <string name="about_intro">openCook is free software. It works without an account, without the cloud and without tracking — your recipes stay on your devices.</string>
+    <string name="about_version">Version</string>
+    <string name="about_license">Licence</string>
+    <string name="about_license_subtitle">GNU General Public License v3.0</string>
+    <string name="about_source">Source code</string>
+    <string name="about_source_subtitle">github.com/oliexdev/openCook</string>
+    <string name="about_privacy">Privacy</string>
+    <string name="about_privacy_subtitle">No account, no cloud, no tracking. Sync stays on your own network.</string>
+    <string name="about_support">Support the project</string>
+    <string name="about_support_subtitle">Become a GitHub sponsor</string>
 </resources>

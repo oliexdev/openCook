@@ -9,7 +9,7 @@ Under `app/src/main/java/com/food/opencook/`:
 
 | Package | Contents |
 |---|---|
-| `ui/` | Compose screens + navigation (`recipes`, `home`, `scan`, `capture`, `review`, `mealplan`, `shoppinglist`, `pantry`, `barcode`, `onboarding`, `settings`, `admin`, `status`, `components`, `theme`, `navigation`) |
+| `ui/` | Compose screens + navigation (`recipes`, `home`, `scan`, `capture`, `review`, `mealplan`, `shoppinglist`, `pantry`, `barcode`, `onboarding`, `settings`, `backup`, `status`, `components`, `theme`, `navigation`) |
 | `data/local/` | Room database, entities, DAOs, migrations |
 | `data/remote/` | Retrofit APIs + `BaseUrlInterceptor` |
 | `data/settings/` | DataStore-backed settings (server URL, household code) |
@@ -31,8 +31,14 @@ Single Activity (`MainActivity.kt`) → `ui/OpenCookApp.kt` hosts a Compose `Nav
 - Top-level destinations (`ui/navigation/TopLevelDestination.kt`): `HOME, RECIPES, PLAN, SHOPPING,
   SETTINGS`.
 - Routes (`ui/navigation/Routes.kt`): `SCAN, CAMERA, REVIEW, RECIPE_DETAIL, EDIT, PANTRY,
-  BARCODE_SCAN, ADMIN, PLAN_PICK`. Sentinel job IDs `JOB_ID_ALL` (all unreviewed drafts) and
+  BARCODE_SCAN, BACKUP, PLAN_PICK, SETTINGS_HOUSEHOLD, SETTINGS_SYNC, SETTINGS_APPEARANCE,
+  SETTINGS_ABOUT`. Sentinel job IDs `JOB_ID_ALL` (all unreviewed drafts) and
   `JOB_ID_NEW` (manual creation) drive the shared Review screen.
+- The Settings tab is a **hub**: each row opens a sub-page and its subtitle shows current state
+  (household + size, where sync goes, theme + language, last backup, version). All sub-pages share
+  `SettingsRow`/`SettingsSubScreen` from `ui/settings/SettingsComponents.kt` and the single
+  `SettingsViewModel`. The server lives under *Sync* rather than in a section of its own — it is one
+  possible sync target, not a separate topic.
 
 ## Data layer (Room)
 
@@ -69,7 +75,7 @@ at runtime from `SettingsRepository.serverUrl`, so the server address can change
 Retrofit (and requests fail fast if no server is configured). Open Food Facts uses a **separate**
 Retrofit pointed at `https://world.openfoodfacts.org/` with a custom `User-Agent`.
 
-APIs: `JobsApi`, `SyncApi`, `ImportApi`, `AdminApi`, `OpenFoodFactsApi`.
+APIs: `JobsApi`, `SyncApi`, `ImportApi`, `OpenFoodFactsApi`. (There is deliberately no admin API — server maintenance lives in the server's own web console.)
 
 ## Dependency injection (Hilt)
 

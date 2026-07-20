@@ -40,6 +40,10 @@ interface MealPlanDao {
     @Query("SELECT * FROM meal_plan WHERE id = :id")
     suspend fun getById(id: String): MealPlanEntity?
 
+    /** Whole plan — backup export. */
+    @Query("SELECT * FROM meal_plan")
+    suspend fun getAll(): List<MealPlanEntity>
+
     @Upsert
     suspend fun upsert(entry: MealPlanEntity)
 

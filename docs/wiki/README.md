@@ -12,6 +12,7 @@ How to use the app, day to day.
 - [Meal planner](user/meal-planner.md) — plan your week with smart suggestions
 - [Shopping list & pantry](user/shopping-and-pantry.md) — one shared list, aware of what you have
 - [Family & sync](user/family-and-sync.md) — share everything across the family's phones
+- [Backup & restore](user/backup-and-restore.md) — save your recipes to a file, automatically
 - [FAQ](user/faq.md) — common questions
 
 ## :hammer_and_wrench: For developers

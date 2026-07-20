@@ -58,7 +58,7 @@ openCook comes in two parts:
   the household invite code is the shared secret). The phone-to-phone switch keeps each phone
   reachable for the family even with the app closed, at the cost of a small silent notification.
 * **An optional server** you host at home adds what phones can't do alone: reading recipes
-  from photos (the AI runs only on *your* machine), browser import, backups — and sync that
+  from photos (the AI runs only on *your* machine), browser import, server-side archives — and sync that
   also works while nobody has the app open. You can add it to a serverless household later
   in Settings, keeping the same invite code.
 

@@ -138,8 +138,6 @@ data class CreateHouseholdRequest(
     val name: String,
     val settings: HouseholdSettings = HouseholdSettings(),
     val pin: String? = null,
-    /** Optional: sets the server's admin password (gates backup/restore) on first use. */
-    @SerialName("admin_password") val adminPassword: String? = null,
     /** Optional (attach-a-server flow): keep the id/invite code a serverless household
      *  already uses, so existing members stay valid without re-joining. */
     val id: String? = null,
@@ -148,36 +146,6 @@ data class CreateHouseholdRequest(
 
 @Serializable
 data class JoinHouseholdRequest(val pin: String? = null)
-
-// --- Server admin (backup/restore) ---
-
-@Serializable
-data class AdminStatusDto(val configured: Boolean = false)
-
-@Serializable
-data class AdminPasswordChangeDto(
-    @SerialName("current_password") val currentPassword: String? = null,
-    @SerialName("new_password") val newPassword: String,
-)
-
-@Serializable
-data class BackupInfoDto(
-    val id: String,
-    @SerialName("created_at") val createdAt: String? = null,
-    @SerialName("size_bytes") val sizeBytes: Long = 0,
-)
-
-@Serializable
-data class BackupListDto(val backups: List<BackupInfoDto> = emptyList())
-
-@Serializable
-data class RestoreRequestDto(@SerialName("backup_id") val backupId: String)
-
-@Serializable
-data class RestoreResultDto(
-    val restored: Boolean = false,
-    @SerialName("restart_recommended") val restartRecommended: Boolean = true,
-)
 
 @Serializable
 data class PatchHouseholdRequest(
@@ -209,7 +177,12 @@ data class JobResponseDto(
 data class RecipeDto(
     @SerialName("@context") val context: String? = null,
     @SerialName("@type") val type: String? = null,
+    /** schema.org/identifier — carries openCook's own recipe id through a backup round-trip
+     *  so re-importing upserts the same row instead of creating a duplicate. Absent on
+     *  foreign imports, where the mapper mints a fresh id. */
+    val identifier: String? = null,
     val name: String? = null,
+    val description: String? = null,
     val recipeYield: String? = null,
     /** Numeric servings the recipe makes (openCook extension). */
     val openCookServings: Int? = null,
@@ -229,12 +202,19 @@ data class RecipeDto(
     val nutrition: NutritionDto? = null,
     /** Source cookbook name (openCook extension; schema.org/Recipe has no such property). */
     val cookbook: String? = null,
+    /** ISO date this recipe was last cooked (openCook extension; backup round-trip). */
+    val openCookLastCookedAt: String? = null,
+    /** Epoch millis of creation/last edit (openCook extension; backup round-trip). */
+    val openCookCreatedAt: Long? = null,
+    val openCookUpdatedAt: Long? = null,
 )
 
 @Serializable
 data class HowToStepDto(
     @SerialName("@type") val type: String? = null,
     val text: String = "",
+    /** openCook's own instruction row id — see [RecipeDto.identifier]. */
+    val openCookId: String? = null,
 )
 
 @Serializable
@@ -242,6 +222,8 @@ data class IngredientDto(
     val quantity: Double? = null,
     val unit: String? = null,
     val name: String = "",
+    /** openCook's own ingredient row id — see [RecipeDto.identifier]. */
+    val openCookId: String? = null,
 )
 
 /** Nutrition values arrive as display strings with units ("560 kcal", "17 g"). */

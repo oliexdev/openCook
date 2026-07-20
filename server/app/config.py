@@ -39,6 +39,13 @@ class Settings(BaseSettings):
     backup_dir: Path | None = None
     backup_keep: int = 14
 
+    # Admin password bootstrap. Applied at startup only when no password is set yet, so
+    # a later change through the web console survives a restart. This (or the "set
+    # password" form the console shows on first visit) is how a fresh server gets one —
+    # the app deliberately has no admin surface: everything it could do, the console at
+    # /admin does, and more.
+    admin_password: str | None = None
+
     @property
     def db_path(self) -> Path:
         return self.data_dir / "opencook.db"

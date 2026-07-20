@@ -45,12 +45,12 @@ Phone-to-phone covers the everyday case — shared lists at home — but the ser
 | Recipe photos | ✅ shared between phones | ✅ plus one place that always has all of them |
 | Scanning recipes from photos (AI) | ❌ | ✅ runs on the server |
 | Import via the desktop browser extension | ❌ | ✅ |
-| One-button backup & restore | ❌ (each phone holds a full copy) | ✅ admin screen |
+| Backup & restore | ✅ to a file on the phone | ✅ plus scheduled server-side archives |
 | Away from home | ❌ Wi-Fi only | ✅ over your VPN |
 | Cost | a permanent silent notification, a little battery | a machine that runs the server |
 
 In short: **phones only** handles the everyday sharing completely. The **server** adds AI
-scanning, browser import, backups and reachability over VPN. You can start serverless and add the
+scanning, browser import and reachability over VPN. You can start serverless and add the
 server whenever — nothing has to be set up again.
 
 ## Households without a server
@@ -75,14 +75,18 @@ Recipe photos sync as well, downloaded to each phone in the background after the
 arrives — so the list appears quickly and pictures fill in shortly after. This works phone-to-phone
 too: each phone shares the photos it has.
 
-## Backups (admin)
+## Backups
 
-With a server, your data lives there and the person who set it up (the **admin**) can make and
-restore **backups** from the app's admin screen — a single archive containing the database and all
-images. Because every phone re-syncs from the server, the phones themselves need no backup. See
-[Self-hosting → Backups](../developer/self-hosting.md#backup--restore). In a serverless household
-every phone holds the full data — any one of them can restore the family's world, but there is no
-one-button backup; consider adding a server if that matters to you.
+Every household can back up **from the phone**: **Settings → Backup & restore** writes a ZIP file
+holding your recipes, photos, shopping list, pantry and meal plan, and can put a fresh one in a
+folder of your choice every night. That works with or without a server, which matters most for a
+serverless household where the phones are the only copy. It is covered step by step in
+[Backup & restore](backup-and-restore.md).
+
+If you run a server, it also keeps **its own archives** of the whole database — see
+[Self-hosting → Backup & restore](../developer/self-hosting.md#backup--restore). Those run
+unattended and can roll the server back to an exact earlier state, which the phone backup
+deliberately does not do. The two complement each other; neither replaces the other.
 
 ## Privacy
 

@@ -16,7 +16,7 @@ openCook is a monorepo with two halves that talk over HTTP:
   (embedded Ktor server + mDNS `role=peer`; a standby foreground service keeps it reachable with
   the app closed), so a household syncs **peer-to-peer** without any backend.
 - **`server/`** — an **optional** Python backend that adds what phones can't do alone: AI recipe
-  extraction from photos, browser import, backups, and reachability beyond the home Wi-Fi (VPN).
+  extraction from photos, browser import, server-side archives, and reachability beyond the home Wi-Fi (VPN).
 
 ## Design principles
 

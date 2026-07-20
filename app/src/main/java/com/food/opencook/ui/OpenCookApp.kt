@@ -51,7 +51,7 @@ import com.food.opencook.BuildConfig
 import com.food.opencook.R
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.food.opencook.ui.admin.AdminScreen
+import com.food.opencook.ui.backup.BackupScreen
 import com.food.opencook.ui.barcode.BarcodeScanScreen
 import com.food.opencook.ui.home.HomeScreen
 import com.food.opencook.ui.onboarding.OnboardingScreen
@@ -77,7 +77,11 @@ import com.food.opencook.ui.recipes.RecipeDetailScreen
 import com.food.opencook.ui.recipes.RecipesScreen
 import com.food.opencook.ui.review.ReviewScreen
 import com.food.opencook.ui.scan.ScanScreen
+import com.food.opencook.ui.settings.AboutScreen
+import com.food.opencook.ui.settings.AppearanceSettingsScreen
+import com.food.opencook.ui.settings.HouseholdSettingsScreen
 import com.food.opencook.ui.settings.SettingsScreen
+import com.food.opencook.ui.settings.SyncSettingsScreen
 import com.food.opencook.ui.shoppinglist.ShoppingHubScreen
 import com.food.opencook.ui.status.ActiveJobsViewModel
 import com.food.opencook.ui.status.StatusStrip
@@ -285,10 +289,28 @@ private fun AppNavHost(navController: NavHostController, navigateToTab: (String)
             )
         }
         composable(TopLevelDestination.SETTINGS.route) {
-            SettingsScreen(onOpenAdmin = { navController.navigate(Routes.ADMIN) })
+            SettingsScreen(
+                onOpenHousehold = { navController.navigate(Routes.SETTINGS_HOUSEHOLD) },
+                onOpenSync = { navController.navigate(Routes.SETTINGS_SYNC) },
+                onOpenAppearance = { navController.navigate(Routes.SETTINGS_APPEARANCE) },
+                onOpenBackup = { navController.navigate(Routes.BACKUP) },
+                onOpenAbout = { navController.navigate(Routes.SETTINGS_ABOUT) },
+            )
         }
-        composable(Routes.ADMIN) {
-            AdminScreen(onBack = { navController.popBackStack() })
+        composable(Routes.SETTINGS_HOUSEHOLD) {
+            HouseholdSettingsScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.SETTINGS_SYNC) {
+            SyncSettingsScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.SETTINGS_APPEARANCE) {
+            AppearanceSettingsScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.SETTINGS_ABOUT) {
+            AboutScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.BACKUP) {
+            BackupScreen(onBack = { navController.popBackStack() })
         }
         composable(
             Routes.PLAN_PICK,

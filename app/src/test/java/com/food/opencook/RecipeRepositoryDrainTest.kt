@@ -115,6 +115,8 @@ private class FakeRecipeDao : RecipeDao {
     override fun observeById(id: String): Flow<RecipeWithDetails?> = throw NotImplementedError()
     override suspend fun getByIdOnce(id: String): RecipeWithDetails? = null
     override suspend fun getAllOnce(): List<RecipeWithDetails> = emptyList()
+    override suspend fun pageWithDetails(limit: Int, offset: Int): List<RecipeWithDetails> = emptyList()
+    override suspend fun recipeCount(): Int = recipes.size
     override suspend fun ingredientIdsFor(recipeId: String): List<String> = ingredients.filter { it.recipeId == recipeId }.map { it.id }
     override suspend fun instructionIdsFor(recipeId: String): List<String> = instructions.filter { it.recipeId == recipeId }.map { it.id }
     override suspend fun deleteIngredientById(id: String) { ingredients.removeAll { it.id == id } }
@@ -162,6 +164,7 @@ private class FakeMessageDao : MessageDao {
     override suspend fun existingTimestamps(timestamps: List<String>): List<String> =
         messages.map { it.timestamp }.filter { it in timestamps.toSet() }
     override suspend fun count(): Int = messages.size
+    override suspend fun maxTimestamp(): String? = messages.maxOfOrNull { it.timestamp }
 }
 
 /** Deterministic stamper: strictly increasing timestamps. */

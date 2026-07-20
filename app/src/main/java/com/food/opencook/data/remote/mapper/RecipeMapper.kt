@@ -39,7 +39,10 @@ data class MappedRecipe(
 
 /**
  * Map an extracted schema.org [RecipeDto] into Room entities. Fresh UUIDs are
- * generated for every row (stable IDs the app owns). Structured
+ * generated for every row (stable IDs the app owns) — except where the DTO carries
+ * openCook's own ids ([RecipeDto.identifier], [IngredientDto.openCookId],
+ * [HowToStepDto.openCookId]), which a backup round-trip reuses so re-importing
+ * upserts the existing rows instead of duplicating them. Structured
  * [RecipeDto.openCookIngredients] are preferred; the flattened
  * [RecipeDto.recipeIngredient] strings are used only as a fallback.
  */
@@ -48,17 +51,17 @@ fun RecipeDto.toMappedRecipe(
     now: Long,
     idFactory: () -> String = { UUID.randomUUID().toString() },
 ): MappedRecipe {
-    val recipeId = idFactory()
+    val recipeId = identifier?.takeIf { it.isNotBlank() } ?: idFactory()
 
     val drafts = if (openCookIngredients.isNotEmpty()) {
-        openCookIngredients.map { IngredientDraft(it.quantity, it.unit, it.name) }
+        openCookIngredients.map { IngredientDraft(it.quantity, it.unit, it.name, it.openCookId) }
     } else {
         // Fallback: flattened "recipeIngredient" strings have no structure.
-        recipeIngredient.map { IngredientDraft(null, null, it) }
+        recipeIngredient.map { IngredientDraft(null, null, it, null) }
     }
     val ingredients = dedupeIngredients(drafts).mapIndexed { index, draft ->
         IngredientEntity(
-            id = idFactory(),
+            id = draft.id?.takeIf { it.isNotBlank() } ?: idFactory(),
             recipeId = recipeId,
             position = index,
             quantity = draft.quantity,
@@ -69,7 +72,7 @@ fun RecipeDto.toMappedRecipe(
 
     val instructions = recipeInstructions.mapIndexed { index, step ->
         InstructionEntity(
-            id = idFactory(),
+            id = step.openCookId?.takeIf { it.isNotBlank() } ?: idFactory(),
             recipeId = recipeId,
             position = index,
             text = stripStepNumber(step.text),
@@ -91,7 +94,7 @@ fun RecipeDto.toMappedRecipe(
         recipe = RecipeEntity(
             id = recipeId,
             name = name,
-            description = null,
+            description = description?.takeIf { it.isNotBlank() },
             // Keep the source yield string if the recipe carried one; otherwise leave it null
             // and let the UI render a localized "N servings" label from the numeric servings.
             recipeYield = recipeYield,
@@ -99,14 +102,17 @@ fun RecipeDto.toMappedRecipe(
             category = openCookCategory?.let { RecipeCategories.normalizeKey(it) },
             notes = openCookNotes.filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }?.joinToString("\n"),
             tags = openCookTags.filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }?.joinToString("\n"),
+            lastCookedAt = openCookLastCookedAt?.takeIf { it.isNotBlank() },
             cookbook = cookbook?.takeIf { it.isNotBlank() },
             prepTime = prepTime,
             cookTime = cookTime,
             totalTime = totalTime,
             sourcePhotoId = sourcePhotoId,
             householdId = null,
-            createdAt = now,
-            updatedAt = now,
+            // A backup restores the original timestamps so "recently added" ordering and
+            // the meal planner's recency signals survive; fresh imports use `now`.
+            createdAt = openCookCreatedAt ?: now,
+            updatedAt = openCookUpdatedAt ?: now,
         ),
         ingredients = ingredients,
         instructions = instructions,
@@ -127,7 +133,12 @@ private fun stripStepNumber(text: String): String {
     return stripped.ifEmpty { text }
 }
 
-private data class IngredientDraft(val quantity: Double?, val unit: String?, val name: String)
+private data class IngredientDraft(
+    val quantity: Double?,
+    val unit: String?,
+    val name: String,
+    val id: String? = null,
+)
 
 private fun normalizeUnit(unit: String?): String? =
     unit?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }

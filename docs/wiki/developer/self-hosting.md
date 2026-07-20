@@ -60,6 +60,7 @@ Environment variables, all prefixed `OPENCOOK_` (a `server/.env` file is read to
 | `OPENCOOK_WORKER_POLL_INTERVAL` | `2.0` | Job worker poll interval (s) |
 | `OPENCOOK_BACKUP_DIR` | `<data_dir>/backups` | Backup archive location |
 | `OPENCOOK_BACKUP_KEEP` | `14` | Backups to retain (rotation) |
+| `OPENCOOK_ADMIN_PASSWORD` | — | Sets the admin password on first start (see below) |
 
 ## Data
 
@@ -77,7 +78,15 @@ disk — so keep durable backups off the data volume.
 ## Web admin console
 
 Open **`http://<server>:8000/admin/`** in a browser and enter the admin password. It's a built-in,
-self-contained page (no extra service) for inspecting and maintaining the server:
+self-contained page (no extra service) for inspecting and maintaining the server, and it is the
+**only** place server maintenance happens — the Android app has no admin screen.
+
+**Setting the password on a fresh server.** Either set `OPENCOOK_ADMIN_PASSWORD` before the first
+start (applied only while no password exists, so a later change in the console survives a restart),
+or just open `/admin/` — with no password configured the gate offers to set one instead of asking
+for one. Change it later in **Maintenance**.
+
+The console offers:
 
 - **Tables** — browse the SQLite tables read-only (paginated, sortable; password/PIN hashes masked).
 - **Sync log** — the append-only message log shown as reconstructed entities per dataset, scoped by
@@ -92,10 +101,15 @@ on every data request. Keep it on the trusted LAN/VPN like the rest of the serve
 ## Backup & restore
 
 A backup is one portable `.tar.gz` with a consistent `opencook.db` snapshot (SQLite online-backup —
-safe while running) plus the whole `images/` tree. Phones re-sync from the server after a restore,
-so they need no backup of their own.
+safe while running) plus the whole `images/` tree. It captures the complete message log, so a
+restore rolls the server back to an exact point in time.
 
-**From the app or web console:** create, download and restore backups (admin password required).
+This is separate from, and complementary to, the **on-device backup** in the app
+([Backup & restore](../user/backup-and-restore.md)), which exports readable schema.org recipes to a
+ZIP and can only ever add data back. Server archives are complete and unattended; phone backups are
+portable and work without a server at all.
+
+**From the web console:** create, download, upload and restore backups (admin password required).
 
 **From the CLI:**
 ```bash

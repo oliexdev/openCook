@@ -4,7 +4,13 @@
 No. Recipes, meal planning and the shopping list all work fully offline, and with the
 **phone-to-phone sync** switch family phones on the same Wi-Fi **sync directly with each
 other** — even while the app is closed. A household can be founded entirely without a server;
-a server adds **scanning recipes from photos**, browser import, backups and access over VPN.
+a server adds **scanning recipes from photos**, browser import and access over VPN.
+
+### How do I back up my recipes without a server?
+**Settings → Backup & restore.** It writes a ZIP with your recipes, photos, shopping list, pantry
+and meal plan to wherever you like, and can do it automatically every night while charging. The
+file holds no household code or PIN, so it's safe to keep in a cloud drive — see
+[Backup & restore](backup-and-restore.md).
 
 ### Do I need an account?
 No. There's no registration, no cloud and no tracking. Families share data through a household

@@ -29,17 +29,13 @@
 
     <!-- Settings -->
     <string name="settings_title">Einstellungen</string>
-    <string name="settings_server_section">Server (optional)</string>
-    <string name="settings_server_hint">Adresse deines selbst gehosteten openCook-Servers. Wird nur für KI-Scan und Sync gebraucht — die App funktioniert auch komplett offline.</string>
     <string name="settings_server_url_label">Server-Adresse</string>
     <string name="settings_server_url_placeholder">http://192.168.1.10:8000</string>
-    <string name="settings_household_section">Haushalt</string>
     <string name="settings_household_hint">Dein Haushalt teilt Rezepte, Einkaufsliste und Planung mit allen Geräten.</string>
     <string name="settings_household_code_label">Haushaltscode</string>
     <string name="settings_household_code_copied">Code kopiert</string>
     <string name="settings_sync_now">Jetzt synchronisieren</string>
     <string name="settings_save">Speichern</string>
-    <string name="settings_saved">Gespeichert</string>
 
     <!-- Scan -->
     <string name="scan_title">Rezept scannen</string>
@@ -274,7 +270,6 @@
     <string name="mealplan_reasons_none">Manuell hinzugefügt — keine Begründung.</string>
 
     <!-- Settings: household size -->
-    <string name="settings_household_size_section">Haushaltsgröße</string>
     <string name="settings_household_size_hint">Für wie viele Personen geplant wird. Bei großen Mengen schlägt der Planer Reste am Folgetag vor.</string>
     <string name="settings_household_size_label">Personen</string>
 
@@ -308,13 +303,10 @@
     <string name="onboarding_create_step_title">Haushalt erstellen</string>
     <string name="onboarding_name_label">Name des Haushalts</string>
     <string name="onboarding_pin_optional_label">PIN (optional)</string>
-    <string name="onboarding_admin_password_optional_label">Admin-Passwort (optional)</string>
-    <string name="onboarding_admin_password_hint">Schützt den Admin-Bereich (Server-Backups). Lässt sich später ändern.</string>
     <string name="onboarding_create">Erstellen</string>
     <string name="onboarding_back">Zurück</string>
 
     <!-- Settings: household membership -->
-    <string name="settings_household_current">Haushalt: %1$s</string>
     <string name="settings_household_leave">Haushalt verlassen / wechseln</string>
     <string name="settings_connect_server">Mit Server verbinden</string>
     <string name="settings_connect_server_hint">Foto-Scan und Familien-Sync freischalten — deine Daten bleiben erhalten.</string>
@@ -332,43 +324,8 @@
     <string name="settings_attach_server">Server hinzufügen</string>
     <string name="settings_attach_server_hint">Optional: Foto-Scan, Backups und Browser-Import brauchen einen Heim-Server.</string>
     <string name="settings_attach_server_action">Server hinzufügen</string>
-    <string name="settings_admin">Admin-Bereich</string>
-    <string name="settings_admin_subtitle">Server-Backups verwalten (Passwort nötig)</string>
 
     <!-- Admin area (server backup/restore) -->
-    <string name="admin_title">Admin-Bereich</string>
-    <string name="admin_password_label">Admin-Passwort</string>
-    <string name="admin_set_password_title">Admin-Passwort festlegen</string>
-    <string name="admin_set_password_hint">Noch kein Admin-Passwort gesetzt. Lege jetzt eins fest, um Server-Backups zu schützen.</string>
-    <string name="admin_enter_password_title">Admin-Passwort eingeben</string>
-    <string name="admin_unlock">Entsperren</string>
-    <string name="admin_save_password">Festlegen</string>
-    <string name="admin_wrong_password">Falsches Passwort</string>
-    <string name="admin_not_configured_server">Kein Server gewählt – erst in den Einstellungen verbinden.</string>
-    <string name="admin_backups_section">Backups</string>
-    <string name="admin_create_backup">Backup jetzt erstellen</string>
-    <string name="admin_no_backups">Noch keine Backups vorhanden.</string>
-    <string name="admin_restore">Wiederherstellen</string>
-    <string name="admin_restore_confirm_title">Wiederherstellen?</string>
-    <string name="admin_restore_confirm_text">Ersetzt ALLE aktuellen Server-Daten durch dieses Backup. Ein Server-Neustart wird empfohlen.</string>
-    <string name="admin_restore_done">Wiederhergestellt – bitte Server neu starten und neu synchronisieren.</string>
-    <string name="admin_backup_created">Backup erstellt</string>
-    <string name="admin_error">Aktion fehlgeschlagen</string>
-    <string name="admin_confirm">OK</string>
-    <string name="admin_reset">Datenbank zurücksetzen</string>
-    <string name="admin_reset_button">Alles löschen</string>
-    <string name="admin_reset_confirm_title">Wirklich alles löschen?</string>
-    <string name="admin_reset_confirm_text">Löscht alle Rezepte, Haushalte und den gesamten Verlauf — auf dem Server und auf diesem Gerät. Backups bleiben erhalten. Dieses Gerät kehrt danach zur Ersteinrichtung zurück.</string>
-    <string name="admin_reset_done">Datenbank zurückgesetzt</string>
-    <string name="admin_households_section">Haushalte</string>
-    <string name="admin_no_households">Keine Haushalte vorhanden.</string>
-    <string name="admin_delete_household_button">Löschen</string>
-    <string name="admin_delete_household_confirm_title">Haushalt löschen?</string>
-    <string name="admin_delete_household_confirm_text">Löscht den Haushalt „%1$s" samt allen synchronisierten Daten (Rezepte, Einkauf, Plan, Vorrat) und ausstehenden Importen auf dem Server. Geräte mit diesem Haushalt können danach nicht mehr synchronisieren.</string>
-    <string name="admin_household_deleted">Haushalt gelöscht</string>
-    <string name="admin_maintenance_section">Wartung</string>
-    <string name="admin_show_all">Alle %1$d anzeigen</string>
-    <string name="admin_show_less">Weniger anzeigen</string>
 
     <!-- Recipe JSON import (button on the add-recipe screen) -->
     <string name="import_from_file">Aus JSON-Datei importieren</string>
@@ -494,9 +451,6 @@
     <string name="settings_msg_sync_failed_generic">Sync fehlgeschlagen</string>
 
     <!-- Admin error messages -->
-    <string name="admin_error_unreachable">Server nicht erreichbar</string>
-    <string name="admin_error_load_backups">Backups konnten nicht geladen werden</string>
-    <string name="admin_error_load_households">Haushalte konnten nicht geladen werden</string>
 
     <!-- Review save: duplicate-name feedback -->
     <string name="review_duplicate_one">Ein Rezept mit diesem Namen existiert bereits.</string>
@@ -532,6 +486,64 @@
     <string name="mealplan_search_empty_title">Nichts gefunden</string>
     <string name="mealplan_search_empty_message">Versuch einen anderen Suchbegriff.</string>
 
-    <!-- Admin -->
-    <string name="backup_size_kb">%1$s KB</string>
+    <!-- Backup & Wiederherstellung (lokal, auf dem Gerät) -->
+    <string name="settings_backup">Sichern &amp; wiederherstellen</string>
+    <string name="settings_backup_subtitle">Rezepte in eine Datei sichern</string>
+    <string name="settings_backup_last">Letzte Sicherung: %1$s</string>
+    <string name="backup_title">Sichern &amp; wiederherstellen</string>
+    <string name="backup_intro">Eine Sicherung enthält deine Rezepte, Fotos, Einkaufsliste, den Vorrat und den Essensplan als lesbare ZIP-Datei. Sie enthält weder Haushaltscode noch PIN — du kannst sie also überall ablegen und in jeden Haushalt einspielen.</string>
+    <string name="backup_create">Sicherung erstellen</string>
+    <string name="backup_create_hint">ZIP-Datei an einem Ort deiner Wahl ablegen</string>
+    <string name="backup_restore">Sicherung einspielen</string>
+    <string name="backup_restore_hint">Inhalte aus einer Sicherungsdatei zurückholen</string>
+    <string name="backup_restore_action">Einspielen</string>
+    <string name="backup_restore_confirm_title">Diese Sicherung einspielen?</string>
+    <string name="backup_restore_confirm_summary">Sicherung vom %1$s\n%2$d Rezepte · %3$d Fotos</string>
+    <string name="backup_restore_confirm_household">Aus Haushalt: %1$s</string>
+    <string name="backup_restore_confirm_hint">Es wird nichts gelöscht. Fehlendes kommt zurück, alles seit der Sicherung Erstellte bleibt erhalten.</string>
+    <string name="backup_export_done">Sicherung geschrieben: %1$d Rezepte, %2$d Fotos.</string>
+    <string name="backup_restore_done">Eingespielt: %1$d Rezepte, %2$d Fotos.</string>
+    <string name="backup_not_readable_title">Keine Sicherung</string>
+    <string name="backup_not_readable_text">Diese Datei ist keine openCook-Sicherung oder beschädigt.</string>
+    <string name="backup_error_too_new">Diese Sicherung stammt aus einer neueren openCook-Version. Bitte zuerst die App aktualisieren.</string>
+    <string name="backup_error_unsafe">Diese Datei wirkt unsicher und wurde nicht geöffnet.</string>
+    <string name="backup_error_generic">Fehlgeschlagen: %1$s</string>
+    <string name="backup_ok">OK</string>
+    <string name="backup_phase_recipes">Rezepte werden gesichert…</string>
+    <string name="backup_phase_images">Fotos werden gesichert…</string>
+    <string name="backup_phase_lists">Listen werden gesichert…</string>
+    <string name="backup_phase_restore_images">Fotos werden eingespielt…</string>
+    <string name="backup_phase_restore_recipes">Rezepte werden eingespielt…</string>
+    <string name="backup_auto_section">Automatische Sicherung</string>
+    <string name="backup_auto_title">Automatisch sichern</string>
+    <string name="backup_auto_hint">Täglich beim Laden, in einen Ordner deiner Wahl</string>
+    <string name="backup_auto_folder_unknown">Gewählter Ordner</string>
+    <string name="backup_auto_folder_hint">Behält die neuesten %1$d Sicherungen</string>
+    <string name="backup_auto_last_error">Letzte automatische Sicherung fehlgeschlagen: %1$s</string>
+    <!-- Einstellungen: Übersicht & Unterseiten -->
+    <string name="settings_hub_household_summary">%1$s · %2$d Personen</string>
+    <string name="settings_hub_household_local_only">Nur dieses Gerät — Server oder Telefone verbinden</string>
+    <string name="settings_hub_appearance_summary">%1$s · %2$s</string>
+    <string name="settings_hub_about_summary">Version %1$s · GPLv3</string>
+    <string name="settings_hub_sync_server_and_peers">Server und Telefone im WLAN</string>
+    <string name="settings_hub_sync_server_only">Über deinen Server</string>
+    <string name="settings_hub_sync_peers_only">Telefon zu Telefon im WLAN</string>
+    <string name="settings_hub_sync_off">Kein Abgleich — nur dieses Gerät</string>
+    <string name="settings_sync_section">Synchronisierung</string>
+    <string name="settings_sync_intro">Wohin die Rezepte, Listen und Pläne dieses Telefons wandern. Server und Telefon-zu-Telefon ergänzen sich — genutzt wird, was gerade erreichbar ist.</string>
+    <string name="settings_household_leave_hint">Entfernt alle Haushaltsdaten von diesem Gerät</string>
+    <string name="settings_dynamic_color_hint">Farben aus deinem Hintergrundbild übernehmen</string>
+    <string name="settings_dynamic_color_on">Material You</string>
+    <string name="settings_dynamic_color_off">openCook-Farben</string>
+    <string name="settings_about">Über openCook</string>
+    <string name="about_intro">openCook ist freie Software. Es funktioniert ohne Konto, ohne Cloud und ohne Tracking — deine Rezepte bleiben auf deinen Geräten.</string>
+    <string name="about_version">Version</string>
+    <string name="about_license">Lizenz</string>
+    <string name="about_license_subtitle">GNU General Public License v3.0</string>
+    <string name="about_source">Quellcode</string>
+    <string name="about_source_subtitle">github.com/oliexdev/openCook</string>
+    <string name="about_privacy">Datenschutz</string>
+    <string name="about_privacy_subtitle">Kein Konto, keine Cloud, kein Tracking. Der Abgleich bleibt in deinem Netz.</string>
+    <string name="about_support">Projekt unterstützen</string>
+    <string name="about_support_subtitle">GitHub-Sponsor werden</string>
 </resources>

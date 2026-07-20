@@ -56,4 +56,9 @@ interface MessageDao {
 
     @Query("SELECT COUNT(*) FROM messages")
     suspend fun count(): Int
+
+    /** Newest stamp in the whole log. With [count] this fingerprints "has anything
+     *  changed?" cheaply, so an unchanged library skips rewriting an identical backup. */
+    @Query("SELECT MAX(timestamp) FROM messages")
+    suspend fun maxTimestamp(): String?
 }

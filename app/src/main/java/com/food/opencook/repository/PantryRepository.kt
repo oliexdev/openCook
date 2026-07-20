@@ -54,6 +54,13 @@ class PantryRepository @Inject constructor(
         messageRecorder.record(PantryMessageEncoder.tombstone(id))
     }
 
+    /** Restore pantry items from a backup — see [ShoppingRepository.importItems]. */
+    suspend fun importItems(items: List<PantryItemEntity>) {
+        if (items.isEmpty()) return
+        items.forEach { pantryDao.upsert(it) }
+        messageRecorder.record(items.flatMap { PantryMessageEncoder.encode(it) })
+    }
+
     /**
      * "Out" half of the pantry cycle: cooking a dish consumes its perishables. Staples
      * ([IngredientStaples]) are kept — a packet of flour isn't used up by one bake, and

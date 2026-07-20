@@ -30,8 +30,14 @@ object Routes {
     /** Camera opened from the review screen; returns the captured path to it. */
     const val REVIEW_CAMERA = "review_camera"
 
-    /** Password-gated server admin (backup/restore), opened from Settings. */
-    const val ADMIN = "admin"
+    /** Settings sub-pages. The Settings tab itself is a hub of these. */
+    const val SETTINGS_HOUSEHOLD = "settings/household"
+    const val SETTINGS_SYNC = "settings/sync"
+    const val SETTINGS_APPEARANCE = "settings/appearance"
+    const val SETTINGS_ABOUT = "settings/about"
+
+    /** Local backup & restore (export/import a zip), opened from Settings. */
+    const val BACKUP = "backup"
 
     /** Pick a recipe for a meal-plan day (full list + search). */
     const val ARG_DATE = "date"
@@ -68,5 +74,8 @@ object Routes {
     fun edit(recipeId: String) = "edit/$recipeId"
 
     /** Routes that should hide the bottom navigation bar (focused full-screen flow). */
-    val fullScreenRoutes = setOf(SCAN, CAMERA, REVIEW_CAMERA, REVIEW, RECIPE_DETAIL, EDIT, BARCODE_SCAN, ADMIN, PLAN_PICK)
+    val fullScreenRoutes = setOf(
+        SCAN, CAMERA, REVIEW_CAMERA, REVIEW, RECIPE_DETAIL, EDIT, BARCODE_SCAN, PLAN_PICK,
+        BACKUP, SETTINGS_HOUSEHOLD, SETTINGS_SYNC, SETTINGS_APPEARANCE, SETTINGS_ABOUT,
+    )
 }

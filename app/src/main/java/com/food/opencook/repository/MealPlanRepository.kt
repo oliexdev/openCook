@@ -127,6 +127,19 @@ class MealPlanRepository @Inject constructor(
         messageRecorder.record(MealPlanMessageEncoder.encode(updated))
     }
 
+    /** Restore plan entries and day flags from a backup — see
+     *  [com.food.opencook.repository.ShoppingRepository.importItems]. The caller is
+     *  responsible for dropping entries whose recipe no longer exists. */
+    suspend fun importEntries(entries: List<MealPlanEntity>, days: List<MealDayEntity>) {
+        if (entries.isEmpty() && days.isEmpty()) return
+        entries.forEach { mealPlanDao.upsert(it) }
+        days.forEach { mealDayDao.upsert(it) }
+        messageRecorder.record(
+            entries.flatMap { MealPlanMessageEncoder.encode(it) } +
+                days.flatMap { MealDayMessageEncoder.encode(it) },
+        )
+    }
+
     suspend fun setSkipped(date: String, skipped: Boolean) {
         val now = System.currentTimeMillis()
         val day = MealDayEntity(date, skipped, now, now)

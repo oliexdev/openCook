@@ -159,6 +159,18 @@ class ShoppingRepository @Inject constructor(
     }
 
     /**
+     * Restore items from a backup. Ids and timestamps come from the archive, so this
+     * upserts the same rows rather than duplicating them — running a restore twice is a
+     * no-op. Recording the changes means a restored list syncs out to the household like
+     * any other edit. Never deletes: a restore only ever adds back.
+     */
+    suspend fun importItems(items: List<ShoppingItemEntity>) {
+        if (items.isEmpty()) return
+        items.forEach { shoppingDao.upsert(it) }
+        messageRecorder.record(items.flatMap { ShoppingMessageEncoder.encode(it) })
+    }
+
+    /**
      * Add a recipe's ingredients to the list (amount → quantity), skipping any
      * whose name is already in the pantry ([skipNames], lower-cased). [sourceDate]
      * tags the items with their planned day so the "not found" flow can find the

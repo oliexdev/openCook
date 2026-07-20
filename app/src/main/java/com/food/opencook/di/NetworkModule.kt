@@ -19,7 +19,6 @@
 package com.food.opencook.di
 
 import com.food.opencook.BuildConfig
-import com.food.opencook.data.remote.AdminApi
 import com.food.opencook.data.remote.BaseUrlInterceptor
 import com.food.opencook.data.remote.ImportApi
 import com.food.opencook.data.remote.JobsApi
@@ -92,10 +91,6 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideImportApi(retrofit: Retrofit): ImportApi = retrofit.create(ImportApi::class.java)
-
-    @Provides
-    @Singleton
-    fun provideAdminApi(retrofit: Retrofit): AdminApi = retrofit.create(AdminApi::class.java)
 
     // --- Peer-to-peer sync: a SEPARATE client whose interceptor points at the peer
     // phone currently being synced with. Sharing the main client would let unrelated

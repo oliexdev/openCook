@@ -25,6 +25,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileNotFoundException
+import java.io.InputStream
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -73,6 +74,18 @@ class ImageStore @Inject constructor(
     suspend fun saveBytes(bytes: ByteArray): String = withContext(Dispatchers.IO) {
         val dest = newCaptureFile()
         dest.outputStream().use { it.write(bytes) }
+        dest.absolutePath
+    }
+
+    /**
+     * Persist a photo restored from a backup archive, streaming so a large library never
+     * lands in memory. Lands in [editsDir] because a restored photo is in exactly that
+     * state: a durable local file with no server name yet, which the next sync uploads
+     * (minting the real content-addressed name and the `imageRef` message).
+     */
+    suspend fun saveRestoredImage(source: InputStream): String = withContext(Dispatchers.IO) {
+        val dest = newEditFile()
+        dest.outputStream().use { source.copyTo(it) }
         dest.absolutePath
     }
 
