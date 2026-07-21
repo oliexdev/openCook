@@ -24,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 
 @Composable
@@ -31,6 +32,8 @@ fun OpenCookTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Brand identity by default; Material You (dynamic color, Android 12+) is opt-in.
     dynamicColor: Boolean = false,
+    // User text size, multiplied on top of the device's own font scale.
+    fontScale: Float = 1f,
     content: @Composable () -> Unit,
 ) {
     val colorScheme = when {
@@ -43,7 +46,7 @@ fun OpenCookTheme(
     }
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography,
+        typography = remember(fontScale) { Typography.scaled(fontScale) },
         shapes = Shapes,
         content = content,
     )

@@ -523,7 +523,7 @@
     <!-- Einstellungen: Übersicht & Unterseiten -->
     <string name="settings_hub_household_summary">%1$s · %2$d Personen</string>
     <string name="settings_hub_household_local_only">Nur dieses Gerät — Server oder Telefone verbinden</string>
-    <string name="settings_hub_appearance_summary">%1$s · %2$s</string>
+    <string name="settings_hub_appearance_summary">%1$s · %2$s · %3$s</string>
     <string name="settings_hub_about_summary">Version %1$s · GPLv3</string>
     <string name="settings_hub_sync_server_and_peers">Server und Telefone im WLAN</string>
     <string name="settings_hub_sync_server_only">Über deinen Server</string>
@@ -535,6 +535,12 @@
     <string name="settings_dynamic_color_hint">Farben aus deinem Hintergrundbild übernehmen</string>
     <string name="settings_dynamic_color_on">Material You</string>
     <string name="settings_dynamic_color_off">openCook-Farben</string>
+    <string name="settings_font_size">Schriftgröße</string>
+    <string name="settings_font_size_small">Klein</string>
+    <string name="settings_font_size_default">Standard</string>
+    <string name="settings_font_size_large">Groß</string>
+    <string name="settings_font_size_larger">Größer</string>
+    <string name="settings_font_size_largest">Am größten</string>
     <string name="settings_about">Über openCook</string>
     <string name="about_intro">openCook ist freie Software. Es funktioniert ohne Konto, ohne Cloud und ohne Tracking — deine Rezepte bleiben auf deinen Geräten.</string>
     <string name="about_version">Version</string>

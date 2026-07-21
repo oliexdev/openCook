@@ -64,7 +64,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.food.opencook.R
@@ -213,13 +215,19 @@ private fun AllBoughtBanner(onCheckout: () -> Unit, modifier: Modifier = Modifie
             // Full-width CTA: the long German label ("In den Vorrat übernehmen") wrapped to two
             // lines inside a wrap-content button on narrow phones; stretching it edge-to-edge
             // gives the text room to stay on one line and reads as the clear primary action.
+            // A second line is still allowed — at large text sizes it no longer fits on one.
             Button(
                 onClick = onCheckout,
                 modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm),
             ) {
                 Icon(Icons.Outlined.Inventory2, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(Spacing.sm))
-                Text(stringResource(R.string.shopping_all_bought_action), maxLines = 1)
+                Text(
+                    stringResource(R.string.shopping_all_bought_action),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                )
             }
         }
     }

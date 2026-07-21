@@ -19,7 +19,9 @@
 package com.food.opencook.ui.theme
 
 import androidx.compose.material3.Typography
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.sp
 
 /**
@@ -41,3 +43,41 @@ val Typography = Typography(
     bodyMedium = base.bodyMedium.copy(fontSize = 14.sp, lineHeight = 20.sp),
     labelLarge = base.labelLarge.copy(fontWeight = FontWeight.SemiBold),
 )
+
+/**
+ * Grow/shrink a style by the user's size factor. `letterSpacing` is deliberately left
+ * alone: the M3 tracking values are optically tuned, and relatively tighter tracking is
+ * what you want as the size goes up.
+ */
+private fun TextStyle.scaled(factor: Float) = copy(
+    fontSize = if (fontSize.isSpecified) fontSize * factor else fontSize,
+    lineHeight = if (lineHeight.isSpecified) lineHeight * factor else lineHeight,
+)
+
+/**
+ * The type scale at the user's chosen size factor (see `FontScales`). Because no screen
+ * hardcodes an `sp` value — everything reads `MaterialTheme.typography` — scaling here is
+ * all it takes to resize the whole app.
+ *
+ * This multiplies on top of the system font size rather than replacing it: `sp` still
+ * resolves through the platform's own (since Android 14, non-linear) scaling, so a user
+ * who enlarged text device-wide keeps that on top of whatever they pick here.
+ */
+fun Typography.scaled(factor: Float): Typography =
+    if (factor == 1f) this else copy(
+        displayLarge = displayLarge.scaled(factor),
+        displayMedium = displayMedium.scaled(factor),
+        displaySmall = displaySmall.scaled(factor),
+        headlineLarge = headlineLarge.scaled(factor),
+        headlineMedium = headlineMedium.scaled(factor),
+        headlineSmall = headlineSmall.scaled(factor),
+        titleLarge = titleLarge.scaled(factor),
+        titleMedium = titleMedium.scaled(factor),
+        titleSmall = titleSmall.scaled(factor),
+        bodyLarge = bodyLarge.scaled(factor),
+        bodyMedium = bodyMedium.scaled(factor),
+        bodySmall = bodySmall.scaled(factor),
+        labelLarge = labelLarge.scaled(factor),
+        labelMedium = labelMedium.scaled(factor),
+        labelSmall = labelSmall.scaled(factor),
+    )

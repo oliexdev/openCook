@@ -31,6 +31,7 @@ import com.food.opencook.data.remote.SyncApi
 import com.food.opencook.data.remote.dto.CreateHouseholdRequest
 import com.food.opencook.data.remote.dto.HouseholdSettings
 import com.food.opencook.data.remote.dto.PatchHouseholdRequest
+import com.food.opencook.data.settings.FontScales
 import com.food.opencook.data.settings.SettingsRepository
 import com.food.opencook.sync.SyncClock
 import com.food.opencook.sync.SyncEngine
@@ -116,6 +117,12 @@ class SettingsViewModel @Inject constructor(
     fun setP2pEnabled(enabled: Boolean) = viewModelScope.launch { settings.setP2pEnabled(enabled) }
 
     fun setDynamicColor(enabled: Boolean) = viewModelScope.launch { settings.setDynamicColor(enabled) }
+
+    /** Text size factor, on top of the device's own font scale. Device-local, never synced. */
+    val fontScale: StateFlow<Float> =
+        settings.fontScale.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FontScales.DEFAULT)
+
+    fun setFontScale(scale: Float) = viewModelScope.launch { settings.setFontScale(scale) }
 
     /** Household-wide recipe content language (null = follow each device's system language). */
     val contentLanguage: StateFlow<String?> =

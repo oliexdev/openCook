@@ -22,6 +22,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
@@ -52,6 +53,19 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setDynamicColor(enabled: Boolean) {
         dataStore.edit { it[DYNAMIC_COLOR] = enabled }
+    }
+
+    /**
+     * Text size factor applied on top of the device's own font size — recipes are read
+     * from arm's length at the stove. Clamped on read so shortening [FontScales.STEPS]
+     * later can't leave a device stuck at an unreachable size.
+     */
+    val fontScale: Flow<Float> = dataStore.data.map {
+        (it[FONT_SCALE] ?: FontScales.DEFAULT).coerceIn(FontScales.MIN, FontScales.MAX)
+    }
+
+    suspend fun setFontScale(scale: Float) {
+        dataStore.edit { it[FONT_SCALE] = scale.coerceIn(FontScales.MIN, FontScales.MAX) }
     }
 
     /**
@@ -191,6 +205,7 @@ class SettingsRepository @Inject constructor(
         val HOUSEHOLD_NAME = stringPreferencesKey("household_name")
         val HOUSEHOLD_SIZE = intPreferencesKey("household_size")
         val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
+        val FONT_SCALE = floatPreferencesKey("font_scale")
         val LOCAL_ONLY = booleanPreferencesKey("local_only")
         val CONTENT_LANGUAGE = stringPreferencesKey("content_language")
         val NODE_ID = stringPreferencesKey("node_id")
@@ -210,6 +225,22 @@ class SettingsRepository @Inject constructor(
  */
 object ContentLanguages {
     val CODES = listOf("en", "de")
+}
+
+/**
+ * The selectable text sizes, smallest first — single source of truth for the settings
+ * slider, its labels and the stored value. Ordered and evenly perceived rather than
+ * mathematically even; 1f is the canonical scale the type ramp was designed at.
+ */
+object FontScales {
+    val STEPS = listOf(0.85f, 1f, 1.15f, 1.3f, 1.5f)
+    const val DEFAULT = 1f
+    val MIN = STEPS.first()
+    val MAX = STEPS.last()
+
+    /** Slider position for a stored factor — nearest step, so old values always land somewhere. */
+    fun indexOf(scale: Float): Int =
+        STEPS.indices.minByOrNull { kotlin.math.abs(STEPS[it] - scale) } ?: STEPS.indexOf(DEFAULT)
 }
 
 /**

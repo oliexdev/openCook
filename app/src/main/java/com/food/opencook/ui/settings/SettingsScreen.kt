@@ -59,6 +59,7 @@ fun SettingsScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val dynamicColor by viewModel.dynamicColor.collectAsStateWithLifecycle()
     val contentLanguage by viewModel.contentLanguage.collectAsStateWithLifecycle()
+    val fontScale by viewModel.fontScale.collectAsStateWithLifecycle()
     val p2pEnabled by viewModel.p2pEnabled.collectAsStateWithLifecycle()
     val lastBackup by viewModel.lastBackupLabel.collectAsStateWithLifecycle()
     val appBar: AppBarViewModel = hiltViewModel()
@@ -119,6 +120,7 @@ fun SettingsScreen(
                         if (dynamicColor) R.string.settings_dynamic_color_on else R.string.settings_dynamic_color_off,
                     ),
                     contentLanguageLabel(contentLanguage),
+                    fontSizeLabel(fontScale),
                 ),
                 onClick = onOpenAppearance,
                 showChevron = true,
