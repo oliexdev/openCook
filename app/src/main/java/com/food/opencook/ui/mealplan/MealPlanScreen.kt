@@ -115,7 +115,11 @@ import com.food.opencook.ui.components.CookedBadge
 import com.food.opencook.ui.theme.Spacing
 import java.time.LocalDate
 import com.food.opencook.util.DateLabels
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+/** Dwell before a dish drag hovering the other week's segment flips the visible week. */
+private const val WEEK_SWITCH_DWELL_MS = 400L
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -193,10 +197,15 @@ fun MealPlanScreen(
             if (generating) {
                 LinearProgressIndicator(Modifier.fillMaxWidth().padding(bottom = Spacing.sm))
             }
+            // True while a dish drag session is in flight (set by the list target below).
+            // Arms the week selector as a spring-loaded switch and drives its highlight.
+            val dishDragActive = remember { mutableStateOf(false) }
+
             WeekSelector(
                 selected = selectedWeek,
                 week = week,
                 onSelect = viewModel::selectWeek,
+                dishDragActive = dishDragActive.value,
             )
             Spacer(Modifier.height(Spacing.sm))
 
@@ -233,6 +242,9 @@ fun MealPlanScreen(
                     return hit?.key as? String
                 }
                 object : DragAndDropTarget {
+                    override fun onStarted(event: DragAndDropEvent) {
+                        dishDragActive.value = true
+                    }
                     override fun onMoved(event: DragAndDropEvent) {
                         val e = event.toAndroidDragEvent()
                         val b = listBounds.value
@@ -264,6 +276,7 @@ fun MealPlanScreen(
                     }
                     override fun onEnded(event: DragAndDropEvent) {
                         scrollSpeed.floatValue = 0f; hoveredDate.value = null
+                        dishDragActive.value = false
                     }
                 }
             }
@@ -319,7 +332,20 @@ private fun WeekSelector(
     selected: WeekSelection,
     week: List<DayPlan>,
     onSelect: (WeekSelection) -> Unit,
+    dishDragActive: Boolean = false,
 ) {
+    // Spring-loaded week switch (launcher-page style): while a dish drag hovers the
+    // *other* week's segment, a short dwell flips the visible week — the system drag
+    // session survives the recomposition, so the user just carries on to the target
+    // day. The switch is symmetric, and a graze shorter than the dwell does nothing.
+    var hoveredWeek by remember { mutableStateOf<WeekSelection?>(null) }
+    LaunchedEffect(hoveredWeek, selected) {
+        val target = hoveredWeek ?: return@LaunchedEffect
+        if (target == selected) return@LaunchedEffect
+        delay(WEEK_SWITCH_DWELL_MS)
+        onSelect(target)
+    }
+
     Column(Modifier.fillMaxWidth()) {
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
             val options = listOf(
@@ -327,10 +353,41 @@ private fun WeekSelector(
                 WeekSelection.NEXT to stringResource(R.string.mealplan_week_next),
             )
             options.forEachIndexed { index, (value, label) ->
+                val segmentTarget = remember(value) {
+                    object : DragAndDropTarget {
+                        override fun onEntered(event: DragAndDropEvent) { hoveredWeek = value }
+                        override fun onExited(event: DragAndDropEvent) {
+                            if (hoveredWeek == value) hoveredWeek = null
+                        }
+                        // A drop on the segment itself is deliberately unhandled — the
+                        // segment only switches the view; placing happens on a day card.
+                        override fun onDrop(event: DragAndDropEvent) = false
+                        override fun onEnded(event: DragAndDropEvent) { hoveredWeek = null }
+                    }
+                }
+                // While a dish is dragged, the inactive segment advertises itself as the
+                // way over ("you can go here") in the same secondaryContainer used for
+                // the day-card drop highlight; a bit stronger once actually hovered.
+                val armed = dishDragActive && selected != value
+                val colors = when {
+                    armed && hoveredWeek == value -> SegmentedButtonDefaults.colors(
+                        inactiveContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        inactiveContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                    armed -> SegmentedButtonDefaults.colors(
+                        inactiveContainerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f),
+                    )
+                    else -> SegmentedButtonDefaults.colors()
+                }
                 SegmentedButton(
                     selected = selected == value,
                     onClick = { onSelect(value) },
                     shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                    colors = colors,
+                    modifier = Modifier.dragAndDropTarget(
+                        shouldStartDragAndDrop = { it.mimeTypes().contains(ClipDescription.MIMETYPE_TEXT_PLAIN) },
+                        target = segmentTarget,
+                    ),
                 ) { Text(label) }
             }
         }
