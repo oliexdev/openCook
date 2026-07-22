@@ -25,6 +25,7 @@ import com.food.opencook.data.local.entity.NutritionEntity
 import com.food.opencook.data.local.entity.RecipeEntity
 import com.food.opencook.data.remote.dto.NutritionDto
 import com.food.opencook.data.remote.dto.RecipeDto
+import com.food.opencook.util.MealTypes
 import com.food.opencook.util.RecipeCategories
 import java.util.UUID
 
@@ -100,6 +101,7 @@ fun RecipeDto.toMappedRecipe(
             recipeYield = recipeYield,
             servings = openCookServings,
             category = openCookCategory?.let { RecipeCategories.normalizeKey(it) },
+            mealTypes = MealTypes.toStored(openCookMealTypes.mapNotNull { MealTypes.normalizeKey(it) }),
             notes = openCookNotes.filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }?.joinToString("\n"),
             tags = openCookTags.filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }?.joinToString("\n"),
             lastCookedAt = openCookLastCookedAt?.takeIf { it.isNotBlank() },

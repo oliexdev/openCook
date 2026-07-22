@@ -71,7 +71,7 @@ fun MealPlanPickScreen(
     val baseUrl by recipesViewModel.serverBaseUrl.collectAsStateWithLifecycle()
     val query by recipesViewModel.query.collectAsStateWithLifecycle()
     val cookbooks by recipesViewModel.cookbooks.collectAsStateWithLifecycle()
-    val selectedCookbook by recipesViewModel.selectedCookbook.collectAsStateWithLifecycle()
+    val filters by recipesViewModel.filters.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -107,15 +107,15 @@ fun MealPlanPickScreen(
                 ) {
                     item {
                         FilterChip(
-                            selected = selectedCookbook == null,
-                            onClick = { recipesViewModel.selectCookbook(null) },
+                            selected = filters.cookbooks.isEmpty(),
+                            onClick = { recipesViewModel.clearCookbooks() },
                             label = { Text(stringResource(R.string.recipes_filter_all)) },
                         )
                     }
                     items(cookbooks) { cookbook ->
                         FilterChip(
-                            selected = selectedCookbook == cookbook,
-                            onClick = { recipesViewModel.selectCookbook(if (selectedCookbook == cookbook) null else cookbook) },
+                            selected = cookbook in filters.cookbooks,
+                            onClick = { recipesViewModel.toggleCookbook(cookbook) },
                             label = { Text(cookbook) },
                         )
                     }

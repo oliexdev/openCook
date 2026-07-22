@@ -20,6 +20,8 @@ package com.food.opencook.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.food.opencook.data.local.OpenCookDatabase
 import com.food.opencook.data.local.RoomTransactor
 import com.food.opencook.data.local.Transactor
@@ -47,12 +49,21 @@ object DatabaseModule {
     @Singleton
     fun provideTransactor(impl: RoomTransactor): Transactor = impl
 
+    /** v1 → v2: the mealTypes column (nullable — null means "lunch + dinner", resolved
+     *  at read time by [com.food.opencook.util.MealTypes.fromStored], deliberately not
+     *  backfilled; see the KDoc there for the sync rationale). */
+    private val MIGRATION_1_2 = object : Migration(1, 2) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE recipes ADD COLUMN mealTypes TEXT")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): OpenCookDatabase =
-        // v1 is the released baseline schema (see OpenCookDatabase): no migrations yet.
-        // Real migrations must be added here as the schema evolves past v1.
+        // v1 is the released baseline schema (see OpenCookDatabase).
         Room.databaseBuilder(context, OpenCookDatabase::class.java, "opencook.db")
+            .addMigrations(MIGRATION_1_2)
             .build()
 
     @Provides

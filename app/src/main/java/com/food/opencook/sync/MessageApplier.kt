@@ -177,6 +177,7 @@ class MessageApplier @Inject constructor(
                         cookbook = str("cookbook"),
                         servings = MessageCodec.decodeNullableInt(winning["servings"]),
                         category = str("category"),
+                        mealTypes = str("mealTypes"),
                         // Link back to the server job whose original photo this recipe
                         // came from (kept so it can be re-extracted with a better model).
                         sourcePhotoId = str("sourcePhotoId"),

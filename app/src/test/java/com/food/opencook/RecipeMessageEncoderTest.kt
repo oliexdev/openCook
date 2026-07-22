@@ -34,7 +34,10 @@ class RecipeMessageEncoderTest {
 
     @Test
     fun encodesRecipeIngredientAndNutritionFields() {
-        val recipe = RecipeEntity(id = "r1", name = "Soup", servings = 2, category = "Suppe", createdAt = 0, updatedAt = 0)
+        val recipe = RecipeEntity(
+            id = "r1", name = "Soup", servings = 2, category = "Suppe",
+            mealTypes = "breakfast\nsnack", createdAt = 0, updatedAt = 0,
+        )
         val ingredient = IngredientEntity("i1", "r1", 0, 400.0, "g", "Nudeln")
         val nutrition = NutritionEntity(recipeId = "r1", calories = "560 kcal")
 
@@ -47,6 +50,7 @@ class RecipeMessageEncoderTest {
         assertEquals("\"Soup\"", value(SyncDatasets.RECIPES, "r1", "name"))
         assertEquals("2", value(SyncDatasets.RECIPES, "r1", "servings"))
         assertEquals("\"Suppe\"", value(SyncDatasets.RECIPES, "r1", "category"))
+        assertEquals("\"breakfast\\nsnack\"", value(SyncDatasets.RECIPES, "r1", "mealTypes"))
         assertEquals("null", value(SyncDatasets.RECIPES, "r1", "prepTime"))
         assertEquals("false", value(SyncDatasets.RECIPES, "r1", SyncDatasets.COLUMN_DELETED))
 

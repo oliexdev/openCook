@@ -58,6 +58,7 @@ object RecipeMessageEncoder {
         out += FieldChange(r, recipe.id, "recipeYield", str(recipe.recipeYield))
         out += FieldChange(r, recipe.id, "servings", nullableInt(recipe.servings))
         out += FieldChange(r, recipe.id, "category", str(recipe.category))
+        out += FieldChange(r, recipe.id, "mealTypes", str(recipe.mealTypes))
         out += FieldChange(r, recipe.id, "prepTime", str(recipe.prepTime))
         out += FieldChange(r, recipe.id, "cookTime", str(recipe.cookTime))
         out += FieldChange(r, recipe.id, "totalTime", str(recipe.totalTime))

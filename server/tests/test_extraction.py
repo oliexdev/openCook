@@ -10,6 +10,7 @@ from app.extraction import (
     _clean_step,
     _fix_title_case,
     _iso_duration,
+    _normalize_meal_types,
     load_i18n,
     parse_json_lenient,
     to_schema_org,
@@ -44,6 +45,19 @@ def test_iso_duration():
     assert _iso_duration("keine Zahl", de) is None
     # English words resolve via the en catalog (and the en-merge fallback).
     assert _iso_duration("1 hour 10 minutes", load_i18n("en")) == "PT70M"
+
+
+def test_normalize_meal_types():
+    aliases = load_i18n("de").meal_type_aliases
+    # Universal keys pass through; German words map via the de alias catalog.
+    assert _normalize_meal_types(["lunch", "dinner"], aliases) == ["lunch", "dinner"]
+    assert _normalize_meal_types(["Frühstück", "Kuchen"], aliases) == ["breakfast", "snack"]
+    # A bare string is tolerated as a one-element list; duplicates collapse.
+    assert _normalize_meal_types("snack", aliases) == ["snack"]
+    assert _normalize_meal_types(["lunch", "Mittag"], aliases) == ["lunch"]
+    # Garbage is dropped, never guessed — empty means "unset" (app applies its default).
+    assert _normalize_meal_types(["brunch-party", 42, None], aliases) == []
+    assert _normalize_meal_types(None, aliases) == []
 
 
 def test_load_i18n_unknown_language_falls_back_to_english():

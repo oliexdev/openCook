@@ -98,3 +98,52 @@ object RecipeCategories {
         return if (isKnown) context.getString(labelRes(key)) else raw.trim()
     }
 }
+
+/**
+ * Which meals a recipe suits (breakfast/lunch/snack/dinner) — the *when* axis,
+ * deliberately separate from [RecipeCategories] (the *what* axis): a soup fits lunch
+ * AND dinner, a Hefezopf is baked AND eaten at breakfast/coffee. Multi-value, stored
+ * as language-independent keys in a newline-joined TEXT column (the `tags` pattern).
+ *
+ * `null`/blank storage means [DEFAULT] ("lunch + dinner") — evaluated at read time,
+ * never backfilled: sync's MessageApplier rebuilds entities from log columns, so a
+ * local-only backfill would be undone by the next sync apply.
+ */
+object MealTypes {
+    /** Stable keys persisted in DB + sync log + AI prompt; order = order of the day. */
+    val KEYS = listOf("breakfast", "lunch", "snack", "dinner")
+
+    /** What an unset value means: the classic hot-meal slots. Uniform for all recipes
+     *  (deliberately not category-aware) — baked goods are reclassified by hand. */
+    val DEFAULT = listOf("lunch", "dinner")
+
+    @StringRes
+    fun labelRes(key: String): Int = when (key) {
+        "breakfast" -> R.string.mealtype_breakfast
+        "lunch" -> R.string.mealtype_lunch
+        "snack" -> R.string.mealtype_snack
+        else -> R.string.mealtype_dinner
+    }
+
+    /** Map an AI/import value (any language) to a stable key; unknown → null (drop, don't guess). */
+    fun normalizeKey(raw: String?): String? {
+        val t = raw?.trim()?.lowercase() ?: return null
+        return when (t) {
+            "breakfast", "frühstück", "fruehstueck", "morgens" -> "breakfast"
+            "lunch", "mittag", "mittagessen" -> "lunch"
+            "snack", "kaffee", "kuchen", "zwischenmahlzeit" -> "snack"
+            "dinner", "abend", "abendessen", "abendbrot" -> "dinner"
+            else -> if (t in KEYS) t else null
+        }
+    }
+
+    /** Stored column → key list in [KEYS] order; null/blank → [DEFAULT]. */
+    fun fromStored(stored: String?): List<String> {
+        val keys = stored?.split("\n")?.mapNotNull { normalizeKey(it) }?.distinct().orEmpty()
+        return keys.ifEmpty { DEFAULT }.let { list -> KEYS.filter { it in list } }
+    }
+
+    /** Key list → stored column; empty → null, so the default semantics apply again. */
+    fun toStored(keys: List<String>): String? =
+        KEYS.filter { it in keys }.takeIf { it.isNotEmpty() }?.joinToString("\n")
+}

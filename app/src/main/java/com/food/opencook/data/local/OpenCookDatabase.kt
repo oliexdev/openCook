@@ -64,7 +64,8 @@ import com.food.opencook.data.local.entity.ShoppingItemEntity
     // shipped and old local data is disposable (it re-syncs from the server log).
     // exportSchema=true commits app/schemas/.../1.json as the baseline for real
     // migrations from this version onward.
-    version = 1,
+    // v2: recipes.mealTypes (nullable TEXT; null = "lunch + dinner" default).
+    version = 2,
     exportSchema = true,
 )
 abstract class OpenCookDatabase : RoomDatabase() {

@@ -85,6 +85,7 @@ server/app/i18n/en.json                  →  server/app/i18n/fr.json
 | `duration_hours` / `duration_minutes` | the words that mark hours/minutes (`heure`, `min`, …) |
 | `units` | units in your language |
 | `category_aliases` | map your language's category words to the universal keys, e.g. `{"viande": "meat", "poisson": "fish"}` |
+| `meal_type_aliases` | map your language's meal words to the universal meal-type keys (`breakfast`, `lunch`, `snack`, `dinner`), e.g. `{"petit-déjeuner": "breakfast", "déjeuner": "lunch", "goûter": "snack", "dîner": "dinner"}` — used when the model answers in the recipe's language instead of emitting the keys |
 
 `load_i18n("fr")` reads `fr.json`; unknown languages fall back to `en.json`. Units/durations/aliases
 are merged with English, so universal tokens (`g`, `ml`, `min`, the category keys) always work even

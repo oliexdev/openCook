@@ -196,6 +196,9 @@ data class RecipeDto(
     val openCookNotes: List<String> = emptyList(),
     /** AI search tags (e.g. "vegetarisch", "schnell", "asiatisch"). */
     val openCookTags: List<String> = emptyList(),
+    /** Meals this recipe suits (universal keys: breakfast/lunch/snack/dinner).
+     *  Empty = unset — the app then applies its "lunch + dinner" default. */
+    val openCookMealTypes: List<String> = emptyList(),
     val prepTime: String? = null,
     val cookTime: String? = null,
     val totalTime: String? = null,

@@ -35,6 +35,10 @@ SENT_LONG_SIDE = 1008  # multiple of 28, within qwen2.5vl's pixel budget
 # Stable category keys (universal across languages; mirror of the app's RecipeCategories).
 _CATEGORY_KEYS = {"pasta", "meat", "fish", "soup", "vegetarian", "salad", "dessert", "other"}
 
+# Stable meal-type keys (universal; mirror of the app's MealTypes). An empty result is
+# fine — the app then applies its own "lunch + dinner" default.
+_MEAL_TYPE_KEYS = {"breakfast", "lunch", "snack", "dinner"}
+
 _I18N_DIR = Path(__file__).parent / "i18n"
 
 
@@ -48,6 +52,7 @@ class I18n:
     duration_minutes: tuple[str, ...]
     units: frozenset[str]
     category_aliases: dict[str, str]
+    meal_type_aliases: dict[str, str]
 
 
 def _read_catalog(lang: str) -> dict:
@@ -78,6 +83,10 @@ def load_i18n(language: str | None) -> I18n:
             **{k.lower(): v for k, v in base.get("category_aliases", {}).items()},
             **{k.lower(): v for k, v in data.get("category_aliases", {}).items()},
         },
+        meal_type_aliases={
+            **{k.lower(): v for k, v in base.get("meal_type_aliases", {}).items()},
+            **{k.lower(): v for k, v in data.get("meal_type_aliases", {}).items()},
+        },
     )
 
 
@@ -89,6 +98,24 @@ def _normalize_category(raw: object, aliases: dict[str, str]) -> str | None:
     if t in _CATEGORY_KEYS:
         return t
     return aliases.get(t, "other")
+
+
+def _normalize_meal_types(raw: object, aliases: dict[str, str]) -> list[str]:
+    """Map the model's meal-type list (any language/case) to stable keys.
+
+    Unknown entries are dropped, not guessed — an empty list means "unset" and the
+    app falls back to its own default. A bare string is tolerated as a 1-list.
+    """
+    items = raw if isinstance(raw, list) else [raw] if isinstance(raw, str) else []
+    out: list[str] = []
+    for item in items:
+        if not isinstance(item, str) or not item.strip():
+            continue
+        t = item.strip().lower()
+        key = t if t in _MEAL_TYPE_KEYS else aliases.get(t)
+        if key in _MEAL_TYPE_KEYS and key not in out:
+            out.append(key)
+    return out
 
 
 def parse_json_lenient(text: str) -> dict:
@@ -371,6 +398,7 @@ def to_schema_org(
         "openCookIngredients": ingredients,
         "openCookServings": servings,
         "openCookCategory": _normalize_category(recipe.get("category"), i18n.category_aliases),
+        "openCookMealTypes": _normalize_meal_types(recipe.get("mealTypes"), i18n.meal_type_aliases),
         "openCookNotes": recipe.get("notes") or [],
         "openCookTags": recipe.get("tags") or [],
         # Pointer to the retained original page photo for later re-extraction.

@@ -42,6 +42,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.PhotoCamera
@@ -52,7 +53,11 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -74,6 +79,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -96,6 +102,7 @@ import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
 import coil3.compose.rememberAsyncImagePainter
 import com.food.opencook.R
+import com.food.opencook.util.MealTypes
 import com.food.opencook.util.RecipeCategories
 import com.food.opencook.ui.theme.Spacing
 import kotlin.math.roundToInt
@@ -145,6 +152,18 @@ fun BasicsStep(
         CategoryChips(
             current = recipe.category,
             onPick = { v -> viewModel.updateRecipe(index) { it.copy(category = v) } },
+        )
+        Spacer(Modifier.height(Spacing.md))
+
+        MealTypeChips(
+            selected = recipe.mealTypes,
+            onToggle = { key ->
+                viewModel.updateRecipe(index) {
+                    it.copy(
+                        mealTypes = if (key in it.mealTypes) it.mealTypes - key else it.mealTypes + key,
+                    )
+                }
+            },
         )
         Spacer(Modifier.height(Spacing.md))
 
@@ -593,8 +612,75 @@ fun DetailsStep(
         )
 
         Spacer(Modifier.height(Spacing.lg))
+        TagsEditor(
+            tags = recipe.tags,
+            onChange = { v -> viewModel.updateRecipe(index) { it.copy(tags = v) } },
+        )
+
+        Spacer(Modifier.height(Spacing.lg))
         NutritionSection(recipe = recipe, viewModel = viewModel, index = index)
     }
+}
+
+/**
+ * Search-tag editor: the current tags as removable chips plus an add field.
+ * Tags start out AI-assigned but are plain user data — the detail screen shows them
+ * and the search matches them, so they must be correctable here. Storage stays the
+ * newline-joined string on [EditableRecipe.tags]; a comma in the add field separates
+ * several tags at once. Empty input → null, so "no tags" is stored as absence.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TagsEditor(tags: String?, onChange: (String?) -> Unit) {
+    val current = tags.orEmpty().split("\n").map { it.trim() }.filter { it.isNotEmpty() }
+    fun pack(list: List<String>): String? = list.takeIf { it.isNotEmpty() }?.joinToString("\n")
+
+    Text(stringResource(R.string.review_tags), style = MaterialTheme.typography.titleSmall)
+    if (current.isNotEmpty()) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+            modifier = Modifier.padding(top = Spacing.xs),
+        ) {
+            current.forEach { tag ->
+                InputChip(
+                    selected = false,
+                    onClick = { onChange(pack(current - tag)) },
+                    label = { Text(tag) },
+                    trailingIcon = {
+                        Icon(
+                            Icons.Outlined.Close,
+                            contentDescription = stringResource(R.string.review_tag_remove, tag),
+                            modifier = Modifier.size(InputChipDefaults.IconSize),
+                        )
+                    },
+                )
+            }
+        }
+    }
+    var draft by remember { mutableStateOf("") }
+    fun commit() {
+        val added = draft.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        if (added.isNotEmpty()) {
+            // Case-insensitive dedupe; first spelling wins.
+            val merged = (current + added).distinctBy { it.lowercase() }
+            onChange(pack(merged))
+        }
+        draft = ""
+    }
+    OutlinedTextField(
+        value = draft,
+        onValueChange = { draft = it },
+        placeholder = { Text(stringResource(R.string.review_tags_add_hint)) },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+        keyboardActions = KeyboardActions(onDone = { commit() }),
+        trailingIcon = {
+            IconButton(onClick = ::commit, enabled = draft.isNotBlank()) {
+                Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.review_tags_add))
+            }
+        },
+        modifier = Modifier.fillMaxWidth().padding(top = Spacing.xs),
+    )
 }
 
 /**
@@ -863,6 +949,31 @@ private fun EmptyHint(text: String) {
         enabled = false,
         label = { Text(text) },
     )
+}
+
+/** Multi-select "suitable for" picker: [MealTypes.KEYS] as toggleable chips. Unlike the
+ *  single-select [CategoryChips], several meals can be active (soup = lunch AND dinner).
+ *  An empty selection is allowed — it stores null, and the lunch+dinner default applies. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MealTypeChips(selected: List<String>, onToggle: (String) -> Unit) {
+    Column {
+        Text(
+            stringResource(R.string.recipe_mealtypes_label),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(Spacing.xs))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            MealTypes.KEYS.forEach { key ->
+                FilterChip(
+                    selected = key in selected,
+                    onClick = { onToggle(key) },
+                    label = { Text(stringResource(MealTypes.labelRes(key))) },
+                )
+            }
+        }
+    }
 }
 
 /** Coarse-category picker: the fixed [RecipeCategories.KEYS] as toggleable chips (stores the key). */

@@ -41,6 +41,7 @@ import com.food.opencook.data.remote.mapper.MappedRecipe
 import com.food.opencook.data.remote.mapper.toMappedRecipe
 import com.food.opencook.util.ImportCorrector
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -303,6 +304,10 @@ class RecipeRepository @Inject constructor(
 
     /** Recipes liked by at least one household member — boosts them in the planner. */
     suspend fun likedRecipeIds(): Set<String> = recipeLikeDao.likedRecipeIds().toSet()
+
+    /** Reactive [likedRecipeIds] — drives the recipe list's "favorites only" filter. */
+    fun observeLikedRecipeIds(): Flow<Set<String>> =
+        recipeLikeDao.observeLikedRecipeIds().map { it.toSet() }
 
     /** Set/clear a member's like ([nodeId] = the member). Un-liking is kept as liked=false. */
     suspend fun setLiked(recipeId: String, nodeId: String, liked: Boolean) {

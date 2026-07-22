@@ -37,4 +37,8 @@ interface RecipeLikeDao {
     /** Recipes liked by ANY member — the household-wide signal for the planner. */
     @Query("SELECT DISTINCT recipeId FROM recipe_likes WHERE liked = 1")
     suspend fun likedRecipeIds(): List<String>
+
+    /** Reactive [likedRecipeIds] — drives the recipe list's "favorites only" filter. */
+    @Query("SELECT DISTINCT recipeId FROM recipe_likes WHERE liked = 1")
+    fun observeLikedRecipeIds(): Flow<List<String>>
 }

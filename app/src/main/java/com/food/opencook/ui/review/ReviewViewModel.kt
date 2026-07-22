@@ -38,6 +38,7 @@ import com.food.opencook.repository.SuggestionRepository
 import com.food.opencook.util.IngredientCorrection
 import com.food.opencook.ui.navigation.Routes
 import com.food.opencook.util.DurationFormat
+import com.food.opencook.util.MealTypes
 import com.food.opencook.util.Numbers
 import com.food.opencook.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -65,6 +66,8 @@ data class EditableRecipe(
     val name: String,
     val servings: String,
     val category: String,
+    /** Selected [com.food.opencook.util.MealTypes] keys; empty = unset (default applies). */
+    val mealTypes: List<String>,
     val prepTime: String,
     val cookTime: String,
     val notes: String,
@@ -73,6 +76,13 @@ data class EditableRecipe(
     val instructions: List<EditableInstruction>,
     val nutrition: EditableNutrition?,
     val images: List<ImageEntity>,
+    /** Search tags, newline-joined (AI-assigned, user-correctable in the details step). */
+    val tags: String? = null,
+    // Fields the editor doesn't expose but must not destroy: persist() rebuilds the
+    // whole entity, so anything missing here would be wiped on every edit (and the
+    // wipe would sync). Carried through verbatim.
+    val lastCookedAt: String? = null,
+    val totalTime: String? = null,
 )
 
 /**
@@ -165,6 +175,8 @@ class ReviewViewModel @Inject constructor(
             name = "",
             servings = "",
             category = "",
+            // The classic hot-meal slots pre-selected — same meaning as "unset".
+            mealTypes = MealTypes.DEFAULT,
             prepTime = "",
             cookTime = "",
             notes = "",
@@ -310,10 +322,15 @@ class ReviewViewModel @Inject constructor(
             recipeYield = null,
             servings = servingsNum,
             category = e.category.ifBlank { null },
+            // Deselecting everything stores null — the "lunch + dinner" default applies again.
+            mealTypes = MealTypes.toStored(e.mealTypes),
             notes = e.notes.ifBlank { null },
             cookbook = e.cookbook.ifBlank { null },
             prepTime = DurationFormat.toIso(e.prepTime),
             cookTime = DurationFormat.toIso(e.cookTime),
+            totalTime = e.totalTime,
+            tags = e.tags,
+            lastCookedAt = e.lastCookedAt,
             sourcePhotoId = e.sourcePhotoId,
             createdAt = e.createdAt,
             updatedAt = now,
@@ -360,10 +377,15 @@ private fun RecipeWithDetails.toEditable() = EditableRecipe(
     name = recipe.name.orEmpty(),
     servings = recipe.servings?.toString().orEmpty(),
     category = recipe.category.orEmpty(),
+    // Null resolves to the default, so the chips show "lunch + dinner" pre-selected.
+    mealTypes = MealTypes.fromStored(recipe.mealTypes),
     prepTime = DurationFormat.toHuman(recipe.prepTime),
     cookTime = DurationFormat.toHuman(recipe.cookTime),
     notes = recipe.notes.orEmpty(),
     cookbook = recipe.cookbook.orEmpty(),
+    tags = recipe.tags,
+    lastCookedAt = recipe.lastCookedAt,
+    totalTime = recipe.totalTime,
     ingredients = ingredients.sortedBy { it.position }
         .map { EditableIngredient(it.id, Numbers.formatQuantity(it.quantity).orEmpty(), it.unit.orEmpty(), it.name) },
     instructions = instructions.sortedBy { it.position }.map { EditableInstruction(it.id, it.text) },

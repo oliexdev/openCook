@@ -39,6 +39,9 @@ data class RecipeEntity(
     val servings: Int? = null,
     /** AI-assigned coarse category (Pasta, Fleisch, …) driving meal-plan variety. */
     val category: String? = null,
+    /** Meals this recipe suits (newline-joined [com.food.opencook.util.MealTypes] keys).
+     *  Null means the default "lunch + dinner" — interpreted at read time, never backfilled. */
+    val mealTypes: String? = null,
     /** Free-text notes/tips (schema.org openCookNotes), newline-joined. */
     val notes: String? = null,
     /** AI-assigned search tags (openCookTags), newline-joined. */

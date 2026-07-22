@@ -91,6 +91,7 @@ object RecipeImportParser {
             image = extractImages(obj), // refs resolved by the import flow (data-URI / zip path / http)
             openCookNotes = extractStringList(obj, "openCookNotes"),
             openCookTags = extractTags(obj),
+            openCookMealTypes = extractStringList(obj, "openCookMealTypes"),
             prepTime = obj.firstString("prepTime")?.takeIf { it.startsWith("PT") },
             cookTime = obj.firstString("cookTime")?.takeIf { it.startsWith("PT") },
             totalTime = obj.firstString("totalTime")?.takeIf { it.startsWith("PT") },

@@ -86,6 +86,11 @@
     <string name="recipes_empty">Noch keine Rezepte. Tippe auf „Scannen“, um dein erstes Rezept zu erfassen.</string>
     <string name="recipes_search_hint">Rezepte suchen…</string>
     <string name="recipes_filter_all">Alle</string>
+    <string name="recipes_filter">Filter</string>
+    <string name="recipes_filter_title">Filter</string>
+    <string name="recipes_filter_reset">Zurücksetzen</string>
+    <string name="recipes_filter_liked">Nur Favoriten</string>
+    <string name="recipes_filter_remove">Filter %1$s entfernen</string>
     <string name="recipe_delete">Löschen</string>
     <string name="recipe_edit">Bearbeiten</string>
     <string name="recipe_like">Gemocht</string>
@@ -496,6 +501,19 @@
     <string name="cat_salad">Salat</string>
     <string name="cat_dessert">Dessert</string>
     <string name="cat_other">Sonstiges</string>
+
+    <!-- Tag editor (details step) -->
+    <string name="review_tags">Tags</string>
+    <string name="review_tags_add_hint">Tag hinzufügen (Komma trennt mehrere)</string>
+    <string name="review_tags_add">Tag hinzufügen</string>
+    <string name="review_tag_remove">Tag %1$s entfernen</string>
+
+    <!-- Meal types ("suitable for", stored as keys, shown localized) -->
+    <string name="recipe_mealtypes_label">Geeignet für</string>
+    <string name="mealtype_breakfast">Frühstück</string>
+    <string name="mealtype_lunch">Mittag</string>
+    <string name="mealtype_snack">Snack / Kaffee &amp; Kuchen</string>
+    <string name="mealtype_dinner">Abend</string>
 
     <!-- Generic -->
     <string name="action_ok">OK</string>

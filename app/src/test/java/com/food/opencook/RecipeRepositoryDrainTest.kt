@@ -148,6 +148,8 @@ private class FakeRecipeLikeDao : com.food.opencook.data.local.dao.RecipeLikeDao
     override fun observe(recipeId: String, nodeId: String): Flow<com.food.opencook.data.local.entity.RecipeLikeEntity?> =
         throw NotImplementedError()
     override suspend fun likedRecipeIds(): List<String> = likes.filter { it.liked }.map { it.recipeId }.distinct()
+    override fun observeLikedRecipeIds(): Flow<List<String>> =
+        kotlinx.coroutines.flow.flowOf(likes.filter { it.liked }.map { it.recipeId }.distinct())
 }
 
 private class FakeMessageDao : MessageDao {

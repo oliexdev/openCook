@@ -59,6 +59,9 @@ object RecipeDtoEncoder {
             image = listOfNotNull(imageRef),
             openCookNotes = r.notes.toLines(),
             openCookTags = r.tags.toLines(),
+            // Only explicit values travel; null (= the lunch+dinner default) stays absent,
+            // so the default semantics apply again on the importing device.
+            openCookMealTypes = r.mealTypes.toLines(),
             prepTime = r.prepTime,
             cookTime = r.cookTime,
             totalTime = r.totalTime,

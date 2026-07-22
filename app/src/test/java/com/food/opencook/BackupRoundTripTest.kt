@@ -55,6 +55,7 @@ class BackupRoundTripTest {
             category = "dessert",
             notes = "Teig 30 Min ruhen lassen\nMit Zucker servieren",
             tags = "süß\nschnell",
+            mealTypes = "breakfast\nsnack",
             lastCookedAt = "2026-07-01",
             cookbook = "Omas Küche",
             prepTime = "PT10M",
@@ -115,6 +116,7 @@ class BackupRoundTripTest {
         assertEquals(original.category, out.category)
         assertEquals(original.notes, out.notes)
         assertEquals(original.tags, out.tags)
+        assertEquals(original.mealTypes, out.mealTypes)
         assertEquals(original.cookbook, out.cookbook)
         assertEquals(original.lastCookedAt, out.lastCookedAt)
         assertEquals(original.prepTime, out.prepTime)
@@ -123,6 +125,15 @@ class BackupRoundTripTest {
         // Timestamps come back so "recently added" ordering survives a restore.
         assertEquals(original.createdAt, out.createdAt)
         assertEquals(original.updatedAt, out.updatedAt)
+    }
+
+    @Test
+    fun unsetMealTypesStayUnsetSoTheDefaultAppliesOnTheImportingDevice() {
+        // null mealTypes = the "lunch + dinner" default; it must travel as ABSENCE
+        // (not as a materialized value) so the semantics stay a read-time decision.
+        val unset = sample().let { it.copy(recipe = it.recipe.copy(mealTypes = null)) }
+        assertTrue(RecipeDtoEncoder.encode(unset, null).openCookMealTypes.isEmpty())
+        assertNull(roundTrip(unset).recipe.mealTypes)
     }
 
     @Test
