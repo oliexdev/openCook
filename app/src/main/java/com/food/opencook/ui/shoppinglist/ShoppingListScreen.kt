@@ -18,7 +18,15 @@
 
 package com.food.opencook.ui.shoppinglist
 
+import android.content.ClipData
+import android.content.ClipDescription
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.draganddrop.dragAndDropSource
+import androidx.compose.foundation.draganddrop.dragAndDropTarget
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -55,13 +63,26 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draganddrop.DragAndDropEvent
+import androidx.compose.ui.draganddrop.DragAndDropTarget
+import androidx.compose.ui.draganddrop.DragAndDropTransferData
+import androidx.compose.ui.draganddrop.mimeTypes
+import androidx.compose.ui.draganddrop.toAndroidDragEvent
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -76,6 +97,7 @@ import com.food.opencook.ui.components.ConfettiOverlay
 import com.food.opencook.ui.components.KeepScreenOn
 import com.food.opencook.ui.theme.Spacing
 import com.food.opencook.util.GroceryCategories
+import com.food.opencook.util.GroceryCategory
 import com.food.opencook.util.Numbers
 
 /**
@@ -160,12 +182,104 @@ fun ShoppingListBody(
             }
             // One flat list, grouped by store aisle. Checked items stay in place,
             // struck through — never auto-removed (use the bulk action to clear).
-            val grouped = visible.groupBy { GroceryCategories.categorize(it.item.text) }
+            // Household-taught overrides beat the keyword heuristic.
+            val overrides by viewModel.overrides.collectAsStateWithLifecycle()
+            val grouped = visible.groupBy { GroceryCategories.categorize(it.item.text, overrides) }
                 .toList().sortedBy { it.first.ordinal }
-
-            LazyColumn(state = listState, modifier = Modifier.widthIn(max = 640.dp).fillMaxSize()) {
+            // Every list key (headers + rows) → its section's category, for drop hit-testing.
+            val keyCategory = buildMap {
                 grouped.forEach { (category, list) ->
-                    item(key = "h_${category.name}") { CategoryHeader(category) }
+                    put("h_${category.name}", category)
+                    list.forEach { put(it.item.id, category) }
+                }
+            }
+
+            // Drag-to-recategorize: dropping a dish on another aisle group teaches the
+            // household "this name belongs there" (GroceryOverrideRepository) — the item
+            // itself never changes; the list re-groups reactively. Same single-target +
+            // edge-auto-scroll mechanics as the meal planner's drag-to-reschedule.
+            val listBounds = remember { mutableStateOf(Rect.Zero) }
+            val hoveredCategory = remember { mutableStateOf<GroceryCategory?>(null) }
+            val scrollSpeed = remember { mutableFloatStateOf(0f) }
+            val edgeZonePx = with(LocalDensity.current) { 72.dp.toPx() }
+            val maxStepPx = with(LocalDensity.current) { 18.dp.toPx() }
+            LaunchedEffect(Unit) {
+                while (true) {
+                    withFrameNanos { }
+                    val v = scrollSpeed.floatValue
+                    if (v != 0f) listState.scrollBy(v)
+                }
+            }
+            val learnedTemplate = stringResource(R.string.shopping_category_learned)
+            val categoryLabels = GroceryCategory.entries.associateWith { stringResource(it.labelRes) }
+            val dropTarget = remember(listState, keyCategory) {
+                fun categoryAtY(y: Float): GroceryCategory? {
+                    val localY = y - listBounds.value.top
+                    val items = listState.layoutInfo.visibleItemsInfo
+                    if (items.isEmpty()) return null
+                    val hit = items.firstOrNull { localY >= it.offset && localY < it.offset + it.size }
+                        ?: items.minByOrNull { kotlin.math.abs((it.offset + it.size / 2f) - localY) }
+                    return hit?.key?.let { keyCategory[it] }
+                }
+                object : DragAndDropTarget {
+                    override fun onMoved(event: DragAndDropEvent) {
+                        val e = event.toAndroidDragEvent()
+                        val b = listBounds.value
+                        scrollSpeed.floatValue = when {
+                            e.y < b.top + edgeZonePx ->
+                                -maxStepPx * ((b.top + edgeZonePx - e.y) / edgeZonePx).coerceIn(0f, 1f)
+                            e.y > b.bottom - edgeZonePx ->
+                                maxStepPx * ((e.y - (b.bottom - edgeZonePx)) / edgeZonePx).coerceIn(0f, 1f)
+                            else -> 0f
+                        }
+                        hoveredCategory.value = categoryAtY(e.y)
+                    }
+                    override fun onDrop(event: DragAndDropEvent): Boolean {
+                        scrollSpeed.floatValue = 0f
+                        hoveredCategory.value = null
+                        val e = event.toAndroidDragEvent()
+                        val name = e.clipData?.takeIf { it.itemCount > 0 }
+                            ?.getItemAt(0)?.text?.toString() ?: return false
+                        val target = categoryAtY(e.y) ?: return false
+                        if (target == GroceryCategories.categorize(name, overrides)) return false
+                        viewModel.recategorize(name, target)
+                        scope.launch {
+                            snackbar.showSnackbar(learnedTemplate.format(name, categoryLabels[target] ?: ""))
+                        }
+                        return true
+                    }
+                    override fun onExited(event: DragAndDropEvent) {
+                        scrollSpeed.floatValue = 0f; hoveredCategory.value = null
+                    }
+                    override fun onEnded(event: DragAndDropEvent) {
+                        scrollSpeed.floatValue = 0f; hoveredCategory.value = null
+                    }
+                }
+            }
+
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.widthIn(max = 640.dp).fillMaxSize()
+                    .onGloballyPositioned { listBounds.value = it.boundsInRoot() }
+                    .dragAndDropTarget(
+                        shouldStartDragAndDrop = { it.mimeTypes().contains(ClipDescription.MIMETYPE_TEXT_PLAIN) },
+                        target = dropTarget,
+                    ),
+            ) {
+                grouped.forEach { (category, list) ->
+                    item(key = "h_${category.name}") {
+                        CategoryHeader(
+                            category,
+                            modifier = Modifier.fillMaxWidth().background(
+                                if (hoveredCategory.value == category) {
+                                    MaterialTheme.colorScheme.secondaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.background.copy(alpha = 0f)
+                                },
+                                RoundedCornerShape(8.dp),
+                            ),
+                        )
+                    }
                     items(list, key = { it.item.id }) { row ->
                         val item = row.item
                         ShoppingRow(
@@ -233,6 +347,11 @@ private fun AllBoughtBanner(onCheckout: () -> Unit, modifier: Modifier = Modifie
     }
 }
 
+// Block-based dragAndDropSource is deprecated but is the only variant that triggers on a
+// real long-press (the plain-drag overloads fight the LazyColumn scroll) — same reasoning
+// as the meal planner's PlannedRow.
+@Suppress("DEPRECATION")
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ShoppingRow(
     row: ShoppingRowUi,
@@ -243,6 +362,8 @@ private fun ShoppingRow(
 ) {
     val item = row.item
     var menuOpen by remember { mutableStateOf(false) }
+    // Captured here because the drag-shadow lambda below runs in DrawScope (no theme access).
+    val shadowColor = MaterialTheme.colorScheme.primaryContainer
     // Each line is its own card so it reads as one bounded tap target — important on
     // wide screens where name and action menu would otherwise sit far apart.
     Card(
@@ -250,7 +371,26 @@ private fun ShoppingRow(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     ) {
     Row(
-        Modifier.fillMaxWidth().clickable { onToggle(!item.checked) }.padding(vertical = 2.dp, horizontal = Spacing.xs),
+        Modifier.fillMaxWidth()
+            // ONE detector for both gestures (a separate .clickable would swallow the
+            // long-press): tap toggles the checkmark, long-press lifts the line as a
+            // drag source — dropping it on another aisle teaches the categorization.
+            .dragAndDropSource(
+                drawDragDecoration = {
+                    drawRoundRect(color = shadowColor, cornerRadius = CornerRadius(12.dp.toPx()))
+                },
+                block = {
+                    detectTapGestures(
+                        onTap = { onToggle(!item.checked) },
+                        onLongPress = {
+                            startTransfer(
+                                DragAndDropTransferData(ClipData.newPlainText("grocery", item.text)),
+                            )
+                        },
+                    )
+                },
+            )
+            .padding(vertical = 2.dp, horizontal = Spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Checkbox(checked = item.checked, onCheckedChange = onToggle)

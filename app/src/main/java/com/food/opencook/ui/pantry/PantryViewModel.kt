@@ -21,8 +21,10 @@ package com.food.opencook.ui.pantry
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.food.opencook.data.local.entity.PantryItemEntity
+import com.food.opencook.repository.GroceryOverrideRepository
 import com.food.opencook.repository.PantryRepository
 import com.food.opencook.repository.SuggestionRepository
+import com.food.opencook.util.GroceryCategory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -34,11 +36,22 @@ import javax.inject.Inject
 class PantryViewModel @Inject constructor(
     private val repository: PantryRepository,
     private val suggestionRepository: SuggestionRepository,
+    private val overrideRepository: GroceryOverrideRepository,
 ) : ViewModel() {
 
     val items: StateFlow<List<PantryItemEntity>> =
         repository.observeItems()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Learned "name → aisle" corrections; beats the keyword heuristic when grouping. */
+    val overrides: StateFlow<Map<String, GroceryCategory>> =
+        overrideRepository.observeOverrides()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    /** An item was dragged into another aisle group: teach the household the lesson. */
+    fun recategorize(name: String, target: GroceryCategory) = viewModelScope.launch {
+        overrideRepository.learn(name, target)
+    }
 
     private var suggestionPool: List<String> = emptyList()
     init { viewModelScope.launch { suggestionPool = suggestionRepository.pool() } }

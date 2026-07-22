@@ -47,6 +47,19 @@ class GroceryCategoriesTest {
     }
 
     @Test
+    fun learnedOverrideBeatsTheKeywordHeuristic() {
+        // The household taught "Kokosmilch → DRINKS" — the user knows their store
+        // better than our rules, so the lesson wins over the PANTRY keyword match.
+        val overrides = mapOf("kokosmilch" to GroceryCategory.DRINKS)
+        assertEquals(GroceryCategory.DRINKS, GroceryCategories.categorize("Kokosmilch", overrides))
+        // Lookup normalizes case/whitespace the same way lessons are stored.
+        assertEquals(GroceryCategory.DRINKS, GroceryCategories.categorize(" KOKOSMILCH ", overrides))
+        // Names without a lesson keep the heuristic; empty map = old behavior.
+        assertEquals(GroceryCategory.PRODUCE, GroceryCategories.categorize("Tomaten", overrides))
+        assertEquals(GroceryCategory.PANTRY, GroceryCategories.categorize("Kokosmilch", emptyMap()))
+    }
+
+    @Test
     fun unionRecognisesBothLanguagesAndKeepsPriority() {
         // LocalizedLists unions every bundled content language into each category, so an
         // English-locale device with German recipes still groups them (and vice versa). The

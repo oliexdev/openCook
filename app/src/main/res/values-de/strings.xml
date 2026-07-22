@@ -451,6 +451,9 @@
     <string name="recipe_export_md_from_cookbook">Aus „%1$s“</string>
     <string name="recipe_export_md_footer">Exportiert aus openCook am %1$s</string>
 
+    <!-- Drag-to-recategorize (shopping list + pantry) -->
+    <string name="shopping_category_learned">%1$s → %2$s — für den Haushalt gemerkt</string>
+
     <!-- Grocery aisles (shopping list grouping) -->
     <string name="grocery_cat_produce">Obst &amp; Gemüse</string>
     <string name="grocery_cat_meat_fish">Fleisch &amp; Fisch</string>

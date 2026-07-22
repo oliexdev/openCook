@@ -449,6 +449,9 @@
     <string name="recipe_export_md_from_cookbook">From “%1$s”</string>
     <string name="recipe_export_md_footer">Exported from openCook on %1$s</string>
 
+    <!-- Drag-to-recategorize (shopping list + pantry) -->
+    <string name="shopping_category_learned">%1$s → %2$s — noted for the household</string>
+
     <!-- Grocery aisles (shopping list grouping) -->
     <string name="grocery_cat_produce">Produce</string>
     <string name="grocery_cat_meat_fish">Meat &amp; Fish</string>

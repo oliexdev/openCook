@@ -25,6 +25,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.food.opencook.data.local.OpenCookDatabase
 import com.food.opencook.data.local.RoomTransactor
 import com.food.opencook.data.local.Transactor
+import com.food.opencook.data.local.dao.GroceryOverrideDao
 import com.food.opencook.data.local.dao.JobDao
 import com.food.opencook.data.local.dao.MealDayDao
 import com.food.opencook.data.local.dao.MealPlanDao
@@ -58,12 +59,22 @@ object DatabaseModule {
         }
     }
 
+    /** v2 → v3: the learned "name → aisle" override table (see GroceryOverrideEntity). */
+    private val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS grocery_overrides(" +
+                    "name TEXT NOT NULL PRIMARY KEY, category TEXT NOT NULL, updatedAt INTEGER NOT NULL)",
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): OpenCookDatabase =
         // v1 is the released baseline schema (see OpenCookDatabase).
         Room.databaseBuilder(context, OpenCookDatabase::class.java, "opencook.db")
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
 
     @Provides
@@ -92,4 +103,7 @@ object DatabaseModule {
 
     @Provides
     fun provideProductCacheDao(database: OpenCookDatabase): ProductCacheDao = database.productCacheDao()
+
+    @Provides
+    fun provideGroceryOverrideDao(database: OpenCookDatabase): GroceryOverrideDao = database.groceryOverrideDao()
 }

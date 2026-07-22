@@ -19,6 +19,7 @@
 package com.food.opencook.sync
 
 import com.food.opencook.data.local.Transactor
+import com.food.opencook.data.local.dao.GroceryOverrideDao
 import com.food.opencook.data.local.dao.MealDayDao
 import com.food.opencook.data.local.dao.MealPlanDao
 import com.food.opencook.data.local.dao.MessageDao
@@ -26,6 +27,7 @@ import com.food.opencook.data.local.dao.PantryDao
 import com.food.opencook.data.local.dao.RecipeDao
 import com.food.opencook.data.local.dao.RecipeLikeDao
 import com.food.opencook.data.local.dao.ShoppingDao
+import com.food.opencook.data.local.entity.GroceryOverrideEntity
 import com.food.opencook.data.local.entity.ImageEntity
 import com.food.opencook.data.local.entity.IngredientEntity
 import com.food.opencook.data.local.entity.InstructionEntity
@@ -68,6 +70,7 @@ class MessageApplier @Inject constructor(
     private val mealPlanDao: MealPlanDao,
     private val mealDayDao: MealDayDao,
     private val recipeLikeDao: RecipeLikeDao,
+    private val groceryOverrideDao: GroceryOverrideDao,
     private val syncClock: SyncClock,
     private val transactor: Transactor,
 ) {
@@ -317,6 +320,18 @@ class MessageApplier @Inject constructor(
                         createdAt = now,
                         updatedAt = now,
                     ),
+                )
+            }
+            SyncDatasets.GROCERY_OVERRIDES -> {
+                if (MessageCodec.isTrue(winning[SyncDatasets.COLUMN_DELETED])) {
+                    groceryOverrideDao.deleteByName(rowId)
+                    return
+                }
+                // Store the winning lesson verbatim; an unknown category value (from a
+                // newer app version) is kept in the row and simply ignored at read time.
+                val category = str("category") ?: return
+                groceryOverrideDao.upsert(
+                    GroceryOverrideEntity(name = rowId, category = category, updatedAt = System.currentTimeMillis()),
                 )
             }
             SyncDatasets.RECIPE_LIKES -> {

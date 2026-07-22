@@ -93,4 +93,12 @@ object GroceryCategories {
         }
         return GroceryCategory.OTHER
     }
+
+    /**
+     * Like [categorize], but a household-taught override (normalized name → aisle,
+     * from [com.food.opencook.repository.GroceryOverrideRepository]) beats the
+     * keyword heuristic — the user knows their supermarket better than our rules.
+     */
+    fun categorize(name: String, overrides: Map<String, GroceryCategory>): GroceryCategory =
+        overrides[name.trim().lowercase()] ?: categorize(name)
 }

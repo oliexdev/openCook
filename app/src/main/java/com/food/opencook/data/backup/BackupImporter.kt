@@ -23,6 +23,7 @@ import com.food.opencook.data.local.dao.RecipeDao
 import com.food.opencook.data.local.entity.ImageEntity
 import com.food.opencook.data.recipeimport.RecipeImportParser
 import com.food.opencook.data.remote.mapper.toMappedRecipe
+import com.food.opencook.repository.GroceryOverrideRepository
 import com.food.opencook.repository.MealPlanRepository
 import com.food.opencook.repository.PantryRepository
 import com.food.opencook.repository.RecipeRepository
@@ -47,6 +48,7 @@ data class BackupImportResult(
     val shopping: Int = 0,
     val pantry: Int = 0,
     val mealPlan: Int = 0,
+    val groceryOverrides: Int = 0,
 )
 
 /**
@@ -68,6 +70,7 @@ class BackupImporter @Inject constructor(
     private val shoppingRepository: ShoppingRepository,
     private val pantryRepository: PantryRepository,
     private val mealPlanRepository: MealPlanRepository,
+    private val groceryOverrideRepository: GroceryOverrideRepository,
     private val recipeDao: RecipeDao,
     private val imageStore: ImageStore,
     private val json: Json,
@@ -122,6 +125,12 @@ class BackupImporter @Inject constructor(
                             .items.map { it.toEntity() }
                         pantryRepository.importItems(items)
                         result = result.copy(pantry = items.size)
+                    }
+                    BackupFormat.GROCERY_OVERRIDES -> {
+                        val overrides = json.decodeFromString(GroceryOverridesBackup.serializer(), stream.readBytes().decodeToString())
+                            .items.map { it.toEntity() }
+                        groceryOverrideRepository.importItems(overrides)
+                        result = result.copy(groceryOverrides = overrides.size)
                     }
                     BackupFormat.MEALPLAN -> {
                         val plan = json.decodeFromString(MealPlanBackup.serializer(), stream.readBytes().decodeToString())

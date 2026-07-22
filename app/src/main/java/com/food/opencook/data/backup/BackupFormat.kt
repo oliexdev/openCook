@@ -48,6 +48,7 @@ object BackupFormat {
     const val SHOPPING = "shopping.json"
     const val PANTRY = "pantry.json"
     const val MEALPLAN = "mealplan.json"
+    const val GROCERY_OVERRIDES = "grocery_overrides.json"
     const val IMAGES_DIR = "images/"
 
     const val MIME = "application/zip"
@@ -58,7 +59,7 @@ object BackupFormat {
     const val MAX_TOTAL_BYTES = 4L * 1024 * 1024 * 1024
 
     private val IMAGE_ENTRY = Regex("""^images/[A-Za-z0-9._-]{1,80}\.jpg$""")
-    private val JSON_ENTRY = Regex("""^(manifest|recipes|shopping|pantry|mealplan)\.json$""")
+    private val JSON_ENTRY = Regex("""^(manifest|recipes|shopping|pantry|mealplan|grocery_overrides)\.json$""")
 
     /**
      * Whether [name] is an entry we are willing to read. Rejects path traversal
@@ -97,6 +98,8 @@ data class BackupCounts(
     val pantry: Int = 0,
     val mealPlan: Int = 0,
     val mealDays: Int = 0,
+    /** Learned "name → aisle" corrections (absent in pre-existing archives). */
+    val groceryOverrides: Int = 0,
 )
 
 // --- The lists. schema.org has no meaningful vocabulary for these, so rather than
@@ -136,6 +139,20 @@ data class PantryItemBackup(
     val id: String,
     val name: String,
     val createdAt: Long = 0,
+    val updatedAt: Long = 0,
+)
+
+@Serializable
+data class GroceryOverridesBackup(
+    val formatVersion: Int = BackupFormat.VERSION,
+    val items: List<GroceryOverrideBackup> = emptyList(),
+)
+
+/** One learned "name → aisle" lesson (see GroceryOverrideEntity). */
+@Serializable
+data class GroceryOverrideBackup(
+    val name: String,
+    val category: String,
     val updatedAt: Long = 0,
 )
 

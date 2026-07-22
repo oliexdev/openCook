@@ -21,12 +21,14 @@ package com.food.opencook.ui.shoppinglist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.food.opencook.data.local.entity.ShoppingItemEntity
+import com.food.opencook.repository.GroceryOverrideRepository
 import com.food.opencook.repository.MealPlanRepository
 import com.food.opencook.repository.PantryRepository
 import com.food.opencook.repository.RecipeRepository
 import com.food.opencook.repository.ShoppingRepository
 import com.food.opencook.repository.SuggestionRepository
 import com.food.opencook.ui.mealplan.MealPlanner
+import com.food.opencook.util.GroceryCategory
 import com.food.opencook.util.IngredientMatch
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -67,7 +69,19 @@ class ShoppingListViewModel @Inject constructor(
     private val mealPlanRepository: MealPlanRepository,
     private val pantryRepository: PantryRepository,
     private val suggestionRepository: SuggestionRepository,
+    private val overrideRepository: GroceryOverrideRepository,
 ) : ViewModel() {
+
+    /** Learned "name → aisle" corrections; beats the keyword heuristic when grouping. */
+    val overrides: StateFlow<Map<String, GroceryCategory>> =
+        overrideRepository.observeOverrides()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    /** A dish was dragged into another aisle group: teach the household the lesson.
+     *  The lists re-group reactively via [overrides] — nothing on the item changes. */
+    fun recategorize(name: String, target: GroceryCategory) = viewModelScope.launch {
+        overrideRepository.learn(name, target)
+    }
 
     /**
      * Live list, with a reactive pantry filter: a recipe-sourced item whose name is
