@@ -18,20 +18,15 @@
 
 package com.food.opencook.ui.settings
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FormatSize
-import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
@@ -52,30 +47,20 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.food.opencook.R
-import com.food.opencook.data.settings.ContentLanguages
 import com.food.opencook.data.settings.FontScales
 import com.food.opencook.ui.theme.Spacing
 import kotlin.math.roundToInt
 
-/** How the app looks, and which language recipes are written in. */
+/** How the app looks. */
 @Composable
 fun AppearanceSettingsScreen(
     onBack: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val dynamicColor by viewModel.dynamicColor.collectAsStateWithLifecycle()
-    val contentLanguage by viewModel.contentLanguage.collectAsStateWithLifecycle()
     val fontScale by viewModel.fontScale.collectAsStateWithLifecycle()
-    var showLanguageDialog by remember { mutableStateOf(false) }
     var showFontSizeDialog by remember { mutableStateOf(false) }
 
-    if (showLanguageDialog) {
-        ContentLanguageDialog(
-            current = contentLanguage,
-            onPick = { viewModel.setContentLanguage(it); showLanguageDialog = false },
-            onDismiss = { showLanguageDialog = false },
-        )
-    }
     if (showFontSizeDialog) {
         FontSizeDialog(
             current = fontScale,
@@ -97,13 +82,6 @@ fun AppearanceSettingsScreen(
             title = stringResource(R.string.settings_dynamic_color),
             subtitle = stringResource(R.string.settings_dynamic_color_hint),
             trailing = { Switch(checked = dynamicColor, onCheckedChange = { viewModel.setDynamicColor(it) }) },
-        )
-        SettingsRow(
-            icon = Icons.Outlined.Language,
-            title = stringResource(R.string.settings_content_language),
-            subtitle = contentLanguageLabel(contentLanguage),
-            onClick = { showLanguageDialog = true },
-            showChevron = true,
         )
     }
 }
@@ -182,50 +160,3 @@ private fun FontSizeDialog(current: Float, onPick: (Float) -> Unit, onDismiss: (
     )
 }
 
-/** Human label for a content-language code (null = follow the device's system language). */
-@Composable
-fun contentLanguageLabel(code: String?): String = when (code) {
-    null, "" -> stringResource(R.string.settings_content_language_system)
-    "de" -> stringResource(R.string.lang_german)
-    "en" -> stringResource(R.string.lang_english)
-    else -> code.uppercase()
-}
-
-/** Picker for the household-wide recipe content language. */
-@Composable
-private fun ContentLanguageDialog(current: String?, onPick: (String?) -> Unit, onDismiss: () -> Unit) {
-    // "Follow system" (null) plus every bundled content language — single source of truth in
-    // SettingsRepository.CONTENT_LANGUAGES, the same list LocalizedLists loads its lexicons from.
-    val codes: List<String?> = listOf(null) + ContentLanguages.CODES
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_content_language)) },
-        text = {
-            Column {
-                Text(
-                    stringResource(R.string.settings_content_language_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = Spacing.sm),
-                )
-                codes.forEach { code ->
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable { onPick(code) }
-                            .padding(vertical = Spacing.xs),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-                    ) {
-                        RadioButton(selected = current == code, onClick = { onPick(code) })
-                        Text(contentLanguageLabel(code))
-                    }
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            OutlinedButton(onClick = onDismiss) { Text(stringResource(R.string.processing_cancel)) }
-        },
-    )
-}

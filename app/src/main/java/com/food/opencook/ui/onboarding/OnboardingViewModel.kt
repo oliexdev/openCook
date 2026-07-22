@@ -49,7 +49,7 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Named
 
-enum class OnboardingStep { MODE, SERVER, HOUSEHOLD, CREATE }
+enum class OnboardingStep { MODE, SERVER, PEERS, HOUSEHOLD, CREATE }
 
 data class OnboardingUiState(
     val step: OnboardingStep = OnboardingStep.MODE,
@@ -61,7 +61,8 @@ data class OnboardingUiState(
     /** Non-null while joining through a peer phone instead of the server: its endpoints
      *  answer the household list/join, and no server URL must be persisted. */
     val viaPeer: DiscoveredServer? = null,
-    /** CREATE step is minting a serverless household (no server involved at all). */
+    /** In the serverless flow (no server involved): PEERS lists phones to join through,
+     *  and CREATE mints the household locally instead of on a server. */
     val serverless: Boolean = false,
     val busy: Boolean = false,
     val error: String? = null,
@@ -131,14 +132,16 @@ class OnboardingViewModel @Inject constructor(
         }
     }
 
-    /** From the mode picker: found a household without any server — phones only. */
+    /** From the mode picker: a household without any server — phones only. Goes to the
+     *  peer-discovery step: join through a phone that already has the household, or
+     *  found a new one from there. */
     fun chooseServerlessMode() {
-        _state.update { it.copy(step = OnboardingStep.CREATE, serverless = true, error = null) }
+        _state.update { it.copy(step = OnboardingStep.PEERS, serverless = true, error = null) }
     }
 
     /**
-     * A peer phone was picked from the discovery list: run the household list/join
-     * against its endpoints. Unlike [chooseServer] this must NOT persist a server URL —
+     * A peer phone was picked on the PEERS step: run the household list/join against
+     * its endpoints. Unlike [chooseServer] this must NOT persist a server URL —
      * a phone is a transient counterpart, not this household's server.
      */
     fun choosePeer(peer: DiscoveredServer) {
@@ -272,9 +275,14 @@ class OnboardingViewModel @Inject constructor(
     fun back() = _state.update {
         when (it.step) {
             OnboardingStep.CREATE ->
-                if (it.serverless) it.copy(step = OnboardingStep.MODE, serverless = false, error = null)
+                // Founding serverless came from the peer step; joining via a peer keeps
+                // its household list; everything else came from the server's list.
+                if (it.serverless && it.viaPeer == null) it.copy(step = OnboardingStep.PEERS, error = null)
                 else it.copy(step = OnboardingStep.HOUSEHOLD, error = null)
-            OnboardingStep.HOUSEHOLD -> it.copy(step = OnboardingStep.SERVER, viaPeer = null, error = null)
+            OnboardingStep.HOUSEHOLD ->
+                if (it.viaPeer != null) it.copy(step = OnboardingStep.PEERS, viaPeer = null, error = null)
+                else it.copy(step = OnboardingStep.SERVER, error = null)
+            OnboardingStep.PEERS -> it.copy(step = OnboardingStep.MODE, serverless = false, error = null)
             OnboardingStep.SERVER -> it.copy(step = OnboardingStep.MODE, error = null)
             OnboardingStep.MODE -> it
         }

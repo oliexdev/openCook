@@ -85,6 +85,7 @@ fun SettingsScreen(
                         R.string.settings_hub_household_summary,
                         state.householdName.ifBlank { "—" },
                         state.householdSize,
+                        contentLanguageLabel(contentLanguage),
                     )
                 } else {
                     stringResource(R.string.settings_hub_household_local_only)
@@ -119,7 +120,6 @@ fun SettingsScreen(
                     stringResource(
                         if (dynamicColor) R.string.settings_dynamic_color_on else R.string.settings_dynamic_color_off,
                     ),
-                    contentLanguageLabel(contentLanguage),
                     fontSizeLabel(fontScale),
                 ),
                 onClick = onOpenAppearance,

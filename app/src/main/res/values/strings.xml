@@ -289,6 +289,9 @@
     <string name="onboarding_peer_subtitle">Phone on this Wi-Fi</string>
     <string name="onboarding_server_step_title">Choose a server</string>
     <string name="onboarding_searching">Searching the network…</string>
+    <string name="onboarding_peers_step_title">Join through a phone that already has the household — or start a new one</string>
+    <string name="onboarding_peers_searching">Looking for phones on this Wi-Fi… openCook must be open on the other phone.</string>
+    <string name="onboarding_peers_create_subtitle">Start on this phone — the others join afterwards.</string>
     <string name="onboarding_manual_hint">Not found? Enter the server address manually:</string>
     <string name="onboarding_manual_toggle">Enter server manually</string>
     <string name="onboarding_manual_address_label">Server address</string>
@@ -564,9 +567,9 @@
     <string name="backup_auto_folder_hint">Keeps the newest %1$d backups</string>
     <string name="backup_auto_last_error">Last automatic backup failed: %1$s</string>
     <!-- Settings hub & sub-pages -->
-    <string name="settings_hub_household_summary">%1$s · %2$d people</string>
+    <string name="settings_hub_household_summary">%1$s · %2$d people · %3$s</string>
     <string name="settings_hub_household_local_only">This device only — connect a server or phones</string>
-    <string name="settings_hub_appearance_summary">%1$s · %2$s · %3$s</string>
+    <string name="settings_hub_appearance_summary">%1$s · %2$s</string>
     <string name="settings_hub_about_summary">Version %1$s · GPLv3</string>
     <string name="settings_hub_sync_server_and_peers">Server and phones on Wi-Fi</string>
     <string name="settings_hub_sync_server_only">Via your server</string>

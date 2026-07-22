@@ -291,6 +291,9 @@
     <string name="onboarding_peer_subtitle">Handy in diesem WLAN</string>
     <string name="onboarding_server_step_title">Server wählen</string>
     <string name="onboarding_searching">Suche im Netzwerk…</string>
+    <string name="onboarding_peers_step_title">Über ein Handy beitreten, das den Haushalt schon hat — oder neu gründen</string>
+    <string name="onboarding_peers_searching">Suche Handys in diesem WLAN… Auf dem anderen Handy muss openCook geöffnet sein.</string>
+    <string name="onboarding_peers_create_subtitle">Auf diesem Handy starten — die anderen treten danach bei.</string>
     <string name="onboarding_manual_hint">Nicht gefunden? Server-Adresse manuell eingeben:</string>
     <string name="onboarding_manual_toggle">Server manuell eingeben</string>
     <string name="onboarding_manual_address_label">Server-Adresse</string>
@@ -566,9 +569,9 @@
     <string name="backup_auto_folder_hint">Behält die neuesten %1$d Sicherungen</string>
     <string name="backup_auto_last_error">Letzte automatische Sicherung fehlgeschlagen: %1$s</string>
     <!-- Einstellungen: Übersicht & Unterseiten -->
-    <string name="settings_hub_household_summary">%1$s · %2$d Personen</string>
+    <string name="settings_hub_household_summary">%1$s · %2$d Personen · %3$s</string>
     <string name="settings_hub_household_local_only">Nur dieses Gerät — Server oder Telefone verbinden</string>
-    <string name="settings_hub_appearance_summary">%1$s · %2$s · %3$s</string>
+    <string name="settings_hub_appearance_summary">%1$s · %2$s</string>
     <string name="settings_hub_about_summary">Version %1$s · GPLv3</string>
     <string name="settings_hub_sync_server_and_peers">Server und Telefone im WLAN</string>
     <string name="settings_hub_sync_server_only">Über deinen Server</string>

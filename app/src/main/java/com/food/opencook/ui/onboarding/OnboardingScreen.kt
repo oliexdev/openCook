@@ -116,6 +116,7 @@ fun OnboardingScreen(viewModel: OnboardingViewModel = hiltViewModel()) {
             when (state.step) {
                 OnboardingStep.MODE -> ModeStep(viewModel)
                 OnboardingStep.SERVER -> ServerStep(viewModel)
+                OnboardingStep.PEERS -> PeersStep(viewModel)
                 OnboardingStep.HOUSEHOLD -> HouseholdStep(state, viewModel)
                 OnboardingStep.CREATE -> CreateStep(state, viewModel)
             }
@@ -213,7 +214,10 @@ private fun ModeStep(viewModel: OnboardingViewModel) {
 
 @Composable
 private fun ServerStep(viewModel: OnboardingViewModel) {
-    val servers by viewModel.discovered.collectAsStateWithLifecycle(initialValue = emptyList())
+    val discovered by viewModel.discovered.collectAsStateWithLifecycle(initialValue = emptyList())
+    // This step is about *the* home server — peer phones (role=peer) are deliberately
+    // filtered out; joining through a phone lives on the serverless path (PeersStep).
+    val servers = discovered.filter { it.role == DiscoveredRole.SERVER }
     var manual by remember { mutableStateOf("") }
     var manualExpanded by remember { mutableStateOf(false) }
 
@@ -233,24 +237,11 @@ private fun ServerStep(viewModel: OnboardingViewModel) {
             }
         } else {
             servers.forEach { server ->
-                // Peer phones advertise the same service with role=peer: joining through
-                // one uses its endpoints directly and never stores it as "the server".
-                val isPeer = server.role == DiscoveredRole.PEER
                 ChoiceCard(
-                    icon = if (isPeer) Icons.Outlined.Smartphone else Icons.Outlined.Dns,
+                    icon = Icons.Outlined.Dns,
                     title = server.name,
-                    subtitle = if (isPeer) {
-                        stringResource(R.string.onboarding_peer_subtitle)
-                    } else {
-                        "${server.host}:${server.port}"
-                    },
-                    onClick = {
-                        if (isPeer) {
-                            viewModel.choosePeer(server)
-                        } else {
-                            viewModel.chooseServer("${server.host}:${server.port}")
-                        }
-                    },
+                    subtitle = "${server.host}:${server.port}",
+                    onClick = { viewModel.chooseServer("${server.host}:${server.port}") },
                 )
             }
         }
@@ -289,6 +280,51 @@ private fun ServerStep(viewModel: OnboardingViewModel) {
                 }
             }
         }
+    }
+}
+
+/**
+ * Serverless path: the phones (role=peer) found on this Wi-Fi. Tapping one joins its
+ * household through the peer's endpoints; founding a brand-new household is always
+ * offered below — that's the only choice on the very first phone, where the list
+ * necessarily stays empty.
+ */
+@Composable
+private fun PeersStep(viewModel: OnboardingViewModel) {
+    val discovered by viewModel.discovered.collectAsStateWithLifecycle(initialValue = emptyList())
+    val peers = discovered.filter { it.role == DiscoveredRole.PEER }
+
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+        StepHeader(stringResource(R.string.onboarding_peers_step_title))
+
+        if (peers.isEmpty()) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
+                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                Text(
+                    stringResource(R.string.onboarding_peers_searching),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
+            peers.forEach { peer ->
+                ChoiceCard(
+                    icon = Icons.Outlined.Smartphone,
+                    title = peer.name,
+                    subtitle = stringResource(R.string.onboarding_peer_subtitle),
+                    onClick = { viewModel.choosePeer(peer) },
+                )
+            }
+        }
+
+        ChoiceCard(
+            icon = Icons.Outlined.Add,
+            title = stringResource(R.string.onboarding_create_household),
+            subtitle = stringResource(R.string.onboarding_peers_create_subtitle),
+            onClick = viewModel::goToCreate,
+        )
     }
 }
 

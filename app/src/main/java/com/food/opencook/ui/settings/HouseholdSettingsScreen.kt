@@ -20,18 +20,24 @@ package com.food.opencook.ui.settings
 
 import android.content.ClipData
 import android.widget.Toast
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Key
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -40,6 +46,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
@@ -47,18 +54,28 @@ import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.food.opencook.R
+import com.food.opencook.data.settings.ContentLanguages
 import com.food.opencook.ui.theme.Spacing
 import kotlinx.coroutines.launch
 
-/** Who this phone cooks with: the household's identity, its size, and the way out. */
+/** Who this phone cooks with: the household's identity, size, recipe language, and the way out. */
 @Composable
 fun HouseholdSettingsScreen(
     onBack: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val contentLanguage by viewModel.contentLanguage.collectAsStateWithLifecycle()
     var showLeaveConfirm by remember { mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
 
+    if (showLanguageDialog) {
+        ContentLanguageDialog(
+            current = contentLanguage,
+            onPick = { viewModel.setContentLanguage(it); showLanguageDialog = false },
+            onDismiss = { showLanguageDialog = false },
+        )
+    }
     if (showLeaveConfirm) {
         AlertDialog(
             onDismissRequest = { showLeaveConfirm = false },
@@ -121,6 +138,13 @@ fun HouseholdSettingsScreen(
                 }
             },
         )
+        SettingsRow(
+            icon = Icons.Outlined.Language,
+            title = stringResource(R.string.settings_content_language),
+            subtitle = contentLanguageLabel(contentLanguage),
+            onClick = { showLanguageDialog = true },
+            showChevron = true,
+        )
         if (joined) {
             SettingsRow(
                 icon = Icons.AutoMirrored.Outlined.Logout,
@@ -130,4 +154,52 @@ fun HouseholdSettingsScreen(
             )
         }
     }
+}
+
+/** Human label for a content-language code (null = follow the device's system language). */
+@Composable
+fun contentLanguageLabel(code: String?): String = when (code) {
+    null, "" -> stringResource(R.string.settings_content_language_system)
+    "de" -> stringResource(R.string.lang_german)
+    "en" -> stringResource(R.string.lang_english)
+    else -> code.uppercase()
+}
+
+/** Picker for the household-wide recipe content language. */
+@Composable
+private fun ContentLanguageDialog(current: String?, onPick: (String?) -> Unit, onDismiss: () -> Unit) {
+    // "Follow system" (null) plus every bundled content language — single source of truth in
+    // SettingsRepository.CONTENT_LANGUAGES, the same list LocalizedLists loads its lexicons from.
+    val codes: List<String?> = listOf(null) + ContentLanguages.CODES
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_content_language)) },
+        text = {
+            Column {
+                Text(
+                    stringResource(R.string.settings_content_language_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = Spacing.sm),
+                )
+                codes.forEach { code ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { onPick(code) }
+                            .padding(vertical = Spacing.xs),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    ) {
+                        RadioButton(selected = current == code, onClick = { onPick(code) })
+                        Text(contentLanguageLabel(code))
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss) { Text(stringResource(R.string.processing_cancel)) }
+        },
+    )
 }
