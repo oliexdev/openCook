@@ -18,9 +18,12 @@
 
 package com.food.opencook.ui.recipes
 
+import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.food.opencook.data.export.ExportFormat
+import com.food.opencook.data.export.RecipeExporter
 import com.food.opencook.data.local.relation.RecipeWithDetails
 import com.food.opencook.data.settings.SettingsRepository
 import com.food.opencook.repository.MealPlanRepository
@@ -56,6 +59,7 @@ class RecipeDetailViewModel @Inject constructor(
     private val pantryRepository: PantryRepository,
     private val mealPlanRepository: MealPlanRepository,
     private val settings: SettingsRepository,
+    private val exporter: RecipeExporter,
 ) : ViewModel() {
 
     private val recipeId: String = checkNotNull(savedStateHandle[Routes.ARG_RECIPE_ID])
@@ -64,6 +68,17 @@ class RecipeDetailViewModel @Inject constructor(
     fun delete(onDeleted: () -> Unit) = viewModelScope.launch {
         repository.deleteRecipe(recipeId)
         onDeleted()
+    }
+
+    /** Name suggestion for the SAF "create document" dialog, e.g. "Omas-Pfannkuchen.md". */
+    fun suggestedFileName(format: ExportFormat): String =
+        recipe.value?.let { exporter.fileName(it, format) } ?: "recipe.${format.extension}"
+
+    /** Write this recipe into the document the user just created via the file picker. */
+    fun export(target: Uri, format: ExportFormat, onResult: (Boolean) -> Unit) = viewModelScope.launch {
+        val details = repository.getRecipeOnce(recipeId)
+        val ok = details != null && runCatching { exporter.export(details, target, format) }.isSuccess
+        onResult(ok)
     }
 
     /** Copy this recipe's ingredients onto the shopping list, skipping pantry staples. */

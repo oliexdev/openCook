@@ -18,7 +18,10 @@
 
 package com.food.opencook.ui.recipes
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -26,6 +29,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -43,13 +47,16 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.AddShoppingCart
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.DataObject
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -60,7 +67,10 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Scaffold
@@ -99,8 +109,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.graphics.Color
 import coil3.compose.AsyncImage
 import com.food.opencook.R
+import com.food.opencook.data.export.ExportFormat
 import com.food.opencook.data.local.relation.RecipeWithDetails
 import com.food.opencook.ui.theme.Spacing
 import com.food.opencook.util.DateLabels
@@ -135,6 +147,20 @@ fun RecipeDetailScreen(
     val addedMessage = stringResource(R.string.shopping_added)
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showPlanSheet by remember { mutableStateOf(false) }
+    var showExportSheet by remember { mutableStateOf(false) }
+
+    // One CreateDocument launcher per format: the MIME type is fixed per contract.
+    val exportDoneMessage = stringResource(R.string.recipe_export_done)
+    val exportFailedMessage = stringResource(R.string.recipe_export_failed)
+    val onExportResult: (Boolean) -> Unit = { ok ->
+        scope.launch { snackbarHostState.showSnackbar(if (ok) exportDoneMessage else exportFailedMessage) }
+    }
+    val exportMarkdownLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(ExportFormat.MARKDOWN.mime),
+    ) { uri -> if (uri != null) viewModel.export(uri, ExportFormat.MARKDOWN, onExportResult) }
+    val exportJsonLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(ExportFormat.SCHEMA_ORG_JSON.mime),
+    ) { uri -> if (uri != null) viewModel.export(uri, ExportFormat.SCHEMA_ORG_JSON, onExportResult) }
     val planAddedFormat = stringResource(R.string.recipe_plan_added)
     val planned by viewModel.plannedDishes.collectAsStateWithLifecycle()
 
@@ -195,6 +221,9 @@ fun RecipeDetailScreen(
                     scrolledContainerColor = MaterialTheme.colorScheme.background,
                 ),
                 actions = {
+                    IconButton(onClick = { showExportSheet = true }, enabled = recipe != null) {
+                        Icon(Icons.Outlined.Share, contentDescription = stringResource(R.string.recipe_export))
+                    }
                     IconButton(onClick = onEdit) {
                         Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.recipe_edit))
                     }
@@ -266,6 +295,20 @@ fun RecipeDetailScreen(
         }
     }
 
+    if (showExportSheet) {
+        ExportSheet(
+            onDismiss = { showExportSheet = false },
+            onMarkdown = {
+                showExportSheet = false
+                exportMarkdownLauncher.launch(viewModel.suggestedFileName(ExportFormat.MARKDOWN))
+            },
+            onJson = {
+                showExportSheet = false
+                exportJsonLauncher.launch(viewModel.suggestedFileName(ExportFormat.SCHEMA_ORG_JSON))
+            },
+        )
+    }
+
     if (showPlanSheet) {
         AddToMealPlanSheet(
             weeks = viewModel.planWeekDates,
@@ -278,6 +321,48 @@ fun RecipeDetailScreen(
             },
         )
     }
+}
+
+/** Format picker for the single-recipe export — one row per file format. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ExportSheet(onDismiss: () -> Unit, onMarkdown: () -> Unit, onJson: () -> Unit) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Text(
+            stringResource(R.string.recipe_export_title),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.sm),
+        )
+        ExportRow(
+            icon = Icons.Outlined.Description,
+            title = R.string.recipe_export_markdown_title,
+            description = R.string.recipe_export_markdown_desc,
+            onClick = onMarkdown,
+        )
+        ExportRow(
+            icon = Icons.Outlined.DataObject,
+            title = R.string.recipe_export_json_title,
+            description = R.string.recipe_export_json_desc,
+            onClick = onJson,
+        )
+        Spacer(Modifier.height(Spacing.lg))
+    }
+}
+
+@Composable
+private fun ExportRow(
+    icon: ImageVector,
+    @androidx.annotation.StringRes title: Int,
+    @androidx.annotation.StringRes description: Int,
+    onClick: () -> Unit,
+) {
+    ListItem(
+        leadingContent = { Icon(icon, contentDescription = null) },
+        headlineContent = { Text(stringResource(title)) },
+        supportingContent = { Text(stringResource(description)) },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        modifier = Modifier.clickable(onClick = onClick),
+    )
 }
 
 /** The dish image (or a warm placeholder) with the liked/cooked status badges. */

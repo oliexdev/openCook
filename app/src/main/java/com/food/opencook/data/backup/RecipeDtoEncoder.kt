@@ -81,14 +81,16 @@ object RecipeDtoEncoder {
         )
     }
 
-    /** "500 g Mehl" / "2 Eier" / "Salz" — the flattened form for foreign consumers. */
-    private fun ingredientLine(quantity: Double?, unit: String?, name: String): String =
+    /** "500 g Mehl" / "2 Eier" / "Salz" — the flattened form for foreign consumers.
+     *  Also used by [com.food.opencook.data.export.RecipeMarkdown] so a Markdown export
+     *  formats amounts exactly like `recipes.json` does. */
+    fun ingredientLine(quantity: Double?, unit: String?, name: String): String =
         listOfNotNull(quantity?.let(::formatQuantity), unit?.takeIf { it.isNotBlank() }, name)
             .joinToString(" ")
             .trim()
 
     /** Drop a pointless ".0" so amounts read like a recipe, not like a database. */
-    private fun formatQuantity(value: Double): String =
+    fun formatQuantity(value: Double): String =
         if (value == value.toLong().toDouble()) value.toLong().toString() else value.toString()
 
     private fun String?.toLines(): List<String> =

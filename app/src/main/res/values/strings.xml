@@ -420,6 +420,30 @@
     <string name="recipe_meta_prep">Prep %1$s</string>
     <string name="recipe_meta_cook">Cook %1$s</string>
 
+    <!-- Single-recipe export (detail screen share sheet) -->
+    <string name="recipe_export">Export</string>
+    <string name="recipe_export_title">Export recipe</string>
+    <string name="recipe_export_markdown_title">Markdown (.md)</string>
+    <string name="recipe_export_markdown_desc">Readable text file with embedded photo — for notes apps like Obsidian.</string>
+    <string name="recipe_export_json_title">Recipe file (.json)</string>
+    <string name="recipe_export_json_desc">schema.org format — readable by openCook and other recipe apps.</string>
+    <string name="recipe_export_done">Recipe exported.</string>
+    <string name="recipe_export_failed">Export failed.</string>
+    <!-- Labels inside the exported Markdown document -->
+    <string name="recipe_export_md_servings">Servings</string>
+    <string name="recipe_export_md_category">Category</string>
+    <string name="recipe_export_md_prep">Prep</string>
+    <string name="recipe_export_md_cook">Cooking</string>
+    <string name="recipe_export_md_total">Total</string>
+    <string name="recipe_export_md_ingredients_for">Ingredients (for %1$s)</string>
+    <string name="recipe_export_md_nutrient">Nutrient</string>
+    <string name="recipe_export_md_value">Value</string>
+    <string name="recipe_export_md_calories">Calories</string>
+    <string name="recipe_export_md_fiber">Fiber</string>
+    <string name="recipe_export_md_sugar">Sugar</string>
+    <string name="recipe_export_md_from_cookbook">From “%1$s”</string>
+    <string name="recipe_export_md_footer">Exported from openCook on %1$s</string>
+
     <!-- Grocery aisles (shopping list grouping) -->
     <string name="grocery_cat_produce">Produce</string>
     <string name="grocery_cat_meat_fish">Meat &amp; Fish</string>
