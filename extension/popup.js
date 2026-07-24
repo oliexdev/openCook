@@ -33,24 +33,56 @@ function showNeedsSetup() {
   statusEl.appendChild(link);
 }
 
-// Build a multipart body and push one recipe to the server.
+// Fetch an image URL and return { dataUrl, name } so the bytes can be queued and
+// survive an offline server. Returns null if the image can't be fetched.
+async function fetchImageData(imageUrl) {
+  try {
+    const resp = await fetch(imageUrl);
+    if (!resp.ok) {
+      console.warn("openCook: image fetch HTTP", resp.status, imageUrl);
+      return null;
+    }
+    const blob = await resp.blob();
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+    const name = (imageUrl.split("/").pop() || "image.jpg").split("?")[0];
+    return { dataUrl, name };
+  } catch (e) {
+    console.warn("openCook: image fetch failed:", e);
+    return null;
+  }
+}
+
+// Turn a data: URL back into a Blob for multipart upload.
+function dataUrlToBlob(dataUrl) {
+  const comma = dataUrl.indexOf(",");
+  const header = dataUrl.slice(0, comma);
+  const mime = (header.match(/data:([^;]+)/) || [])[1] || "application/octet-stream";
+  const bin = atob(dataUrl.slice(comma + 1));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
+// Ensure payload.image holds the fetched bytes (fetch once, reuse for retries).
+async function ensureImageData(payload) {
+  if (!payload.image && payload.imageUrl) {
+    payload.image = await fetchImageData(payload.imageUrl);
+  }
+}
+
+// Build a multipart body and push one recipe to the server. The image bytes are
+// fetched ahead of time (see ensureImageData) so a queued retry never re-fetches.
 async function pushImport(serverUrl, householdCode, payload) {
   const form = new FormData();
   form.append("recipe", JSON.stringify(payload.recipe));
   if (payload.sourceUrl) form.append("source_url", payload.sourceUrl);
-  if (payload.imageUrl) {
-    try {
-      const resp = await fetch(payload.imageUrl);
-      if (resp.ok) {
-        const blob = await resp.blob();
-        const name = (payload.imageUrl.split("/").pop() || "image.jpg").split("?")[0];
-        form.append("image", blob, name);
-      } else {
-        console.warn("openCook: image fetch HTTP", resp.status, payload.imageUrl);
-      }
-    } catch (e) {
-      console.warn("openCook: image fetch failed (sending without image):", e);
-    }
+  if (payload.image && payload.image.dataUrl) {
+    form.append("image", dataUrlToBlob(payload.image.dataUrl), payload.image.name || "image.jpg");
   }
   let res;
   try {
@@ -86,6 +118,7 @@ async function flushQueue(serverUrl, householdCode) {
   const remaining = [];
   for (const payload of queue) {
     try {
+      await ensureImageData(payload); // in case an older queue entry has no bytes yet
       await pushImport(serverUrl, householdCode, payload);
     } catch (e) {
       remaining.push(payload); // still unreachable — keep it
@@ -132,6 +165,9 @@ btn.addEventListener("click", async () => {
   btn.disabled = true;
   setStatus("Sende…");
   const { serverUrl, householdCode } = await getConfig();
+  // Fetch the image now, while the source page is still available, so the bytes
+  // survive queueing if the server is offline (a later URL re-fetch may fail).
+  await ensureImageData(detected);
   try {
     await pushImport(serverUrl, householdCode, detected);
     setStatus("✓ Gesendet. Erscheint nach dem nächsten Sync in der App.", "ok");

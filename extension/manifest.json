@@ -3,7 +3,7 @@
   "name": "openCook — Rezept-Import",
   "version": "1.0",
   "description": "Erkennt ein Rezept auf der aktuellen Seite und sendet es an deinen openCook-Server.",
-  "permissions": ["activeTab", "scripting", "storage"],
+  "permissions": ["activeTab", "scripting", "storage", "unlimitedStorage"],
   "host_permissions": ["<all_urls>"],
   "action": {
     "default_popup": "popup.html",
