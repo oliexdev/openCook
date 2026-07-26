@@ -20,6 +20,14 @@ package com.food.opencook.ui.recipes
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -88,6 +96,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -99,6 +108,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.pluralStringResource
@@ -110,10 +120,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import coil3.compose.AsyncImage
 import com.food.opencook.R
 import com.food.opencook.data.export.ExportFormat
 import com.food.opencook.data.local.relation.RecipeWithDetails
+import com.food.opencook.ui.components.CookedCelebration
+import com.food.opencook.ui.components.HeartBurstFull
 import com.food.opencook.ui.theme.Spacing
 import com.food.opencook.util.DateLabels
 import com.food.opencook.util.DurationFormat
@@ -135,6 +148,13 @@ fun RecipeDetailScreen(
     val liked by viewModel.liked.collectAsStateWithLifecycle()
     val cooked by viewModel.cooked.collectAsStateWithLifecycle()
     val targetServings by viewModel.targetServings.collectAsStateWithLifecycle()
+
+    // Screen-filling celebrations, fired from the user's TAP (not from the flow loading its
+    // value on open) and only when the toggle turns ON.
+    var heartTick by remember { mutableIntStateOf(0) }
+    var cookedTick by remember { mutableIntStateOf(0) }
+    val onToggleLiked: () -> Unit = { if (!liked) heartTick++; viewModel.toggleLiked() }
+    val onToggleCooked: () -> Unit = { if (!cooked) cookedTick++; viewModel.toggleCooked() }
 
     // Keep the screen awake while a recipe is open — you cook straight from this view.
     val view = LocalView.current
@@ -201,6 +221,7 @@ fun RecipeDetailScreen(
         )
     }
 
+    Box(Modifier.fillMaxSize()) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -270,7 +291,7 @@ fun RecipeDetailScreen(
                     ) {
                         // Quick actions sit above the steps (the cooking focus), reachable without
                         // scrolling through the ingredients on the left.
-                        ActionButtons(data, cooked, liked, onAddToShopping, onPlan, viewModel::toggleCooked, viewModel::toggleLiked)
+                        ActionButtons(data, cooked, liked, onAddToShopping, onPlan, onToggleCooked, onToggleLiked)
                         InstructionsSection(data)
                         NotesSection(data)
                         NutritionSection(data)
@@ -285,7 +306,7 @@ fun RecipeDetailScreen(
                     Text(data.recipe.name ?: "—", style = MaterialTheme.typography.headlineSmall)
                     RecipeMeta(data)
                     TagChips(data.recipe.tags)
-                    ActionButtons(data, cooked, liked, onAddToShopping, onPlan, viewModel::toggleCooked, viewModel::toggleLiked)
+                    ActionButtons(data, cooked, liked, onAddToShopping, onPlan, onToggleCooked, onToggleLiked)
                     IngredientsSection(data, targetServings, viewModel::setServings)
                     InstructionsSection(data)
                     NotesSection(data)
@@ -293,6 +314,16 @@ fun RecipeDetailScreen(
                 }
             }
         }
+    }
+        // Screen-filling celebrations over the whole screen, so icons enter/leave off-screen
+        // (no visible clip line at the content edges). Non-interactive.
+        HeartBurstFull(heartTick, MaterialTheme.colorScheme.error, Modifier.fillMaxSize())
+        CookedCelebration(
+            cookedTick,
+            MaterialTheme.colorScheme.secondaryContainer,
+            MaterialTheme.colorScheme.onSecondaryContainer,
+            Modifier.fillMaxSize(),
+        )
     }
 
     if (showExportSheet) {
@@ -389,8 +420,22 @@ private fun ImageHeader(model: Any?, liked: Boolean, cooked: Boolean, modifier: 
                 )
             }
         }
-        if (liked) LikedBadge(Modifier.align(Alignment.TopStart))
-        if (cooked) CookedRibbon(Modifier.align(Alignment.TopEnd))
+        // Badges bounce in when the recipe gets liked / cooked, so the new status catches the eye.
+        AnimatedVisibility(
+            visible = liked,
+            enter = scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)) + fadeIn(),
+            exit = scaleOut() + fadeOut(),
+            modifier = Modifier.align(Alignment.TopStart),
+        ) { LikedBadge() }
+        AnimatedVisibility(
+            visible = cooked,
+            enter = scaleIn(
+                spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                transformOrigin = TransformOrigin(1f, 0f), // grow out of the top-right corner
+            ) + fadeIn(),
+            exit = scaleOut() + fadeOut(),
+            modifier = Modifier.align(Alignment.TopEnd),
+        ) { CookedRibbon() }
     }
 }
 
@@ -405,6 +450,20 @@ private fun ActionButtons(
     onToggleCooked: () -> Unit,
     onToggleLiked: () -> Unit,
 ) {
+    // Local spring-pop on the icon, fired from the tap (not the flow) and only when turning ON,
+    // so it never plays on opening an already-liked/cooked recipe.
+    val scope = rememberCoroutineScope()
+    val likeScale = remember { Animatable(1f) }
+    val cookedScale = remember { Animatable(1f) }
+    val onCook: () -> Unit = {
+        if (!cooked) scope.launch { cookedScale.snapTo(0.7f); cookedScale.animateTo(1f, spring(dampingRatio = 0.4f, stiffness = Spring.StiffnessMedium)) }
+        onToggleCooked()
+    }
+    val onLike: () -> Unit = {
+        if (!liked) scope.launch { likeScale.snapTo(0.55f); likeScale.animateTo(1f, spring(dampingRatio = 0.32f, stiffness = Spring.StiffnessMediumLow)) }
+        onToggleLiked()
+    }
+
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         if (data.ingredients.isNotEmpty()) {
             // Neutral (not green) — "add to the shopping list".
@@ -417,31 +476,38 @@ private fun ActionButtons(
             Icon(Icons.Outlined.CalendarMonth, contentDescription = stringResource(R.string.recipe_add_to_plan))
         }
         // Toggle "has been cooked" — green when confirmed (also shows as the image ribbon).
+        val cookedIcon = @Composable {
+            Icon(
+                Icons.Outlined.Restaurant,
+                contentDescription = stringResource(if (cooked) R.string.recipe_cooked_marked else R.string.recipe_cooked_mark),
+                modifier = Modifier.scale(cookedScale.value),
+            )
+        }
         if (cooked) {
             FilledTonalIconButton(
-                onClick = onToggleCooked,
+                onClick = onCook,
                 colors = IconButtonDefaults.filledTonalIconButtonColors(
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                 ),
-            ) { Icon(Icons.Outlined.Restaurant, contentDescription = stringResource(R.string.recipe_cooked_marked)) }
+            ) { cookedIcon() }
         } else {
-            OutlinedIconButton(onClick = onToggleCooked) {
-                Icon(Icons.Outlined.Restaurant, contentDescription = stringResource(R.string.recipe_cooked_mark))
-            }
+            OutlinedIconButton(onClick = onCook) { cookedIcon() }
         }
         // Like toggle; heart stays red when liked.
         if (liked) {
             FilledTonalIconButton(
-                onClick = onToggleLiked,
+                onClick = onLike,
                 colors = IconButtonDefaults.filledTonalIconButtonColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
                     contentColor = MaterialTheme.colorScheme.error,
                 ),
-            ) { Icon(Icons.Filled.Favorite, contentDescription = stringResource(R.string.recipe_like)) }
+            ) {
+                Icon(Icons.Filled.Favorite, contentDescription = stringResource(R.string.recipe_like), modifier = Modifier.scale(likeScale.value))
+            }
         } else {
-            OutlinedIconButton(onClick = onToggleLiked) {
-                Icon(Icons.Outlined.FavoriteBorder, contentDescription = stringResource(R.string.recipe_like))
+            OutlinedIconButton(onClick = onLike) {
+                Icon(Icons.Outlined.FavoriteBorder, contentDescription = stringResource(R.string.recipe_like), modifier = Modifier.scale(likeScale.value))
             }
         }
     }
