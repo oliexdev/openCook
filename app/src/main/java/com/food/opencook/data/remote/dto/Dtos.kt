@@ -98,6 +98,9 @@ data class HouseholdSettings(
     /** ISO language code (e.g. "de"/"en") for recipe CONTENT: AI extraction, categories,
      *  grocery keywords, staples. null = each device follows its own system language. */
     @SerialName("content_language") val contentLanguage: String? = null,
+    /** Which meals of the day the household plans, as newline-joined MealTypes keys
+     *  ("lunch\ndinner"). null = never configured → the planner's single-slot default. */
+    @SerialName("planned_meals") val plannedMeals: String? = null,
 )
 
 /** Returned to the device that creates/joins — carries the sync credential. */

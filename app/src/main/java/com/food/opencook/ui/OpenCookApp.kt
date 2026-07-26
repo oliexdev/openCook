@@ -53,7 +53,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.food.opencook.ui.backup.BackupScreen
 import com.food.opencook.ui.barcode.BarcodeScanScreen
-import com.food.opencook.ui.home.HomeScreen
 import com.food.opencook.ui.onboarding.OnboardingScreen
 import com.food.opencook.ui.scan.ScanViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -259,17 +258,8 @@ private fun MainScaffold() {
 private fun AppNavHost(navController: NavHostController, navigateToTab: (String) -> Unit) {
     NavHost(
         navController = navController,
-        startDestination = TopLevelDestination.HOME.route,
+        startDestination = TopLevelDestination.RECIPES.route,
     ) {
-        composable(TopLevelDestination.HOME.route) {
-            HomeScreen(
-                onOpenRecipes = { navigateToTab(TopLevelDestination.RECIPES.route) },
-                onAddRecipe = { navController.navigate(Routes.SCAN) },
-                onOpenRecipe = { navController.navigate(Routes.recipeDetail(it)) },
-                onOpenPlan = { navigateToTab(TopLevelDestination.PLAN.route) },
-                onOpenShopping = { navigateToTab(TopLevelDestination.SHOPPING.route) },
-            )
-        }
         composable(TopLevelDestination.RECIPES.route) {
             RecipesScreen(
                 onRecipeClick = { navController.navigate(Routes.recipeDetail(it)) },
@@ -278,8 +268,10 @@ private fun AppNavHost(navController: NavHostController, navigateToTab: (String)
         }
         composable(TopLevelDestination.PLAN.route) {
             MealPlanScreen(
-                onOpenRecipe = { navController.navigate(Routes.recipeDetail(it)) },
-                onPickRecipe = { date -> navController.navigate(Routes.planPick(date)) },
+                onOpenRecipe = { recipeId, planEntryId ->
+                    navController.navigate(Routes.recipeDetail(recipeId, planEntryId))
+                },
+                onPickRecipe = { date, slot -> navController.navigate(Routes.planPick(date, slot)) },
             )
         }
         composable(TopLevelDestination.SHOPPING.route) {
@@ -314,10 +306,14 @@ private fun AppNavHost(navController: NavHostController, navigateToTab: (String)
         }
         composable(
             Routes.PLAN_PICK,
-            arguments = listOf(navArgument(Routes.ARG_DATE) { type = NavType.StringType }),
+            arguments = listOf(
+                navArgument(Routes.ARG_DATE) { type = NavType.StringType },
+                navArgument(Routes.ARG_SLOT) { type = NavType.StringType },
+            ),
         ) { entry ->
             MealPlanPickScreen(
                 date = entry.arguments?.getString(Routes.ARG_DATE).orEmpty(),
+                slot = entry.arguments?.getString(Routes.ARG_SLOT).orEmpty(),
                 onBack = { navController.popBackStack() },
             )
         }
@@ -392,7 +388,10 @@ private fun AppNavHost(navController: NavHostController, navigateToTab: (String)
         }
         composable(
             Routes.RECIPE_DETAIL,
-            arguments = listOf(navArgument(Routes.ARG_RECIPE_ID) { type = NavType.StringType }),
+            arguments = listOf(
+                navArgument(Routes.ARG_RECIPE_ID) { type = NavType.StringType },
+                navArgument(Routes.ARG_PLAN_ENTRY) { type = NavType.StringType; defaultValue = "" },
+            ),
         ) { entry ->
             val recipeId = entry.arguments?.getString(Routes.ARG_RECIPE_ID).orEmpty()
             RecipeDetailScreen(

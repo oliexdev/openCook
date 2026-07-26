@@ -67,7 +67,29 @@ class RecipeSearchFilterTest {
         query: String = "",
         filters: RecipeFilters = RecipeFilters(),
         likedIds: Set<String> = emptySet(),
-    ) = RecipeSearchFilter.matches(item, query, filters, likedIds, label)
+        pantry: Set<String> = emptySet(),
+    ) = RecipeSearchFilter.matches(item, query, filters, likedIds, pantry, label)
+
+    // --- cookable now ---
+
+    @Test
+    fun cookableOnlyKeepsDishesThePantryCoversEndToEnd() {
+        val r = recipe(ingredients = listOf("Lauch", "Kartoffeln"))
+        val filters = RecipeFilters(cookableOnly = true)
+        assertTrue(matches(r, filters = filters, pantry = setOf("lauch", "kartoffeln")))
+        assertFalse(matches(r, filters = filters, pantry = setOf("lauch")))
+        // Off by default: the same recipe passes with an empty pantry.
+        assertTrue(matches(r, pantry = emptySet()))
+    }
+
+    @Test
+    fun cookableOnlyIgnoresStaplesAndToleratesPlurals() {
+        // Salt is never in the pantry list, and "Zwiebel" is covered by "Zwiebeln".
+        val r = recipe(ingredients = listOf("Zwiebel", "Salz"))
+        assertTrue(
+            matches(r, filters = RecipeFilters(cookableOnly = true), pantry = setOf("zwiebeln")),
+        )
+    }
 
     // --- full text ---
 

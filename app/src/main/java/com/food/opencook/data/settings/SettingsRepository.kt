@@ -25,6 +25,8 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.food.opencook.data.remote.dto.HouseholdSettings
+import com.food.opencook.ui.mealplan.MealPlanSlots
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -109,6 +111,44 @@ class SettingsRepository @Inject constructor(
     /** Resolve the effective content language: explicit setting, else the device language. */
     fun effectiveContentLanguage(stored: String?): String =
         stored?.takeIf { it.isNotBlank() } ?: Locale.getDefault().language
+
+    /**
+     * Which meals of the day the household plans at all, as newline-joined
+     * [com.food.opencook.util.MealTypes] keys. Household-wide (synced). Null/absent means
+     * [MealPlanSlots.DEFAULT_PLANNED] — a single lunch slot, i.e. exactly how the planner
+     * behaved before slots existed, so an update never silently multiplies anyone's week.
+     */
+    val plannedMeals: Flow<List<String>> =
+        dataStore.data.map { MealPlanSlots.plannedFromStored(it[PLANNED_MEALS]) }
+
+    suspend fun plannedMealsOnce(): List<String> =
+        MealPlanSlots.plannedFromStored(dataStore.data.first()[PLANNED_MEALS])
+
+    suspend fun setPlannedMeals(keys: List<String>) {
+        val stored = MealPlanSlots.toStored(keys)
+        dataStore.edit { if (stored == null) it.remove(PLANNED_MEALS) else it[PLANNED_MEALS] = stored }
+    }
+
+    /**
+     * The complete household-wide settings object as this device currently knows it.
+     *
+     * Every caller that PATCHes or serves household settings must go through this: the
+     * object is merged as a whole, so building it field-by-field at a call site means the
+     * next added setting gets silently wiped by whichever site forgot it.
+     */
+    suspend fun currentHouseholdSettings(): HouseholdSettings = HouseholdSettings(
+        householdSize = householdSizeOnce(),
+        contentLanguage = contentLanguageOnce(),
+        plannedMeals = MealPlanSlots.toStored(plannedMealsOnce()),
+    )
+
+    /** Adopt a settings object received from the server or a peer. Absent fields keep the
+     *  local value, so an older peer can't erase a setting it doesn't know about. */
+    suspend fun applyHouseholdSettings(remote: HouseholdSettings) {
+        setHouseholdSize(remote.householdSize)
+        setContentLanguage(remote.contentLanguage)
+        remote.plannedMeals?.let { setPlannedMeals(MealPlanSlots.plannedFromStored(it)) }
+    }
 
     /**
      * People to cook for — a **household-wide** setting (set on the server, shared
@@ -228,6 +268,7 @@ class SettingsRepository @Inject constructor(
         val HOUSEHOLD_META_HLC = stringPreferencesKey("household_meta_hlc")
         val HOUSEHOLD_PIN = stringPreferencesKey("household_pin")
         val P2P_ENABLED = booleanPreferencesKey("p2p_enabled")
+        val PLANNED_MEALS = stringPreferencesKey("planned_meals")
     }
 }
 

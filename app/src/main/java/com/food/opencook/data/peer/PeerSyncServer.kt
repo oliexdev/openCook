@@ -107,10 +107,7 @@ class PeerSyncServer @Inject constructor(
         return true
     }
 
-    private suspend fun householdSettings() = HouseholdSettings(
-        householdSize = settings.householdSizeOnce(),
-        contentLanguage = settings.contentLanguageOnce(),
-    )
+    private suspend fun householdSettings() = settings.currentHouseholdSettings()
 
     private fun Application.module() {
         install(ContentNegotiation) { json(this@PeerSyncServer.json) }

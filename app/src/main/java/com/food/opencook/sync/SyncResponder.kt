@@ -60,10 +60,7 @@ class SyncResponder @Inject constructor(
             messages = missing.map { SyncMessageDto(it.timestamp, it.dataset, it.rowId, it.column, it.value) },
             merkle = trie.toDto(),
             householdName = settings.householdNameOnce(),
-            householdSettings = HouseholdSettings(
-                householdSize = settings.householdSizeOnce(),
-                contentLanguage = settings.contentLanguageOnce(),
-            ),
+            householdSettings = settings.currentHouseholdSettings(),
             householdHlc = settings.householdMetaHlcOnce(),
             householdPin = settings.householdPinOnce(),
         )

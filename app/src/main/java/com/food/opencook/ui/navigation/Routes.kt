@@ -39,10 +39,11 @@ object Routes {
     /** Local backup & restore (export/import a zip), opened from Settings. */
     const val BACKUP = "backup"
 
-    /** Pick a recipe for a meal-plan day (full list + search). */
+    /** Pick a recipe for one cell of the meal plan — a day *and* a meal (full list + search). */
     const val ARG_DATE = "date"
-    const val PLAN_PICK = "plan_pick/{$ARG_DATE}"
-    fun planPick(date: String) = "plan_pick/$date"
+    const val ARG_SLOT = "slot"
+    const val PLAN_PICK = "plan_pick/{$ARG_DATE}/{$ARG_SLOT}"
+    fun planPick(date: String, slot: String) = "plan_pick/$date/$slot"
 
     /** Result key set on the review back-stack entry by [REVIEW_CAMERA]. */
     const val RESULT_CAPTURED_PATH = "captured_path"
@@ -66,8 +67,12 @@ object Routes {
     fun reviewAll() = "review/$JOB_ID_ALL"
     fun reviewNew() = "review/$JOB_ID_NEW"
 
-    const val RECIPE_DETAIL = "recipe/{$ARG_RECIPE_ID}"
-    fun recipeDetail(recipeId: String) = "recipe/$recipeId"
+    /** Opened from the meal planner, [ARG_PLAN_ENTRY] names the plan row that was tapped, so
+     *  "mark as cooked" confirms *that* meal instead of guessing it must have been today's. */
+    const val ARG_PLAN_ENTRY = "planEntry"
+    const val RECIPE_DETAIL = "recipe/{$ARG_RECIPE_ID}?$ARG_PLAN_ENTRY={$ARG_PLAN_ENTRY}"
+    fun recipeDetail(recipeId: String, planEntryId: String? = null) =
+        "recipe/$recipeId?$ARG_PLAN_ENTRY=${planEntryId.orEmpty()}"
 
     /** Edit one existing recipe — reuses the review screen, loaded by recipe id. */
     const val EDIT = "edit/{$ARG_RECIPE_ID}"

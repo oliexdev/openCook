@@ -38,6 +38,7 @@ import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -58,6 +59,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.food.opencook.R
+import com.food.opencook.ui.mealplan.MealPlanSlots
 import com.food.opencook.ui.theme.Spacing
 import java.time.LocalDate
 import com.food.opencook.util.DateLabels
@@ -66,14 +68,21 @@ import com.food.opencook.util.DateLabels
  * Sheet that lets the user assign the current recipe to any day in the current
  * or next calendar week. Occupied days surface their currently-planned dish and
  * ask for confirmation before being overwritten.
+ *
+ * With more than one meal planned, a chip row picks the meal *once* for the whole sheet
+ * rather than per day — you are adding one dish, and "which meal" is a property of the
+ * dish, not of each of the fourteen days. It starts on the meal the recipe is marked for,
+ * so a cake opens on "Snack" without anyone having to think about it.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddToMealPlanSheet(
     weeks: List<List<String>>,
     planned: Map<String, PlannedDish>,
-    onAssign: (date: String, onDone: () -> Unit) -> Unit,
-    onReplace: (date: String, onDone: () -> Unit) -> Unit,
+    plannedMeals: List<String>,
+    recipeMealTypes: List<String>,
+    onAssign: (date: String, slot: String, onDone: () -> Unit) -> Unit,
+    onReplace: (date: String, slot: String, onDone: () -> Unit) -> Unit,
     onDismiss: () -> Unit,
     onAssigned: (String) -> Unit,
 ) {
@@ -82,6 +91,10 @@ fun AddToMealPlanSheet(
     val today = remember { LocalDate.now().toString() }
     val dayLabelFmt = remember { DateLabels.weekdayDayMonth(fullWeekday = true) }
     val shortLabelFmt = remember { DateLabels.weekdayDayMonth() }
+    // Default to the recipe's own meal if the household plans it, else the first planned one.
+    var slot by remember(plannedMeals, recipeMealTypes) {
+        mutableStateOf(plannedMeals.firstOrNull { it in recipeMealTypes } ?: plannedMeals.first())
+    }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
@@ -94,6 +107,18 @@ fun AddToMealPlanSheet(
                 stringResource(R.string.recipe_plan_sheet_title),
                 style = MaterialTheme.typography.titleLarge,
             )
+            if (plannedMeals.size > 1) {
+                Spacer(Modifier.height(Spacing.sm))
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                    plannedMeals.forEach { key ->
+                        FilterChip(
+                            selected = key == slot,
+                            onClick = { slot = key },
+                            label = { Text(stringResource(MealPlanSlots.shortLabelRes(key))) },
+                        )
+                    }
+                }
+            }
             Spacer(Modifier.height(Spacing.md))
             LazyColumn(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
                 weeks.forEachIndexed { weekIndex, dates ->
@@ -109,14 +134,16 @@ fun AddToMealPlanSheet(
                         )
                     }
                     items(dates, key = { it }) { date ->
+                        // What's in *this meal* on that day — a planned breakfast must not
+                        // make the dinner row look occupied.
+                        val existing = planned[RecipeDetailViewModel.cellKey(date, slot)]
                         DayPickRow(
                             label = LocalDate.parse(date).format(dayLabelFmt),
-                            planned = planned[date],
+                            planned = existing,
                             isToday = date == today,
                             onClick = {
-                                val existing = planned[date]
                                 if (existing == null) {
-                                    onAssign(date) {
+                                    onAssign(date, slot) {
                                         onAssigned(LocalDate.parse(date).format(shortLabelFmt))
                                         onDismiss()
                                     }
@@ -148,7 +175,7 @@ fun AddToMealPlanSheet(
                 Button(onClick = {
                     val d = date
                     replaceTarget = null
-                    onReplace(d) {
+                    onReplace(d, slot) {
                         onAssigned(LocalDate.parse(d).format(shortLabelFmt))
                         onDismiss()
                     }

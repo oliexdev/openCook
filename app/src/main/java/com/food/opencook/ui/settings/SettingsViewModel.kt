@@ -29,7 +29,7 @@ import com.food.opencook.data.local.dao.RecipeDao
 import com.food.opencook.data.remote.BaseUrlInterceptor
 import com.food.opencook.data.remote.SyncApi
 import com.food.opencook.data.remote.dto.CreateHouseholdRequest
-import com.food.opencook.data.remote.dto.HouseholdSettings
+import com.food.opencook.ui.mealplan.MealPlanSlots
 import com.food.opencook.data.remote.dto.PatchHouseholdRequest
 import com.food.opencook.data.settings.FontScales
 import com.food.opencook.data.settings.SettingsRepository
@@ -128,28 +128,49 @@ class SettingsViewModel @Inject constructor(
     val contentLanguage: StateFlow<String?> =
         settings.contentLanguage.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    /** Persist locally + PATCH the server so the whole household converges (carries the
-     *  current size too, since the server merges the settings object as a whole). In a
-     *  serverless household there is nothing to PATCH — instead the edit stamps the
-     *  household-meta HLC, so peers adopt this device's copy on their next exchange. */
+    /**
+     * Publish a household-wide setting the caller has already written locally: PATCH the
+     * server so every device converges. The whole settings object is sent (the server
+     * merges it as a unit), which is why it comes from [SettingsRepository.currentHouseholdSettings]
+     * rather than being assembled here — a field forgotten at a call site would be wiped
+     * for the whole household. In a serverless household there is nothing to PATCH; the
+     * edit stamps the household-meta HLC instead, so peers adopt this copy on their next
+     * exchange.
+     */
+    private suspend fun publishHouseholdSettings() {
+        if (settings.serverUrlOnce().isNullOrBlank()) {
+            settings.setHouseholdMetaHlc(syncClock.stamp().pack())
+            return
+        }
+        val id = settings.householdIdOnce() ?: return
+        val code = settings.householdCodeOnce() ?: return
+        runCatching {
+            syncApi.patchHousehold(
+                id, code,
+                PatchHouseholdRequest(settings = settings.currentHouseholdSettings()),
+            )
+        }.onFailure { _message.update { context.getString(R.string.settings_msg_size_update_failed) } }
+    }
+
     fun setContentLanguage(lang: String?) {
         viewModelScope.launch {
             settings.setContentLanguage(lang)
-            if (settings.serverUrlOnce().isNullOrBlank()) {
-                settings.setHouseholdMetaHlc(syncClock.stamp().pack())
-                return@launch
-            }
-            val id = settings.householdIdOnce()
-            val code = settings.householdCodeOnce()
-            if (id != null && code != null) {
-                val size = settings.householdSizeOnce()
-                runCatching {
-                    syncApi.patchHousehold(
-                        id, code,
-                        PatchHouseholdRequest(settings = HouseholdSettings(householdSize = size, contentLanguage = lang)),
-                    )
-                }.onFailure { _message.update { context.getString(R.string.settings_msg_size_update_failed) } }
-            }
+            publishHouseholdSettings()
+        }
+    }
+
+    /** Which meals of the day the household plans. Household-wide; at least one must stay
+     *  active, otherwise the week planner would have nothing to show at all. */
+    val plannedMeals: StateFlow<List<String>> = settings.plannedMeals
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MealPlanSlots.DEFAULT_PLANNED)
+
+    fun setMealPlanned(slot: String, planned: Boolean) {
+        viewModelScope.launch {
+            val current = settings.plannedMealsOnce()
+            val next = if (planned) current + slot else current - slot
+            if (next.isEmpty()) return@launch // the last meal can't be switched off
+            settings.setPlannedMeals(next)
+            publishHouseholdSettings()
         }
     }
 
@@ -169,18 +190,7 @@ class SettingsViewModel @Inject constructor(
         val clamped = size.coerceIn(1, 20)
         viewModelScope.launch {
             settings.setHouseholdSize(clamped) // optimistic local cache
-            if (settings.serverUrlOnce().isNullOrBlank()) {
-                // Serverless: stamp the meta so peers adopt the new size (see SyncResponder).
-                settings.setHouseholdMetaHlc(syncClock.stamp().pack())
-                return@launch
-            }
-            val id = settings.householdIdOnce()
-            val code = settings.householdCodeOnce()
-            if (id != null && code != null) {
-                runCatching {
-                    syncApi.patchHousehold(id, code, PatchHouseholdRequest(settings = HouseholdSettings(clamped)))
-                }.onFailure { _message.update { context.getString(R.string.settings_msg_size_update_failed) } }
-            }
+            publishHouseholdSettings()
         }
     }
 
@@ -210,10 +220,7 @@ class SettingsViewModel @Inject constructor(
                 syncApi.createHousehold(
                     CreateHouseholdRequest(
                         name = settings.householdNameOnce().orEmpty(),
-                        settings = HouseholdSettings(
-                            householdSize = settings.householdSizeOnce(),
-                            contentLanguage = settings.contentLanguageOnce(),
-                        ),
+                        settings = settings.currentHouseholdSettings(),
                         pin = settings.householdPinOnce(),
                         id = id,
                         inviteCode = code,

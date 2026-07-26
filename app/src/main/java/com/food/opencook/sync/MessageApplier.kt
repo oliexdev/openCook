@@ -305,6 +305,9 @@ class MessageApplier @Inject constructor(
                         reasonsJson = str("reasonsJson"),
                         // Optional/absent-tolerant like reasonsJson — older apps never sent it.
                         cookedAt = str("cookedAt"),
+                        // Which meal of the day. Absent on entries from an app version that
+                        // predates slots — null resolves to the primary slot at read time.
+                        slot = str("slot"),
                         createdAt = now,
                         updatedAt = now,
                     ),

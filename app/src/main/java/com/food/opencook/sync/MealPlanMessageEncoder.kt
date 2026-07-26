@@ -43,6 +43,10 @@ object MealPlanMessageEncoder {
         // that resets it) overwrites a previous date cleanly under LWW.
         val cookedValue = entry.cookedAt?.let { json.encodeToString(String.serializer(), it) } ?: "null"
         out += FieldChange(d, entry.id, "cookedAt", cookedValue)
+        // Which meal of the day. Explicit "null" so an entry that predates slots keeps
+        // resolving to the primary slot instead of getting a stale value stuck under LWW.
+        val slotValue = entry.slot?.let { json.encodeToString(String.serializer(), it) } ?: "null"
+        out += FieldChange(d, entry.id, "slot", slotValue)
         return out
     }
 

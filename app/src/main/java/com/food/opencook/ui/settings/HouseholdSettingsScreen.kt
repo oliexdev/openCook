@@ -32,12 +32,15 @@ import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -55,7 +58,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.food.opencook.R
 import com.food.opencook.data.settings.ContentLanguages
+import com.food.opencook.ui.mealplan.MealPlanSlots
 import com.food.opencook.ui.theme.Spacing
+import com.food.opencook.util.MealTypes
 import kotlinx.coroutines.launch
 
 /** Who this phone cooks with: the household's identity, size, recipe language, and the way out. */
@@ -66,9 +71,18 @@ fun HouseholdSettingsScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val contentLanguage by viewModel.contentLanguage.collectAsStateWithLifecycle()
+    val plannedMeals by viewModel.plannedMeals.collectAsStateWithLifecycle()
     var showLeaveConfirm by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var showMealsDialog by remember { mutableStateOf(false) }
 
+    if (showMealsDialog) {
+        PlannedMealsDialog(
+            planned = plannedMeals,
+            onTogglePlanned = viewModel::setMealPlanned,
+            onDismiss = { showMealsDialog = false },
+        )
+    }
     if (showLanguageDialog) {
         ContentLanguageDialog(
             current = contentLanguage,
@@ -138,6 +152,16 @@ fun HouseholdSettingsScreen(
                 }
             },
         )
+        // The subtitle is the answer to "what does my week look like?" — listing the
+        // active meals in order of the day beats a generic hint here.
+        val mealLabels = plannedMeals.map { stringResource(MealPlanSlots.shortLabelRes(it)) }
+        SettingsRow(
+            icon = Icons.Outlined.Restaurant,
+            title = stringResource(R.string.household_planned_meals),
+            subtitle = mealLabels.joinToString(" · "),
+            onClick = { showMealsDialog = true },
+            showChevron = true,
+        )
         SettingsRow(
             icon = Icons.Outlined.Language,
             title = stringResource(R.string.settings_content_language),
@@ -163,6 +187,62 @@ fun contentLanguageLabel(code: String?): String = when (code) {
     "de" -> stringResource(R.string.lang_german)
     "en" -> stringResource(R.string.lang_english)
     else -> code.uppercase()
+}
+
+/**
+ * Which meals of the day the household plans at all. Everything planned feeds the shopping
+ * list — there is deliberately no second switch for that: planning a breakfast and then not
+ * wanting its ingredients in the house is not a real case, and the extra control would have
+ * doubled the width and the reading of every row here.
+ *
+ * This governs the *default* view only — the week planner can still add any other meal for
+ * a single day, so switching one off here never blocks anything or deletes existing entries.
+ */
+@Composable
+private fun PlannedMealsDialog(
+    planned: List<String>,
+    onTogglePlanned: (String, Boolean) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.household_planned_meals)) },
+        text = {
+            Column {
+                MealTypes.KEYS.forEach { slot ->
+                    val isPlanned = slot in planned
+                    // The last active meal can't be switched off — an empty planner has
+                    // nothing to show, and the user's way out is to pick a different one first.
+                    val canUncheck = !isPlanned || planned.size > 1
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = canUncheck) { onTogglePlanned(slot, !isPlanned) }
+                            .padding(vertical = Spacing.xs),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    ) {
+                        Checkbox(
+                            checked = isPlanned,
+                            onCheckedChange = { onTogglePlanned(slot, it) },
+                            enabled = canUncheck,
+                        )
+                        Text(stringResource(MealTypes.labelRes(slot)), Modifier.weight(1f))
+                    }
+                }
+                Text(
+                    stringResource(R.string.household_planned_meals_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = Spacing.sm),
+                )
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss) { Text(stringResource(R.string.action_ok)) }
+        },
+    )
 }
 
 /** Picker for the household-wide recipe content language. */

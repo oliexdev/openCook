@@ -23,11 +23,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.food.opencook.data.local.relation.RecipeWithDetails
 import com.food.opencook.data.settings.SettingsRepository
+import com.food.opencook.repository.PantryRepository
 import com.food.opencook.repository.RecipeRepository
 import com.food.opencook.util.MealTypes
+import com.food.opencook.util.RecipeAvailability
 import com.food.opencook.util.RecipeCategories
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -36,7 +39,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import javax.inject.Inject
 
 /** Filter-sheet state: multi-select within a group, AND between groups. Empty = off. */
 data class RecipeFilters(
@@ -44,10 +46,13 @@ data class RecipeFilters(
     val categories: Set<String> = emptySet(),
     val cookbooks: Set<String> = emptySet(),
     val likedOnly: Boolean = false,
+    /** Only dishes the pantry covers end to end — "what can I cook right now?". */
+    val cookableOnly: Boolean = false,
 ) {
     /** Number of active filters — drives the badge on the search field's filter icon. */
     val activeCount: Int get() =
-        mealTypes.size + categories.size + cookbooks.size + (if (likedOnly) 1 else 0)
+        mealTypes.size + categories.size + cookbooks.size +
+            (if (likedOnly) 1 else 0) + (if (cookableOnly) 1 else 0)
 }
 
 /**
@@ -61,6 +66,7 @@ internal object RecipeSearchFilter {
         query: String,
         filters: RecipeFilters,
         likedIds: Set<String>,
+        pantry: Set<String> = emptySet(),
         categoryLabel: (String?) -> String,
     ): Boolean {
         val q = query.trim()
@@ -79,7 +85,9 @@ internal object RecipeSearchFilter {
             RecipeCategories.normalizeKey(item.recipe.category) in filters.categories
         val matchesCookbook = filters.cookbooks.isEmpty() || item.recipe.cookbook in filters.cookbooks
         val matchesLiked = !filters.likedOnly || item.recipe.id in likedIds
-        return matchesQuery && matchesMeal && matchesCategory && matchesCookbook && matchesLiked
+        val matchesCookable = !filters.cookableOnly || RecipeAvailability.isStocked(item, pantry)
+        return matchesQuery && matchesMeal && matchesCategory && matchesCookbook &&
+            matchesLiked && matchesCookable
     }
 }
 
@@ -87,8 +95,14 @@ internal object RecipeSearchFilter {
 class RecipesViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     repository: RecipeRepository,
+    pantryRepository: PantryRepository,
     settings: SettingsRepository,
 ) : ViewModel() {
+
+    /** Pantry contents, lowercased — feeds the "cookable now" filter. */
+    private val pantryNames: StateFlow<Set<String>> = pantryRepository.observeItems()
+        .map { items -> items.map { it.name.lowercase().trim() }.toSet() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     private val all: StateFlow<List<RecipeWithDetails>> =
         repository.observeRecipes()
@@ -110,9 +124,9 @@ class RecipesViewModel @Inject constructor(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     val recipes: StateFlow<List<RecipeWithDetails>> =
-        combine(all, _query, _filters, likedIds) { list, q, filters, liked ->
+        combine(all, _query, _filters, likedIds, pantryNames) { list, q, filters, liked, pantry ->
             list.filter { item ->
-                RecipeSearchFilter.matches(item, q, filters, liked) { key ->
+                RecipeSearchFilter.matches(item, q, filters, liked, pantry) { key ->
                     RecipeCategories.displayLabel(context, key)
                 }
             }
@@ -134,11 +148,17 @@ class RecipesViewModel @Inject constructor(
     /** The pick screen's "Alle" chip: back to every cookbook. */
     fun clearCookbooks() = _filters.update { it.copy(cookbooks = emptySet()) }
 
+    /** Set the meal filter outright — the meal-plan picker seeds it from the row the user
+     *  tapped, which is a replacement rather than a toggle. */
+    fun setMealTypeFilter(keys: Set<String>) = _filters.update { it.copy(mealTypes = keys) }
+
     fun toggleCategory(key: String) = _filters.update {
         it.copy(categories = if (key in it.categories) it.categories - key else it.categories + key)
     }
 
     fun setLikedOnly(value: Boolean) = _filters.update { it.copy(likedOnly = value) }
+
+    fun setCookableOnly(value: Boolean) = _filters.update { it.copy(cookableOnly = value) }
 
     fun clearFilters() { _filters.value = RecipeFilters() }
 }

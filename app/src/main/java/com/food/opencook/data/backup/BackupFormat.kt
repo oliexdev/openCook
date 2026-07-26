@@ -186,6 +186,8 @@ data class MealPlanEntryBackup(
     val id: String,
     val date: String,
     val recipeId: String,
+    /** Which meal of the day; absent in archives written before slots existed. */
+    val slot: String? = null,
     val pinned: Boolean = false,
     val reasonsJson: String? = null,
     val cookedAt: String? = null,

@@ -90,6 +90,7 @@
     <string name="recipes_filter_title">Filter</string>
     <string name="recipes_filter_reset">Zurücksetzen</string>
     <string name="recipes_filter_liked">Nur Favoriten</string>
+    <string name="recipes_filter_cookable">Jetzt kochbar</string>
     <string name="recipes_filter_remove">Filter %1$s entfernen</string>
     <string name="recipe_delete">Löschen</string>
     <string name="recipe_edit">Bearbeiten</string>
@@ -222,8 +223,6 @@
     <!-- Meal plan -->
     <string name="mealplan_title">Wochenplan</string>
     <string name="mealplan_to_shopping">Einkaufsliste erzeugen</string>
-    <string name="mealplan_add_recipe">Rezept hinzufügen</string>
-    <string name="mealplan_smart_pick">Passendes Gericht würfeln</string>
     <string name="mealplan_pick_recipe">Rezept wählen</string>
     <string name="mealplan_no_recipes">Noch keine Rezepte zum Planen.</string>
     <string name="mealplan_generated">Zutaten zur Einkaufsliste hinzugefügt</string>
@@ -242,8 +241,6 @@
     <string name="mealplan_pin">Anpinnen (bleibt beim Würfeln)</string>
     <string name="mealplan_unpin">Lösen</string>
     <string name="mealplan_reroll">Anderes Gericht würfeln</string>
-    <string name="mealplan_cooked">Gekocht</string>
-    <string name="mealplan_uncooked">Doch nicht gekocht</string>
 
     <!-- Meal-planner reasons (why a dish was picked) -->
     <string name="mealplan_reason_week_reuse">Verwertet %1$s</string>
@@ -360,18 +357,6 @@
     <string name="import_share_fallback_name">Rezept</string>
 
     <!-- Home (Heute) -->
-    <string name="home_title">Heute</string>
-    <string name="home_welcome_title">Willkommen bei openCook</string>
-    <string name="home_welcome_msg">Füge dein erstes Rezept hinzu — ein Foto genügt.</string>
-    <string name="home_add_first">Erstes Rezept hinzufügen</string>
-    <string name="home_today_empty_title">Für heute ist noch nichts geplant.</string>
-    <string name="home_today_empty_msg">Lass dir einen Wochenplan vorschlagen oder wähle ein Rezept.</string>
-    <string name="home_plan_week">Woche planen</string>
-    <string name="home_quick_shopping">Einkauf</string>
-    <string name="home_quick_plan">Plan</string>
-    <string name="home_quick_recipes">Rezepte</string>
-    <string name="home_week_section">Diese Woche</string>
-    <string name="home_week_empty">Noch keine weiteren Gerichte geplant.</string>
 
     <!-- Recipes list -->
     <string name="recipes_add">Rezept hinzufügen</string>
@@ -410,7 +395,6 @@
     <string name="notif_recipe_ready_body">Tippe, um das erkannte Rezept zu prüfen.</string>
 
     <!-- Top-level navigation tabs -->
-    <string name="nav_home">Heute</string>
     <string name="nav_plan">Plan</string>
     <string name="nav_shopping_short">Einkauf</string>
     <string name="nav_more">Mehr</string>
@@ -518,6 +502,20 @@
     <string name="mealtype_lunch">Mittag</string>
     <string name="mealtype_snack">Snack / Kaffee &amp; Kuchen</string>
     <string name="mealtype_dinner">Abend</string>
+    <!-- Short forms for the meal-plan slot column (44dp) — the long labels don't fit there. -->
+    <string name="mealtype_short_breakfast">Früh</string>
+    <string name="mealtype_short_lunch">Mittag</string>
+    <string name="mealtype_short_snack">Snack</string>
+    <string name="mealtype_short_dinner">Abend</string>
+    <!-- Household setting: which meals are planned at all -->
+    <string name="household_planned_meals">Geplante Mahlzeiten</string>
+    <string name="household_planned_meals_hint">Mindestens eine Mahlzeit muss aktiv bleiben. Für einzelne Tage kannst du im Wochenplaner trotzdem jede andere Mahlzeit hinzufügen.</string>
+    <!-- Week planner: slots -->
+    <string name="mealplan_slot_add">planen</string>
+    <string name="mealplan_slot_add_named">%1$s planen</string>
+    <string name="mealplan_add_missing">Fehlendes auf die Einkaufsliste</string>
+    <string name="mealplan_slot_no_recipes">Noch keine %1$s-Rezepte</string>
+    <string name="mealplan_fill_day">Tag füllen</string>
 
     <!-- Generic -->
     <string name="action_ok">OK</string>

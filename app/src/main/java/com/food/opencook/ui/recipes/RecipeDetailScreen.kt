@@ -147,6 +147,7 @@ fun RecipeDetailScreen(
     val baseUrl by viewModel.serverBaseUrl.collectAsStateWithLifecycle()
     val liked by viewModel.liked.collectAsStateWithLifecycle()
     val cooked by viewModel.cooked.collectAsStateWithLifecycle()
+    val confirmsOtherDay by viewModel.confirmsOtherDay.collectAsStateWithLifecycle()
     val targetServings by viewModel.targetServings.collectAsStateWithLifecycle()
 
     // Screen-filling celebrations, fired from the user's TAP (not from the flow loading its
@@ -183,6 +184,8 @@ fun RecipeDetailScreen(
     ) { uri -> if (uri != null) viewModel.export(uri, ExportFormat.SCHEMA_ORG_JSON, onExportResult) }
     val planAddedFormat = stringResource(R.string.recipe_plan_added)
     val planned by viewModel.plannedDishes.collectAsStateWithLifecycle()
+    val plannedMeals by viewModel.plannedMeals.collectAsStateWithLifecycle()
+    val recipeMealTypes by viewModel.recipeMealTypes.collectAsStateWithLifecycle()
 
     // Cooked-off-plan: today had a different dish planned → swap happens automatically; the
     // snackbar only informs (where the displaced dish went) and offers an undo.
@@ -291,7 +294,7 @@ fun RecipeDetailScreen(
                     ) {
                         // Quick actions sit above the steps (the cooking focus), reachable without
                         // scrolling through the ingredients on the left.
-                        ActionButtons(data, cooked, liked, onAddToShopping, onPlan, onToggleCooked, onToggleLiked)
+                        ActionButtons(data, cooked, confirmsOtherDay, liked, onAddToShopping, onPlan, onToggleCooked, onToggleLiked)
                         InstructionsSection(data)
                         NotesSection(data)
                         NutritionSection(data)
@@ -306,7 +309,7 @@ fun RecipeDetailScreen(
                     Text(data.recipe.name ?: "—", style = MaterialTheme.typography.headlineSmall)
                     RecipeMeta(data)
                     TagChips(data.recipe.tags)
-                    ActionButtons(data, cooked, liked, onAddToShopping, onPlan, onToggleCooked, onToggleLiked)
+                    ActionButtons(data, cooked, confirmsOtherDay, liked, onAddToShopping, onPlan, onToggleCooked, onToggleLiked)
                     IngredientsSection(data, targetServings, viewModel::setServings)
                     InstructionsSection(data)
                     NotesSection(data)
@@ -344,6 +347,8 @@ fun RecipeDetailScreen(
         AddToMealPlanSheet(
             weeks = viewModel.planWeekDates,
             planned = planned,
+            plannedMeals = plannedMeals,
+            recipeMealTypes = recipeMealTypes,
             onAssign = viewModel::assignToMealPlan,
             onReplace = viewModel::replaceOnMealPlan,
             onDismiss = { showPlanSheet = false },
@@ -444,6 +449,7 @@ private fun ImageHeader(model: Any?, liked: Boolean, cooked: Boolean, modifier: 
 private fun ActionButtons(
     data: RecipeWithDetails,
     cooked: Boolean,
+    confirmsOtherDay: Boolean,
     liked: Boolean,
     onAddToShopping: () -> Unit,
     onPlan: () -> Unit,
@@ -479,7 +485,14 @@ private fun ActionButtons(
         val cookedIcon = @Composable {
             Icon(
                 Icons.Outlined.Restaurant,
-                contentDescription = stringResource(if (cooked) R.string.recipe_cooked_marked else R.string.recipe_cooked_mark),
+                // "Cooked today" would be a lie when confirming Monday's planned meal.
+                contentDescription = stringResource(
+                    when {
+                        cooked && confirmsOtherDay -> R.string.recipe_cooked_badge
+                        cooked -> R.string.recipe_cooked_marked
+                        else -> R.string.recipe_cooked_mark
+                    },
+                ),
                 modifier = Modifier.scale(cookedScale.value),
             )
         }

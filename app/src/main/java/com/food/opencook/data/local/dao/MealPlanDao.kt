@@ -40,6 +40,10 @@ interface MealPlanDao {
     @Query("SELECT * FROM meal_plan WHERE id = :id")
     suspend fun getById(id: String): MealPlanEntity?
 
+    /** Live view of one entry — the recipe screen watches the plan row it was opened from. */
+    @Query("SELECT * FROM meal_plan WHERE id = :id")
+    fun observeById(id: String): Flow<MealPlanEntity?>
+
     /** Whole plan — backup export. */
     @Query("SELECT * FROM meal_plan")
     suspend fun getAll(): List<MealPlanEntity>

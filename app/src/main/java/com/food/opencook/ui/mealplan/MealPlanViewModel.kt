@@ -20,6 +20,7 @@ package com.food.opencook.ui.mealplan
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.food.opencook.data.local.relation.RecipeWithDetails
 import com.food.opencook.data.settings.SettingsRepository
 import com.food.opencook.repository.MealPlanRepository
 import com.food.opencook.repository.PantryRepository
@@ -27,7 +28,9 @@ import com.food.opencook.repository.RecipeRepository
 import com.food.opencook.repository.ShoppingRepository
 import com.food.opencook.util.DateLabels
 import com.food.opencook.util.IngredientMatch
-import com.food.opencook.util.IngredientStaples
+import com.food.opencook.util.Numbers
+import com.food.opencook.util.RecipeAvailability
+import com.food.opencook.util.MealTypes
 import com.food.opencook.util.WeekDates
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -50,6 +53,8 @@ enum class WeekSelection { CURRENT, NEXT }
 data class PlannedRecipe(
     val entryId: String,
     val recipeId: String,
+    /** Which meal of the day this dish sits in — already resolved, never null. */
+    val slot: String,
     val name: String,
     val pinned: Boolean,
     val imageModel: Any? = null,
@@ -61,7 +66,27 @@ data class PlannedRecipe(
     /** True if this day's dish was confirmed cooked via the optional 1-tap. */
     val cooked: Boolean = false,
 )
-data class DayPlan(val date: String, val label: String, val entries: List<PlannedRecipe>)
+/**
+ * One meal row of a day. [dishes] is a list rather than a single dish because nothing in the
+ * schema forbids two entries landing in the same cell (two devices planning offline, then
+ * syncing) — showing both is honest and lets the user delete one, whereas silently hiding
+ * the second would look like data loss.
+ */
+data class SlotPlan(
+    val slot: String,
+    val dishes: List<PlannedRecipe>,
+    /** False when no recipe in the library is marked for this meal — the empty row then says
+     *  so instead of opening a picker with nothing in it. */
+    val hasCandidates: Boolean,
+    /** True for a meal the household does not plan, filled as a one-off for this day. Those
+     *  rows sit below the day instead of inside it — see [MealPlanSlots.rowsFor]. */
+    val isExtra: Boolean = false,
+)
+
+data class DayPlan(val date: String, val label: String, val slots: List<SlotPlan>) {
+    val entries: List<PlannedRecipe> get() = slots.flatMap { it.dishes }
+}
+
 data class RecipeOption(val id: String, val name: String)
 
 @HiltViewModel
@@ -90,6 +115,10 @@ class MealPlanViewModel @Inject constructor(
     private fun currentDays(): List<LocalDate> = daysFor(_selectedWeek.value)
     private fun currentDateKeys(): List<String> = currentDays().map(LocalDate::toString)
 
+    /** Which meals the household plans — drives how many rows a day card has. */
+    val plannedMeals: StateFlow<List<String>> = settingsRepository.plannedMeals
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MealPlanSlots.DEFAULT_PLANNED)
+
     val week: StateFlow<List<DayPlan>> = _selectedWeek
         .flatMapLatest { selection ->
             val days = daysFor(selection)
@@ -99,36 +128,57 @@ class MealPlanViewModel @Inject constructor(
                 recipeRepository.observeRecipes(),
                 pantryRepository.observeItems(),
                 settingsRepository.serverUrl,
-            ) { entries, recipes, pantry, baseUrl ->
+                settingsRepository.plannedMeals,
+            ) { entries, recipes, pantry, baseUrl, planned ->
                 val byId = recipes.associateBy { it.recipe.id }
                 val pantryNames = pantry.map { it.name.lowercase().trim() }.toSet()
+                // Which meals the library can actually fill, so an empty row can say
+                // "no breakfast recipes yet" instead of opening an empty picker.
+                val withCandidates = MealTypes.KEYS.filter { slot ->
+                    recipes.any { slot in MealTypes.fromStored(it.recipe.mealTypes) }
+                }.toSet()
+                val today = LocalDate.now().toString()
                 days.map { day ->
                     val key = day.toString()
+                    val bySlot = entries.filter { it.date == key }
+                        .groupBy { MealPlanSlots.resolve(it.slot, planned) }
+                    // A day that has gone by only shows what was actually planned — offering
+                    // to fill yesterday's gaps is noise, and it keeps the current week short.
+                    val rows = MealPlanSlots.rowsFor(planned, bySlot.keys)
+                        .filter { key >= today || it in bySlot }
                     DayPlan(
                         date = key,
                         label = day.format(labelFormat),
-                        entries = entries.filter { it.date == key }.map { entry ->
-                            val recipe = byId[entry.recipeId]
-                            val missingItems = recipe?.ingredients?.mapNotNull { ing ->
-                                // Staples count as always on hand (same rule as the shopping list),
-                                // so "Alles da" isn't spoiled by salt/oil not sitting in the pantry.
-                                ing.name.trim().takeIf {
-                                    it.isNotEmpty() &&
-                                        !IngredientStaples.isStaple(it) &&
-                                        !IngredientMatch.containsLike(pantryNames, it)
-                                }
-                            }.orEmpty()
-                            PlannedRecipe(
-                                entryId = entry.id,
-                                recipeId = entry.recipeId,
-                                name = recipe?.recipe?.name ?: "Rezept",
-                                pinned = entry.pinned,
-                                imageModel = com.food.opencook.ui.recipes.imageModelFor(recipe?.images.orEmpty(), baseUrl),
-                                missing = missingItems.size,
-                                missingItems = missingItems,
-                                // Reasons travel on the entity via reasonsJson — sync, restart-safe.
-                                reasons = mealPlanRepository.decodeReasons(entry.reasonsJson),
-                                cooked = entry.cookedAt != null,
+                        slots = rows.map { slot ->
+                            val dishes = bySlot[slot].orEmpty().map { entry ->
+                                    val recipe = byId[entry.recipeId]
+                                    val missingItems = recipe?.let { RecipeAvailability.missing(it, pantryNames) }
+                                        .orEmpty()
+                                    PlannedRecipe(
+                                        entryId = entry.id,
+                                        recipeId = entry.recipeId,
+                                        slot = slot,
+                                        name = recipe?.recipe?.name ?: "Rezept",
+                                        pinned = entry.pinned,
+                                        imageModel = com.food.opencook.ui.recipes.imageModelFor(recipe?.images.orEmpty(), baseUrl),
+                                        missing = missingItems.size,
+                                        missingItems = missingItems,
+                                        // Reasons travel on the entity via reasonsJson — sync, restart-safe.
+                                        reasons = mealPlanRepository.decodeReasons(entry.reasonsJson),
+                                        cooked = entry.cookedAt != null,
+                                    )
+                            }
+                            val hasCandidates = slot in withCandidates
+                            SlotPlan(
+                                slot = slot,
+                                dishes = dishes,
+                                hasCandidates = hasCandidates,
+                                // Below the day, not in it: meals the household doesn't plan,
+                                // and planned meals the library can't fill yet ("no breakfast
+                                // recipes"). The latter is a note about the library, not part
+                                // of the plan — it has no business sitting at the top of every
+                                // single day. Once it holds a dish it counts as a real meal.
+                                isExtra = slot !in planned || (dishes.isEmpty() && !hasCandidates),
                             )
                         },
                     )
@@ -147,43 +197,52 @@ class MealPlanViewModel @Inject constructor(
             .map { list -> list.map { RecipeOption(it.recipe.id, it.recipe.name ?: "—") } }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    fun addRecipe(date: String, recipeId: String) = viewModelScope.launch {
-        mealPlanRepository.addEntry(date, recipeId)
+    fun addRecipe(date: String, slot: String, recipeId: String) = viewModelScope.launch {
+        mealPlanRepository.addEntry(date, recipeId, slot)
     }
 
     fun remove(entryId: String) = viewModelScope.launch { mealPlanRepository.deleteEntry(entryId) }
 
     /**
-     * Drag-and-drop a planned dish onto another day. On an empty target the dish
-     * just moves; on an occupied target the two days swap their dishes (the model is
-     * one dish per day). Shopping-list provenance follows each dish via [moveSource],
-     * so already-listed ingredients keep pointing at the day they're cooked.
+     * Put one planned dish's ingredients on the shopping list, straight from the row that
+     * just said something is missing — otherwise it's a detour through the recipe screen.
+     * [ShoppingRepository.addFromRecipe] is idempotent per (recipe, day) and the list hides
+     * pantry-covered and staple items, so a second tap is harmless.
      */
-    fun moveDish(entryId: String, fromDate: String, toDate: String) = viewModelScope.launch {
-        if (fromDate == toDate) return@launch
-        val entries = mealPlanRepository.getForDates(listOf(fromDate, toDate))
-        val dragged = entries.firstOrNull { it.id == entryId } ?: return@launch
-        // Swap partner: an existing dish on the target day (excluding the dragged one).
-        val target = entries.firstOrNull { it.date == toDate && it.id != entryId }
-
-        mealPlanRepository.moveEntry(dragged.id, toDate)
-        shoppingRepository.moveSource(dragged.recipeId, fromDate, toDate)
-        if (target != null) {
-            mealPlanRepository.moveEntry(target.id, fromDate)
-            shoppingRepository.moveSource(target.recipeId, toDate, fromDate)
-        }
+    fun addToShoppingList(planned: PlannedRecipe, date: String, onDone: () -> Unit) = viewModelScope.launch {
+        val recipe = recipeRepository.getRecipeOnce(planned.recipeId) ?: return@launch
+        val scale = Numbers.scaleFor(recipe.recipe.servings, settingsRepository.householdSizeOnce())
+        shoppingRepository.addFromRecipe(recipe, sourceDate = date, scale = scale)
+        onDone()
     }
+
+    /**
+     * Drag-and-drop a planned dish onto another cell (day + meal). On an empty target the
+     * dish just moves; on an occupied one the two cells swap. Shopping-list provenance
+     * follows each dish via [moveSource], so already-listed ingredients keep pointing at
+     * the day they're cooked (provenance is per day, not per meal — see the repository).
+     */
+    fun moveDish(entryId: String, fromDate: String, fromSlot: String, toDate: String, toSlot: String) =
+        viewModelScope.launch {
+            if (fromDate == toDate && fromSlot == toSlot) return@launch
+            val planned = settingsRepository.plannedMealsOnce()
+            val entries = mealPlanRepository.getForDates(listOf(fromDate, toDate))
+            val dragged = entries.firstOrNull { it.id == entryId } ?: return@launch
+            // Swap partner: an existing dish in the target cell (excluding the dragged one).
+            val target = entries.firstOrNull {
+                it.date == toDate && it.id != entryId && MealPlanSlots.resolve(it.slot, planned) == toSlot
+            }
+
+            mealPlanRepository.moveEntry(dragged.id, toDate, toSlot)
+            shoppingRepository.moveSource(dragged.recipeId, fromDate, toDate)
+            if (target != null) {
+                mealPlanRepository.moveEntry(target.id, fromDate, fromSlot)
+                shoppingRepository.moveSource(target.recipeId, toDate, fromDate)
+            }
+        }
 
     fun togglePin(entry: PlannedRecipe) = viewModelScope.launch {
         mealPlanRepository.setPinned(entry.entryId, !entry.pinned)
-    }
-
-    /** Optional 1-tap "we cooked this". Also advances the recipe's last-cooked date so
-     *  the planner mildly favours variety. Doing nothing stays valid — this only refines. */
-    fun toggleCooked(entry: PlannedRecipe, date: String) = viewModelScope.launch {
-        val nowCooked = !entry.cooked
-        mealPlanRepository.setCooked(entry.entryId, nowCooked)
-        if (nowCooked) recipeRepository.markCookedOn(entry.recipeId, date)
     }
 
     /**
@@ -200,17 +259,25 @@ class MealPlanViewModel @Inject constructor(
             .filter { it.cookedAt == null && !it.pinned }
         if (past.isEmpty()) return@launch
 
+        val planned = settingsRepository.plannedMealsOnce()
         val windowKeys = (0..MealPlanReconciler.DEFAULT_WINDOW_DAYS).map { today.plusDays(it).toString() }
-        val occupied = mealPlanRepository.getForDates(windowKeys).map { LocalDate.parse(it.date) }.toSet()
+        val ahead = mealPlanRepository.getForDates(windowKeys)
         val pantry = pantryRepository.stockedNames()
 
-        val candidates = past.map { entry ->
-            val procured = shoppingRepository.isProcured(entry.recipeId, entry.date) ||
-                fullyInPantry(entry.recipeId, pantry)
-            MealPlanReconciler.PastEntry(entry.id, LocalDate.parse(entry.date), procured)
+        // Roll forward within the dish's own meal: a missed dinner belongs on another
+        // evening, not on top of tomorrow's breakfast. So each meal is reconciled against
+        // only the days already occupied *in that meal*.
+        past.groupBy { MealPlanSlots.resolve(it.slot, planned) }.forEach { (slot, entries) ->
+            val occupied = ahead.filter { MealPlanSlots.resolve(it.slot, planned) == slot }
+                .map { LocalDate.parse(it.date) }.toSet()
+            val candidates = entries.map { entry ->
+                val procured = shoppingRepository.isProcured(entry.recipeId, entry.date) ||
+                    fullyInPantry(entry.recipeId, pantry)
+                MealPlanReconciler.PastEntry(entry.id, LocalDate.parse(entry.date), procured)
+            }
+            MealPlanReconciler.reconcile(candidates, occupied, emptySet(), today)
+                .forEach { mealPlanRepository.moveEntry(it.entryId, it.toDate.toString(), slot) }
         }
-        MealPlanReconciler.reconcile(candidates, occupied, emptySet(), today)
-            .forEach { mealPlanRepository.moveEntry(it.entryId, it.toDate.toString()) }
     }
 
     /** All of a recipe's ingredients are covered by the pantry — same notion as the
@@ -221,66 +288,121 @@ class MealPlanViewModel @Inject constructor(
         return names.isNotEmpty() && names.all { IngredientMatch.containsLike(pantry, it) }
     }
 
-    /** Build a fresh week, keeping pinned days and leaving skipped days empty. Uses
-     *  Multi-Restart so day 1 (which has no week-reuse anchor yet) doesn't lock in a
-     *  greedy-suboptimal pick. */
+    /** Recipes the library offers for one meal. Empty means the user hasn't marked anything
+     *  as e.g. breakfast yet — the caller then leaves that row alone instead of filling it
+     *  with dinners. */
+    private fun candidatesFor(slot: String, all: List<RecipeWithDetails>): List<RecipeWithDetails> =
+        all.filter { slot in MealTypes.fromStored(it.recipe.mealTypes) }
+
+    /**
+     * Build a fresh week. Runs the planner once per planned meal, each over its own
+     * candidate set and its own [MealPlanner.Weights.forSlot] tuning; pinned cells survive.
+     *
+     * The recency map accumulates across meals, so a dish used for lunch is heavily
+     * penalised when dinner is planned (a future date yields 0 days' distance, i.e. the
+     * maximum penalty) — and an exact same-day collision is dropped outright. Only the
+     * *planned* meals are regenerated: a hand-placed one-off in a switched-off meal, like a
+     * Sunday cake, is never touched.
+     */
     fun generateWeek() = viewModelScope.launch {
         _generating.value = true
         try {
-        val candidates = recipeRepository.getAllRecipesOnce()
-        if (candidates.isEmpty()) return@launch
-        val today = LocalDate.now()
-        val days = currentDays()
-        val dateKeys = days.map(LocalDate::toString)
-        val existing = mealPlanRepository.getForDates(dateKeys)
-        val pinned = existing.filter { it.pinned }.associate { LocalDate.parse(it.date) to it.recipeId }
-        val generated = MealPlanner.generateWeekBest(
-            dates = days,
-            skipped = emptySet(),
-            pinned = pinned,
-            candidates = candidates,
-            recentlyPlanned = recentlyPlanned(days.first()),
-            pantry = pantryRepository.stockedNames(),
-            householdSize = settingsRepository.householdSizeOnce(),
-            today = today,
-            seed = System.currentTimeMillis(),
-            liked = recipeRepository.likedRecipeIds(),
-            lastCookedAt = cookedMap(candidates),
-        )
-        val ids = generated.mapKeys { it.key.toString() }.mapValues { it.value.recipeId }
-        val reasons = generated.mapKeys { it.key.toString() }.mapValues { it.value.reasons }
-        mealPlanRepository.generateAndSaveWeek(ids, dateKeys, reasons)
+            val all = recipeRepository.getAllRecipesOnce()
+            if (all.isEmpty()) return@launch
+            val today = LocalDate.now()
+            val days = currentDays()
+            val dateKeys = days.map(LocalDate::toString)
+            val planned = settingsRepository.plannedMealsOnce()
+            val existing = mealPlanRepository.getForDates(dateKeys)
+            val pantry = pantryRepository.stockedNames()
+            val householdSize = settingsRepository.householdSizeOnce()
+            val liked = recipeRepository.likedRecipeIds()
+            val cooked = cookedMap(all)
+            val recently = recentlyPlanned(days.first()).toMutableMap()
+            // date -> recipes already placed that day by an earlier meal.
+            val placed = mutableMapOf<String, MutableSet<String>>()
+            existing.forEach { placed.getOrPut(it.date) { mutableSetOf() } += it.recipeId }
+
+            planned.forEach { slot ->
+                val candidates = candidatesFor(slot, all)
+                if (candidates.isEmpty()) return@forEach
+                val pinned = existing
+                    .filter { it.pinned && MealPlanSlots.resolve(it.slot, planned) == slot }
+                    .associate { LocalDate.parse(it.date) to it.recipeId }
+                val generated = MealPlanner.generateWeekBest(
+                    dates = days,
+                    skipped = emptySet(),
+                    pinned = pinned,
+                    candidates = candidates,
+                    recentlyPlanned = recently,
+                    pantry = pantry,
+                    householdSize = householdSize,
+                    today = today,
+                    seed = System.currentTimeMillis(),
+                    liked = liked,
+                    lastCookedAt = cooked,
+                    weights = MealPlanner.Weights.forSlot(slot),
+                ).filterNot { (date, pick) -> pick.recipeId in placed[date.toString()].orEmpty() }
+
+                val ids = generated.mapKeys { it.key.toString() }.mapValues { it.value.recipeId }
+                val reasons = generated.mapKeys { it.key.toString() }.mapValues { it.value.reasons }
+                mealPlanRepository.generateAndSaveWeek(slot, ids, dateKeys, planned, reasons)
+                generated.forEach { (date, pick) ->
+                    recently[pick.recipeId] = date
+                    placed.getOrPut(date.toString()) { mutableSetOf() } += pick.recipeId
+                }
+            }
         } finally { _generating.value = false }
     }
 
-    /** Re-roll a single day: pin the rest of the week, avoid the current dish, repick one day. */
-    fun reroll(dateKey: String) = viewModelScope.launch {
-        val candidates = recipeRepository.getAllRecipesOnce()
-        if (candidates.isEmpty()) return@launch
+    /** Re-roll a single cell: pin the rest of that meal's week, avoid the current dish,
+     *  repick just this one. */
+    fun reroll(dateKey: String, slot: String) = viewModelScope.launch { pickFor(dateKey, slot) }
+
+    /**
+     * Fill every still-empty planned meal of one day. Sequential rather than parallel: each
+     * pick reads the day back, so breakfast and dinner can't land on the same dish. This is
+     * what the day-level wand does — with four meals planned, one tap beats four.
+     */
+    fun fillDay(dateKey: String) = viewModelScope.launch {
+        val planned = settingsRepository.plannedMealsOnce()
+        val taken = mealPlanRepository.getForDates(listOf(dateKey))
+            .map { MealPlanSlots.resolve(it.slot, planned) }.toSet()
+        planned.filterNot { it in taken }.forEach { pickFor(dateKey, it) }
+    }
+
+    private suspend fun pickFor(dateKey: String, slot: String) {
+        val all = recipeRepository.getAllRecipesOnce()
+        val candidates = candidatesFor(slot, all)
+        if (candidates.isEmpty()) return
         val today = LocalDate.now()
         val target = LocalDate.parse(dateKey)
         val days = currentDays()
-        val dateKeys = days.map(LocalDate::toString)
-        val existing = mealPlanRepository.getForDates(dateKeys)
-        val currentByDate = existing.associate { LocalDate.parse(it.date) to it.recipeId }
+        val planned = settingsRepository.plannedMealsOnce()
+        val existing = mealPlanRepository.getForDates(days.map(LocalDate::toString))
+        val inSlot = existing.filter { MealPlanSlots.resolve(it.slot, planned) == slot }
+        val currentByDate = inSlot.associate { LocalDate.parse(it.date) to it.recipeId }
         val others = currentByDate.filterKeys { it != target } // treat as fixed so only target changes
-        // Penalise the current dish so the re-roll yields something different.
+        // Penalise the current dish, and anything else already on that day in another meal,
+        // so the re-roll yields something genuinely different.
         val recently = recentlyPlanned(days.first()).toMutableMap()
         currentByDate[target]?.let { recently[it] = today }
+        val sameDay = existing.filter { it.date == dateKey }.map { it.recipeId }.toSet()
         val generated = MealPlanner.generateWeek(
             dates = days,
             skipped = emptySet(),
             pinned = others,
-            candidates = candidates,
+            candidates = candidates.filterNot { it.recipe.id in sameDay },
             recentlyPlanned = recently,
             pantry = pantryRepository.stockedNames(),
             householdSize = settingsRepository.householdSizeOnce(),
             today = today,
             seed = System.nanoTime(),
             liked = recipeRepository.likedRecipeIds(),
-            lastCookedAt = cookedMap(candidates),
+            lastCookedAt = cookedMap(all),
+            weights = MealPlanner.Weights.forSlot(slot),
         )
-        generated[target]?.let { mealPlanRepository.replaceDay(dateKey, it.recipeId, it.reasons) }
+        generated[target]?.let { mealPlanRepository.replaceCell(dateKey, slot, it.recipeId, planned, it.reasons) }
     }
 
     /** recipeId -> the most recent date it was planned in the few weeks *before* [weekStart].
@@ -308,13 +430,15 @@ class MealPlanViewModel @Inject constructor(
             val dateKeys = currentDateKeys()
             // One contribution per (recipe, day) so items carry their planned-day provenance.
             // Skip days already confirmed cooked — that meal happened, no need to shop for it.
+            // Everything else planned is shopped for, whichever meal it sits in: if you took
+            // the trouble to plan a breakfast, you want its ingredients in the house.
             // Pantry-covered / staple items are filtered at the view layer, not here.
             mealPlanRepository.getForDates(dateKeys)
                 .filter { it.cookedAt == null }
                 .distinctBy { it.recipeId to it.date }
                 .forEach { entry ->
                     recipeRepository.getRecipeOnce(entry.recipeId)?.let { recipe ->
-                        val scale = com.food.opencook.util.Numbers.scaleFor(recipe.recipe.servings, householdSize)
+                        val scale = Numbers.scaleFor(recipe.recipe.servings, householdSize)
                         shoppingRepository.addFromRecipe(recipe, sourceDate = entry.date, scale = scale)
                     }
                 }

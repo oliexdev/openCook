@@ -27,6 +27,12 @@ data class MealPlanEntity(
     @PrimaryKey val id: String,
     val date: String,
     val recipeId: String,
+    /** Which meal of the day this entry occupies — one of [com.food.opencook.util.MealTypes.KEYS].
+     *  Null means "written before slots existed"; it is resolved at read time by
+     *  [com.food.opencook.ui.mealplan.MealPlanSlots.resolve] rather than backfilled, because
+     *  `MessageApplier.project()` rebuilds rows from the sync log and would reset a migrated
+     *  value back to null (same rationale as recipes.mealTypes). */
+    val slot: String? = null,
     /** Pinned entries survive auto-regeneration ("Woche vorschlagen" / re-roll). */
     val pinned: Boolean = false,
     /** Score breakdown that produced this pick, as a JSON-encoded

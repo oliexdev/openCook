@@ -81,12 +81,22 @@ object DatabaseModule {
         }
     }
 
+    /** v4 → v5: which meal of the day a planned entry occupies (nullable — null means the
+     *  entry predates slots and resolves to the primary slot at read time via
+     *  [com.food.opencook.ui.mealplan.MealPlanSlots.resolve]; deliberately not backfilled
+     *  for the same sync reason as mealTypes above). */
+    private val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE meal_plan ADD COLUMN slot TEXT")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): OpenCookDatabase =
         // v1 is the released baseline schema (see OpenCookDatabase).
         Room.databaseBuilder(context, OpenCookDatabase::class.java, "opencook.db")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             .build()
 
     @Provides

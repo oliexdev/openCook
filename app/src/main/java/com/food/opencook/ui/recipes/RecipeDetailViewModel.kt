@@ -30,8 +30,10 @@ import com.food.opencook.repository.MealPlanRepository
 import com.food.opencook.repository.PantryRepository
 import com.food.opencook.repository.RecipeRepository
 import com.food.opencook.repository.ShoppingRepository
+import com.food.opencook.ui.mealplan.MealPlanSlots
 import com.food.opencook.ui.navigation.Routes
 import com.food.opencook.util.IngredientMatch
+import com.food.opencook.util.MealTypes
 import com.food.opencook.util.WeekDates
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -46,6 +48,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.LocalTime
 import javax.inject.Inject
 
 /** A dish already planned on a given day, with the bits the picker sheet needs to render. */
@@ -112,24 +115,55 @@ class RecipeDetailViewModel @Inject constructor(
         repository.setLiked(recipeId, settings.ensureNodeId(), !liked.value)
     }
 
-    /** Whether this recipe was cooked **today** — a per-day mark, not a sticky "ever cooked" flag,
-     *  so the same dish can be re-marked the next time it's cooked. */
+    /**
+     * The plan row this screen was opened from, or null when it was reached from the recipe
+     * list. It decides *which* meal "mark as cooked" confirms: opening Monday's dish from the
+     * planner and marking it cooked has to tick Monday, not today.
+     */
+    private val planEntryId: String? =
+        savedStateHandle.get<String>(Routes.ARG_PLAN_ENTRY)?.takeIf { it.isNotBlank() }
+
+    /**
+     * Whether this dish counts as cooked right now. Coming from the planner that means "this
+     * planned meal is confirmed"; otherwise it's the per-day mark on the recipe (cooked today),
+     * not a sticky "ever cooked" flag, so the same dish can be re-marked next time.
+     */
     val cooked: StateFlow<Boolean> =
-        repository.observeRecipe(recipeId)
-            .map { it?.recipe?.lastCookedAt == LocalDate.now().toString() }
+        if (planEntryId != null) {
+            mealPlanRepository.observeEntry(planEntryId).map { it?.cookedAt != null }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+        } else {
+            repository.observeRecipe(recipeId)
+                .map { it?.recipe?.lastCookedAt == LocalDate.now().toString() }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+        }
+
+    /** Set when this screen was opened from a plan row on a day other than today — the
+     *  "cooked" label must then not claim it happened *today*. */
+    val confirmsOtherDay: StateFlow<Boolean> =
+        if (planEntryId == null) MutableStateFlow(false)
+        else mealPlanRepository.observeEntry(planEntryId)
+            .map { it != null && it.date != LocalDate.now().toString() }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     /** The prior last-cooked date, captured when marking cooked, so an undo/untap can restore it. */
     private var previousCooked: String? = null
 
     /** One planned entry relocated by the ripple-shift (kept so the swap can be undone). */
-    data class SwapMove(val entryId: String, val recipeId: String, val fromDate: String, val toDate: String)
+    data class SwapMove(
+        val entryId: String,
+        val recipeId: String,
+        val fromDate: String,
+        val toDate: String,
+        /** The meal the ripple runs in — dishes only ever displace their own kind. */
+        val slot: String,
+    )
     /** Enough state to inform what happened and undo an auto-applied swap. */
     data class SwapUndo(
         /** Entries shifted forward — reversed on undo. */
         val moves: List<SwapMove>,
-        /** (recipeId, date) entries that were removed — re-created on undo. */
-        val readd: List<Pair<String, String>>,
+        /** (recipeId, date, slot) entries that were removed — re-created on undo. */
+        val readd: List<Triple<String, String, String>>,
         val cookedEntryId: String,
         val displacedName: String,
         /** Day the displaced dish moved to (tomorrow), or null if it was removed from today. */
@@ -151,6 +185,23 @@ class RecipeDetailViewModel @Inject constructor(
      */
     fun toggleCooked() = viewModelScope.launch {
         val today = LocalDate.now().toString()
+        // Opened from a plan row: confirm exactly that meal, on its own day. Only today's
+        // plan can be *rearranged* (swapping in a dish you actually cooked, rippling the
+        // displaced one forward) — for Monday or for next Friday there is nothing sensible
+        // to reschedule, so this just records that the meal happened.
+        planEntryId?.let { entryId ->
+            val entry = mealPlanRepository.getForEntry(entryId) ?: return@let
+            if (entry.date != today) {
+                val nowCooked = !cooked.value
+                mealPlanRepository.setCooked(entryId, nowCooked)
+                // The recipe's own last-cooked date only moves forward: confirming last
+                // Monday must not overwrite a more recent cook.
+                if (nowCooked && (repository.getRecipeOnce(recipeId)?.recipe?.lastCookedAt ?: "") < entry.date) {
+                    repository.markCookedOn(recipeId, entry.date)
+                }
+                return@launch
+            }
+        }
         if (cooked.value) {
             // Already cooked today → un-mark, restoring whatever the last-cooked date was before.
             repository.restoreLastCookedAt(recipeId, previousCooked)
@@ -160,13 +211,22 @@ class RecipeDetailViewModel @Inject constructor(
         val prev = repository.getRecipeOnce(recipeId)?.recipe?.lastCookedAt
         previousCooked = prev
         repository.markCookedOn(recipeId, today)
-        val planned = mealPlanRepository.getForDates(listOf(today)).firstOrNull() ?: return@launch
+        val plannedSlots = settings.plannedMealsOnce()
+        val entries = mealPlanRepository.getForDates(listOf(today))
+        // Which of today's meals is this? If the dish is on the plan at all, that entry wins
+        // regardless of the clock (you cooked what you planned, even if it's late). Otherwise
+        // the meal the current time belongs to is the one being replaced.
+        val slot = entries.firstOrNull { it.recipeId == recipeId }
+            ?.let { MealPlanSlots.resolve(it.slot, plannedSlots) }
+            ?: MealPlanSlots.currentSlot(plannedSlots, LocalTime.now().hour)
+        val planned = entries.firstOrNull { MealPlanSlots.resolve(it.slot, plannedSlots) == slot }
+            ?: return@launch
         when {
-            // Cooked exactly what was planned → just confirm that day's entry.
+            // Cooked exactly what was planned → just confirm that entry.
             planned.recipeId == recipeId -> mealPlanRepository.setCooked(planned.id, true)
             // User pinned today's dish — leave the plan alone, just track that this was cooked.
             planned.pinned -> Unit
-            else -> swapTodayWith(planned.id, planned.recipeId, today, prev)
+            else -> swapTodayWith(planned.id, planned.recipeId, today, slot, prev)
         }
     }
 
@@ -177,25 +237,36 @@ class RecipeDetailViewModel @Inject constructor(
      * absorbs the shift (a fully-booked window pushes the last dish off the end). Not procured →
      * the displaced dish is simply removed from today.
      */
-    private suspend fun swapTodayWith(displacedEntryId: String, displacedRecipeId: String, today: String, prevCooked: String?) {
+    private suspend fun swapTodayWith(
+        displacedEntryId: String,
+        displacedRecipeId: String,
+        today: String,
+        slot: String,
+        prevCooked: String?,
+    ) {
         val name = repository.getRecipeOnce(displacedRecipeId)?.recipe?.name ?: "Gericht"
         val procured = shoppingRepository.hasItemsFor(displacedRecipeId, today) || fullyInPantry(displacedRecipeId)
+        val plannedSlots = settings.plannedMealsOnce()
 
         val moves = mutableListOf<SwapMove>()
-        val readd = mutableListOf<Pair<String, String>>()
+        val readd = mutableListOf<Triple<String, String, String>>()
         var movedTo: String? = null
 
         if (procured) {
             val todayDate = LocalDate.parse(today)
             val future = planWeekDates.flatten().map(LocalDate::parse).filter { it.isAfter(todayDate) }.sorted()
-            val occupant = mealPlanRepository.getForDates(future.map(LocalDate::toString)).associateBy { it.date }
+            // The ripple stays inside this meal: a displaced dinner pushes the following
+            // dinners along, it never lands on top of somebody's breakfast.
+            val occupant = mealPlanRepository.getForDates(future.map(LocalDate::toString))
+                .filter { MealPlanSlots.resolve(it.slot, plannedSlots) == slot }
+                .associateBy { it.date }
             var carryId = displacedEntryId
             var carryRecipe = displacedRecipeId
             var carryFrom = today
             var landed = false
             for (day in future) {
                 val dayStr = day.toString()
-                moves += SwapMove(carryId, carryRecipe, carryFrom, dayStr)
+                moves += SwapMove(carryId, carryRecipe, carryFrom, dayStr, slot)
                 val occ = occupant[dayStr]
                 if (occ == null) { landed = true; break }
                 carryId = occ.id; carryRecipe = occ.recipeId; carryFrom = occ.date
@@ -203,35 +274,35 @@ class RecipeDetailViewModel @Inject constructor(
             if (moves.isEmpty()) {
                 // No day left to move into → just drop the displaced dish.
                 mealPlanRepository.deleteEntry(displacedEntryId)
-                readd += displacedRecipeId to today
+                readd += Triple(displacedRecipeId, today, slot)
             } else {
                 movedTo = moves.first().toDate // the displaced dish lands on tomorrow
                 if (!landed) {
                     // Window fully booked → the last dish ripples off the end; drop it.
                     mealPlanRepository.deleteEntry(carryId)
-                    readd += carryRecipe to carryFrom
+                    readd += Triple(carryRecipe, carryFrom, slot)
                 }
                 moves.forEach { m ->
-                    mealPlanRepository.moveEntry(m.entryId, m.toDate)
+                    mealPlanRepository.moveEntry(m.entryId, m.toDate, m.slot)
                     shoppingRepository.moveSource(m.recipeId, m.fromDate, m.toDate)
                 }
             }
         } else {
             mealPlanRepository.deleteEntry(displacedEntryId)
-            readd += displacedRecipeId to today
+            readd += Triple(displacedRecipeId, today, slot)
         }
 
-        val cookedEntryId = mealPlanRepository.addCookedEntry(today, recipeId)
+        val cookedEntryId = mealPlanRepository.addCookedEntry(today, recipeId, slot)
         _lastSwap.value = SwapUndo(moves, readd, cookedEntryId, name, movedTo, prevCooked)
     }
 
     fun undoSwap(undo: SwapUndo) = viewModelScope.launch {
         mealPlanRepository.deleteEntry(undo.cookedEntryId)
         undo.moves.forEach { m ->
-            mealPlanRepository.moveEntry(m.entryId, m.fromDate)
+            mealPlanRepository.moveEntry(m.entryId, m.fromDate, m.slot)
             shoppingRepository.moveSource(m.recipeId, m.toDate, m.fromDate)
         }
-        undo.readd.forEach { (rid, date) -> mealPlanRepository.addEntry(date, rid) }
+        undo.readd.forEach { (rid, date, slot) -> mealPlanRepository.addEntry(date, rid, slot) }
         // Also un-mark today's cook, back to whatever the recipe's last-cooked date was before.
         repository.restoreLastCookedAt(recipeId, undo.previousCooked)
         _lastSwap.value = null
@@ -253,32 +324,48 @@ class RecipeDetailViewModel @Inject constructor(
         WeekDates.weekOf(weekOffset = 1).map(LocalDate::toString),
     )
 
-    /** date (ISO) → the currently planned dish (name + thumbnail), if any. */
+    /** Which meals the household plans — the sheet offers a slot choice only when >1. */
+    val plannedMeals: StateFlow<List<String>> = settings.plannedMeals
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MealPlanSlots.DEFAULT_PLANNED)
+
+    /** The meals this recipe is marked for — pre-selects the slot in the sheet, so adding a
+     *  cake lands on "Snack" rather than on dinner. */
+    val recipeMealTypes: StateFlow<List<String>> = repository.observeRecipe(recipeId)
+        .map { MealTypes.fromStored(it?.recipe?.mealTypes) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MealTypes.DEFAULT)
+
+    /** "date|slot" → the currently planned dish (name + thumbnail), if any. */
     val plannedDishes: StateFlow<Map<String, PlannedDish>> =
         combine(
             mealPlanRepository.observeForDates(planWeekDates.flatten()),
             repository.observeRecipes(),
             settings.serverUrl,
-        ) { entries, recipes, baseUrl ->
+            settings.plannedMeals,
+        ) { entries, recipes, baseUrl, plannedSlots ->
             val byId = recipes.associateBy { it.recipe.id }
             entries.associate { entry ->
                 val r = byId[entry.recipeId]
-                entry.date to PlannedDish(
+                cellKey(entry.date, MealPlanSlots.resolve(entry.slot, plannedSlots)) to PlannedDish(
                     name = r?.recipe?.name ?: "Rezept",
                     imageModel = imageModelFor(r?.images.orEmpty(), baseUrl),
                 )
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
-    /** Add the current recipe to [date] as a fresh entry (used when the day is empty). */
-    fun assignToMealPlan(date: String, onDone: () -> Unit) = viewModelScope.launch {
-        mealPlanRepository.addEntry(date, recipeId)
+    /** Add the current recipe to a cell as a fresh entry (used when the cell is empty). */
+    fun assignToMealPlan(date: String, slot: String, onDone: () -> Unit) = viewModelScope.launch {
+        mealPlanRepository.addEntry(date, recipeId, slot)
         onDone()
     }
 
-    /** Replace whatever is planned on [date] with the current recipe (used when occupied). */
-    fun replaceOnMealPlan(date: String, onDone: () -> Unit) = viewModelScope.launch {
-        mealPlanRepository.replaceDay(date, recipeId)
+    /** Replace whatever is planned in that cell with the current recipe (used when occupied). */
+    fun replaceOnMealPlan(date: String, slot: String, onDone: () -> Unit) = viewModelScope.launch {
+        mealPlanRepository.replaceCell(date, slot, recipeId, settings.plannedMealsOnce())
         onDone()
+    }
+
+    companion object {
+        /** Key for the "what's planned where" map — a plan cell is a day *and* a meal. */
+        fun cellKey(date: String, slot: String) = "$date|$slot"
     }
 }

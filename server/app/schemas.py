@@ -40,6 +40,10 @@ class HouseholdSettings(BaseModel):
     # ISO language code ("de"/"en") for recipe content (AI extraction, categories). The
     # app sends it; null/absent means each device follows its own system language.
     content_language: str | None = None
+    # Which meals of the day the household plans, as newline-joined keys
+    # ("breakfast\nlunch\nsnack\ndinner"). The server only stores and echoes these;
+    # null/absent means the app's own default (a single lunch slot).
+    planned_meals: str | None = None
 
 
 class HouseholdSummary(BaseModel):

@@ -229,10 +229,7 @@ class SyncEngine @Inject constructor(
     /** The server materialises household meta authoritatively — adopt unconditionally. */
     private suspend fun adoptServerMeta(response: SyncResponseDto) {
         response.householdName?.let { settings.setHouseholdName(it) }
-        response.householdSettings?.let {
-            settings.setHouseholdSize(it.householdSize)
-            settings.setContentLanguage(it.contentLanguage)
-        }
+        response.householdSettings?.let { settings.applyHouseholdSettings(it) }
     }
 
     /**
@@ -245,10 +242,7 @@ class SyncEngine @Inject constructor(
         val localHlc = settings.householdMetaHlcOnce()
         if (localHlc != null && remoteHlc <= localHlc) return
         response.householdName?.let { settings.setHouseholdName(it) }
-        response.householdSettings?.let {
-            settings.setHouseholdSize(it.householdSize)
-            settings.setContentLanguage(it.contentLanguage)
-        }
+        response.householdSettings?.let { settings.applyHouseholdSettings(it) }
         settings.setHouseholdPin(response.householdPin)
         settings.setHouseholdMetaHlc(remoteHlc)
     }

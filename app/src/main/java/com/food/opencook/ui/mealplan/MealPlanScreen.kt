@@ -20,8 +20,10 @@ package com.food.opencook.ui.mealplan
 
 import android.content.ClipData
 import android.content.ClipDescription
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.draganddrop.dragAndDropSource
 import androidx.compose.foundation.draganddrop.dragAndDropTarget
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -29,33 +31,39 @@ import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.AddShoppingCart
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Restaurant
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.PlainTooltip
@@ -69,18 +77,16 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTooltipState
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -97,12 +103,15 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -113,8 +122,10 @@ import com.food.opencook.ui.components.AppTopBar
 import com.food.opencook.ui.components.AvailabilityBadge
 import com.food.opencook.ui.components.CookedBadge
 import com.food.opencook.ui.theme.Spacing
-import java.time.LocalDate
 import com.food.opencook.util.DateLabels
+import com.food.opencook.util.MealTypes
+import java.time.LocalDate
+import java.time.LocalTime
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -124,8 +135,8 @@ private const val WEEK_SWITCH_DWELL_MS = 400L
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun MealPlanScreen(
-    onOpenRecipe: (String) -> Unit = {},
-    onPickRecipe: (String) -> Unit = {},
+    onOpenRecipe: (recipeId: String, planEntryId: String) -> Unit = { _, _ -> },
+    onPickRecipe: (date: String, slot: String) -> Unit = { _, _ -> },
     viewModel: MealPlanViewModel = hiltViewModel(),
 ) {
     val week by viewModel.week.collectAsStateWithLifecycle()
@@ -137,6 +148,7 @@ fun MealPlanScreen(
     val noRecipesMsg = stringResource(R.string.mealplan_no_recipes_suggest)
     val deletedMsg = stringResource(R.string.deleted)
     val undoMsg = stringResource(R.string.undo)
+    val addedMsg = stringResource(R.string.shopping_added)
 
     // Self-heal on open: roll un-cooked but procured past dishes onto the next free day.
     // Idempotent, so running once per screen entry is enough — no daily confirmation.
@@ -147,12 +159,18 @@ fun MealPlanScreen(
     val syncStatus by appBar.status.collectAsStateWithLifecycle()
     val generating by viewModel.generating.collectAsStateWithLifecycle()
 
-    // Remove a day's dish with an Undo snackbar (re-adds it to the same day).
+    val plannedMeals by viewModel.plannedMeals.collectAsStateWithLifecycle()
+    // The slot column only earns its space once a day can hold more than one dish. With a
+    // single meal planned the card stays exactly what it was before slots existed — unless
+    // a one-off in a switched-off meal is on screen, which would otherwise be unlabelled.
+    val showSlots = plannedMeals.size > 1 || week.any { it.slots.size > 1 }
+
+    // Remove a dish with an Undo snackbar (re-adds it to the same cell).
     val removeDishWithUndo: (String, PlannedRecipe) -> Unit = { date, planned ->
         viewModel.remove(planned.entryId)
         scope.launch {
             if (snackbarHostState.showSnackbar(deletedMsg, undoMsg, withDismissAction = true, duration = SnackbarDuration.Long) == SnackbarResult.ActionPerformed) {
-                viewModel.addRecipe(date, planned.recipeId)
+                viewModel.addRecipe(date, planned.slot, planned.recipeId)
             }
         }
     }
@@ -216,7 +234,11 @@ fun MealPlanScreen(
             // the finger. One target also sidesteps nested drop-target dispatch ambiguity.
             val listState = rememberLazyListState()
             val listBounds = remember { mutableStateOf(Rect.Zero) }
-            val hoveredDate = remember { mutableStateOf<String?>(null) }
+            val hoveredCell = remember { mutableStateOf<String?>(null) }
+            // Root-space bounds of every rendered meal row, keyed "date|slot". A day card now
+            // holds several drop targets, so the LazyColumn's own item geometry (one entry per
+            // day) is no longer fine-grained enough to hit-test against.
+            val cellBounds = remember { mutableStateMapOf<String, Rect>() }
             val scrollSpeed = remember { mutableFloatStateOf(0f) }
             val edgeZonePx = with(LocalDensity.current) { 72.dp.toPx() }
             val maxStepPx = with(LocalDensity.current) { 18.dp.toPx() }
@@ -231,15 +253,20 @@ fun MealPlanScreen(
             }
 
             val dropTarget = remember(listState) {
-                // Map a root-space Y to the day under it; falls back to the nearest day so drops
-                // in the inter-card gaps (or a slight overshoot) still land somewhere sensible.
-                fun dateAtY(y: Float): String? {
-                    val localY = y - listBounds.value.top
-                    val items = listState.layoutInfo.visibleItemsInfo
-                    if (items.isEmpty()) return null
-                    val hit = items.firstOrNull { localY >= it.offset && localY < it.offset + it.size }
-                        ?: items.minByOrNull { kotlin.math.abs((it.offset + it.size / 2f) - localY) }
-                    return hit?.key as? String
+                // Map a root-space Y to the meal row under it; falls back to the nearest row so
+                // drops in the inter-card gaps (or a slight overshoot) still land somewhere
+                // sensible. Rows that scrolled out of view keep stale bounds in the map, so the
+                // candidate set is clipped to what actually overlaps the visible list.
+                fun cellAtY(y: Float): String? {
+                    val visible = listBounds.value
+                    val cells = cellBounds.entries.filter {
+                        it.value.bottom > visible.top && it.value.top < visible.bottom
+                    }
+                    if (cells.isEmpty()) return null
+                    return (
+                        cells.firstOrNull { y >= it.value.top && y < it.value.bottom }
+                            ?: cells.minByOrNull { kotlin.math.abs(it.value.center.y - y) }
+                        )?.key
                 }
                 object : DragAndDropTarget {
                     override fun onStarted(event: DragAndDropEvent) {
@@ -255,27 +282,29 @@ fun MealPlanScreen(
                                 maxStepPx * ((e.y - (b.bottom - edgeZonePx)) / edgeZonePx).coerceIn(0f, 1f)
                             else -> 0f
                         }
-                        hoveredDate.value = dateAtY(e.y)
+                        hoveredCell.value = cellAtY(e.y)
                     }
                     override fun onDrop(event: DragAndDropEvent): Boolean {
                         scrollSpeed.floatValue = 0f
-                        hoveredDate.value = null
+                        hoveredCell.value = null
                         val e = event.toAndroidDragEvent()
                         val text = e.clipData?.takeIf { it.itemCount > 0 }
                             ?.getItemAt(0)?.text?.toString() ?: return false
                         val parts = text.split("|")
-                        if (parts.size != 2) return false
-                        val (entryId, fromDate) = parts
-                        val toDate = dateAtY(e.y) ?: return false
-                        if (fromDate == toDate) return false
-                        viewModel.moveDish(entryId, fromDate, toDate)
+                        if (parts.size != 3) return false
+                        val (entryId, fromDate, fromSlot) = parts
+                        val target = (cellAtY(e.y) ?: return false).split("|")
+                        if (target.size != 2) return false
+                        val (toDate, toSlot) = target
+                        if (fromDate == toDate && fromSlot == toSlot) return false
+                        viewModel.moveDish(entryId, fromDate, fromSlot, toDate, toSlot)
                         return true
                     }
                     override fun onExited(event: DragAndDropEvent) {
-                        scrollSpeed.floatValue = 0f; hoveredDate.value = null
+                        scrollSpeed.floatValue = 0f; hoveredCell.value = null
                     }
                     override fun onEnded(event: DragAndDropEvent) {
-                        scrollSpeed.floatValue = 0f; hoveredDate.value = null
+                        scrollSpeed.floatValue = 0f; hoveredCell.value = null
                         dishDragActive.value = false
                     }
                 }
@@ -294,11 +323,18 @@ fun MealPlanScreen(
                 items(week, key = { it.date }) { day ->
                     DayCard(
                         day = day,
-                        isDropTarget = hoveredDate.value == day.date,
-                        onAdd = { onPickRecipe(day.date) },
-                        onSmartPick = { viewModel.reroll(day.date) },
+                        plannedMeals = plannedMeals,
+                        showSlots = showSlots,
+                        hoveredCell = hoveredCell.value,
+                        onCellBounds = { key, rect -> cellBounds[key] = rect },
+                        onAdd = { slot -> onPickRecipe(day.date, slot) },
+                        onFillDay = { viewModel.fillDay(day.date) },
                         onRemoveDish = removeDishWithUndo,
-                        onToggleCooked = { planned -> viewModel.toggleCooked(planned, day.date) },
+                        onAddToShopping = { planned ->
+                            viewModel.addToShoppingList(planned, day.date) {
+                                scope.launch { snackbarHostState.showSnackbar(addedMsg) }
+                            }
+                        },
                         onOpenRecipe = onOpenRecipe,
                     )
                 }
@@ -412,80 +448,207 @@ private fun WeekSelector(
 @Composable
 private fun DayCard(
     day: DayPlan,
-    isDropTarget: Boolean,
-    onAdd: () -> Unit,
-    onSmartPick: () -> Unit,
+    plannedMeals: List<String>,
+    showSlots: Boolean,
+    hoveredCell: String?,
+    onCellBounds: (String, Rect) -> Unit,
+    onAdd: (String) -> Unit,
+    onFillDay: () -> Unit,
     onRemoveDish: (String, PlannedRecipe) -> Unit,
-    onToggleCooked: (PlannedRecipe) -> Unit,
-    onOpenRecipe: (String) -> Unit,
+    onAddToShopping: (PlannedRecipe) -> Unit,
+    onOpenRecipe: (recipeId: String, planEntryId: String) -> Unit,
 ) {
     val today = LocalDate.now().toString()
     val isToday = day.date == today
     // Past = the day has gone by; only then does "cooked yet?" make sense.
     val isPast = day.date < today
+    // Meals the household doesn't plan by default, offered as a one-off for this day only.
+    val extraSlots = MealTypes.KEYS.filterNot { it in plannedMeals || day.slots.any { s -> s.slot == it } }
+    val hasGaps = day.slots.any { it.dishes.isEmpty() && it.hasCandidates }
+    // On today's card, mark the meal the clock is in — the one row that matters right now.
+    val nowSlot = if (isToday) MealPlanSlots.currentSlot(plannedMeals, LocalTime.now().hour) else null
 
-    // Highlighted while a dragged dish hovers this day (the list-level drop target tracks
-    // which day is under the finger and passes it down here).
     Card(
         Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = when {
-                isDropTarget -> MaterialTheme.colorScheme.secondaryContainer
-                isToday -> MaterialTheme.colorScheme.primaryContainer
-                else -> MaterialTheme.colorScheme.surfaceContainer
-            },
+            // Today used to flood the whole card with primaryContainer. That was fine for a
+            // single row; across four it drowns the content, so today is now marked by an
+            // outline and a coloured date instead — emphasis without a wall of colour.
+            containerColor = if (isToday) MaterialTheme.colorScheme.surfaceContainerHigh
+            else MaterialTheme.colorScheme.surfaceContainer,
         ),
+        border = if (isToday) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
     ) {
-        Column(Modifier.fillMaxWidth().padding(Spacing.md)) {
+        Column(
+            Modifier.fillMaxWidth().padding(Spacing.md),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+        ) {
             Row(
                 Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text(day.label, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    day.label,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (isToday) MaterialTheme.colorScheme.primary else Color.Unspecified,
+                )
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    // One dish per day: offer "add" when empty, "remove" when set.
-                    val existing = day.entries.firstOrNull()
-                    if (existing != null) {
-                        // Optional 1-tap "cooked" — only on today/past, where it can have happened.
-                        if (isToday || isPast) {
-                            // Same restaurant glyph + green as the recipe-detail "cooked" toggle.
-                            TooltipIcon(
-                                tooltip = stringResource(
-                                    if (existing.cooked) R.string.mealplan_uncooked else R.string.mealplan_cooked,
-                                ),
-                                icon = Icons.Outlined.Restaurant,
-                                onClick = { onToggleCooked(existing) },
-                                tint = if (existing.cooked) MaterialTheme.colorScheme.secondary else null,
-                            )
-                        }
+                    // One wand per day instead of one per empty row: a fully empty week had
+                    // 28 of them, which read as clutter rather than as an offer.
+                    if (hasGaps && !isPast) {
                         TooltipIcon(
-                            tooltip = stringResource(R.string.mealplan_remove_dish),
-                            icon = Icons.Outlined.DeleteOutline,
-                            onClick = { onRemoveDish(day.date, existing) },
-                        )
-                    } else {
-                        // Empty day: a manual "+" plus a one-tap smart pick that scores
-                        // this single day against the rest of the week (neighbours, pantry,
-                        // recency) and drops in the best fit immediately.
-                        TooltipIcon(
-                            tooltip = stringResource(R.string.mealplan_smart_pick),
-                            icon = Icons.Outlined.AutoAwesome, // same "magic" icon as "Woche vorschlagen"
-                            onClick = onSmartPick,
-                        )
-                        TooltipIcon(
-                            tooltip = stringResource(R.string.mealplan_add_recipe),
-                            icon = Icons.Outlined.Add,
-                            onClick = onAdd,
+                            tooltip = stringResource(R.string.mealplan_fill_day),
+                            icon = Icons.Outlined.AutoAwesome, // same "magic" icon as "suggest week"
+                            onClick = onFillDay,
+                            size = 36.dp,
                         )
                     }
                 }
             }
-            day.entries.forEach { planned ->
+            // The day itself: the meals the household actually plans, in order of the day.
+            val slotRow: @Composable (SlotPlan) -> Unit = { slotPlan ->
+                val key = "${day.date}|${slotPlan.slot}"
+                SlotRow(
+                    slotPlan = slotPlan,
+                    date = day.date,
+                    showSlotLabel = showSlots,
+                    isDropTarget = hoveredCell == key,
+                    isPast = isPast,
+                    isNow = slotPlan.slot == nowSlot,
+                    modifier = Modifier.onGloballyPositioned { onCellBounds(key, it.boundsInRoot()) },
+                    onAdd = { onAdd(slotPlan.slot) },
+                    onRemoveDish = onRemoveDish,
+                    onAddToShopping = onAddToShopping,
+                    onOpenRecipe = onOpenRecipe,
+                )
+            }
+            day.slots.filterNot { it.isExtra }.forEach { slotRow(it) }
+
+            // Everything the household does *not* plan lives below the day, behind a hairline:
+            // meals already filled as a one-off, then an offer for the rest. They stay down
+            // here even once filled — the selection defines the shape of a normal day, so a
+            // Sunday cake must not wedge itself between lunch and dinner. Enabling the meal in
+            // the settings is what moves it up into its chronological place.
+            val extraRows = day.slots.filter { it.isExtra }
+            val showChips = extraSlots.isNotEmpty() && !isPast
+            if (extraRows.isNotEmpty() || showChips) {
+                HorizontalDivider(
+                    Modifier.padding(vertical = Spacing.xs),
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                )
+                extraRows.forEach { slotRow(it) }
+                if (showChips) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                        extraSlots.forEach { slot ->
+                            AssistChip(
+                                onClick = { onAdd(slot) },
+                                label = {
+                                    Text(
+                                        "＋ " + stringResource(MealPlanSlots.shortLabelRes(slot)),
+                                        style = MaterialTheme.typography.labelMedium,
+                                    )
+                                },
+                                colors = AssistChipDefaults.assistChipColors(
+                                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                ),
+                                border = null,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** One meal of one day: the planned dish (or dishes), or an empty "plan this" line. */
+@Composable
+private fun SlotRow(
+    slotPlan: SlotPlan,
+    date: String,
+    showSlotLabel: Boolean,
+    isDropTarget: Boolean,
+    isPast: Boolean,
+    isNow: Boolean,
+    modifier: Modifier = Modifier,
+    onAdd: () -> Unit,
+    onRemoveDish: (String, PlannedRecipe) -> Unit,
+    onAddToShopping: (PlannedRecipe) -> Unit,
+    onOpenRecipe: (recipeId: String, planEntryId: String) -> Unit,
+) {
+    // Highlighted while a dragged dish hovers this exact cell — the feedback has to be per
+    // meal now, otherwise a four-row card would light up as one big undifferentiated target.
+    val background = if (isDropTarget) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent
+    // Which meal this is rides in the status line rather than in a leading column: a 52dp
+    // label column ate a sixth of the width before the thumbnail even started, and the
+    // status line under the title was already there and had room to spare.
+    val slotLabel = if (showSlotLabel) stringResource(MealPlanSlots.shortLabelRes(slotPlan.slot)) else null
+    Column(
+        modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(background),
+    ) {
+        if (slotPlan.dishes.isEmpty()) {
+            GhostRow(slotPlan, slotLabel, onAdd = onAdd)
+        } else {
+            slotPlan.dishes.forEach { planned ->
                 // A past day that was never confirmed cooked is shown faded: it's over,
                 // and the app makes no assumption about whether it actually happened.
-                PlannedRow(planned, day.date, onOpenRecipe, faded = isPast && !planned.cooked)
+                PlannedRow(
+                    planned = planned,
+                    fromDate = date,
+                    slotLabel = slotLabel,
+                    isNow = isNow,
+                    onOpenRecipe = onOpenRecipe,
+                    faded = isPast && !planned.cooked,
+                    onRemove = { onRemoveDish(date, planned) },
+                    onAddToShopping = { onAddToShopping(planned) },
+                )
             }
+        }
+    }
+}
+
+/**
+ * An unplanned meal: one quiet line, roughly a third of a dish row's weight. The gaps in the
+ * week have to be *findable* without competing with what's actually planned, so this carries
+ * no icon of its own — the whole line is the tap target, and the day's wand in the card
+ * header fills every gap at once.
+ */
+@Composable
+private fun GhostRow(slotPlan: SlotPlan, slotLabel: String?, onAdd: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 36.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(enabled = slotPlan.hasCandidates, onClick = onAdd),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (slotPlan.hasCandidates) {
+            // The empty line is where the meal gets *named* — there is nothing else on it,
+            // and it's what tells you which gap you are about to fill.
+            Text(
+                "＋ " + if (slotLabel != null) stringResource(R.string.mealplan_slot_add_named, slotLabel)
+                else stringResource(R.string.mealplan_slot_add),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            // Nothing in the library is marked for this meal — say so instead of opening
+            // an empty picker and letting the user wonder what they did wrong.
+            Text(
+                stringResource(
+                    R.string.mealplan_slot_no_recipes,
+                    stringResource(MealTypes.labelRes(slotPlan.slot)),
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -499,8 +662,12 @@ private fun DayCard(
 private fun PlannedRow(
     planned: PlannedRecipe,
     fromDate: String,
-    onOpenRecipe: (String) -> Unit,
+    onOpenRecipe: (recipeId: String, planEntryId: String) -> Unit,
+    slotLabel: String? = null,
+    isNow: Boolean = false,
     faded: Boolean = false,
+    onRemove: () -> Unit = {},
+    onAddToShopping: () -> Unit = {},
 ) {
     var showWhy by remember { mutableStateOf(false) }
     // Captured here because the drag-shadow lambda below runs in DrawScope (no theme access).
@@ -518,11 +685,11 @@ private fun PlannedRow(
                 },
                 block = {
                     detectTapGestures(
-                        onTap = { onOpenRecipe(planned.recipeId) },
+                        onTap = { onOpenRecipe(planned.recipeId, planned.entryId) },
                         onLongPress = {
                             startTransfer(
                                 DragAndDropTransferData(
-                                    ClipData.newPlainText("dish", "${planned.entryId}|$fromDate"),
+                                    ClipData.newPlainText("dish", "${planned.entryId}|$fromDate|${planned.slot}"),
                                 ),
                             )
                         },
@@ -538,19 +705,46 @@ private fun PlannedRow(
                 model = planned.imageModel,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)),
+                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)),
             )
         } else {
-            Box(Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primaryContainer))
+            // A bare colour block reads as a loading error once several rows stack up;
+            // the glyph makes it obviously "recipe without a photo" (same as the plan sheet).
+            Box(
+                Modifier.size(48.dp).clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Outlined.Restaurant,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
         }
         Column(Modifier.weight(1f)) {
+            // The title gets the full width of its own line. Squeezing the two action icons
+            // beside it leaves ~108dp for the name on a 360dp phone — so status and actions
+            // share the second line instead, which also keeps the icons well clear of the
+            // title's tap area (the whole row is a drag source on long-press).
             Text(planned.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            // Shopping pill ("Alles da" / "n fehlt") sits next to the "why?" help icon —
-            // both relate to the same dish-vs-week question, so they belong in one row.
             Row(
+                Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
             ) {
+                if (slotLabel != null) {
+                    // The meal that's happening now reads in the accent colour, so a glance
+                    // at today's card lands on the right row without counting from the top.
+                    Text(
+                        "$slotLabel ·",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (isNow) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
                 // Once cooked, missing ingredients are moot — show only the "cooked" badge.
                 if (planned.cooked) {
                     CookedBadge()
@@ -565,7 +759,7 @@ private fun PlannedRow(
                     ) {
                         IconButton(
                             onClick = { showWhy = true },
-                            modifier = Modifier.size(28.dp),
+                            modifier = Modifier.size(32.dp),
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Outlined.HelpOutline,
@@ -576,6 +770,23 @@ private fun PlannedRow(
                         }
                     }
                 }
+                Spacer(Modifier.weight(1f))
+                // Appears exactly when it's useful: the badge next to it just said what's
+                // missing, this puts it on the list without a detour through the recipe.
+                if (planned.missing > 0 && !planned.cooked) {
+                    TooltipIcon(
+                        tooltip = stringResource(R.string.mealplan_add_missing),
+                        icon = Icons.Outlined.AddShoppingCart,
+                        onClick = onAddToShopping,
+                        size = 32.dp,
+                    )
+                }
+                TooltipIcon(
+                    tooltip = stringResource(R.string.mealplan_remove_dish),
+                    icon = Icons.Outlined.DeleteOutline,
+                    onClick = onRemove,
+                    size = 32.dp,
+                )
             }
         }
     }
@@ -685,17 +896,28 @@ private fun TooltipIcon(
     filled: Boolean = false,
     enabled: Boolean = true,
     tint: Color? = null,
+    /** Button diameter — the dish rows use a compact 32.dp so status and two actions fit
+     *  on one line; null keeps the Material default (48.dp) for the top-bar actions. */
+    size: Dp? = null,
 ) {
     TooltipBox(
         positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
         tooltip = { PlainTooltip { Text(tooltip) } },
         state = rememberTooltipState(),
     ) {
+        val sizeModifier = if (size != null) Modifier.size(size) else Modifier
         if (filled) {
-            FilledTonalIconButton(onClick = onClick, enabled = enabled) { Icon(icon, contentDescription = tooltip) }
+            FilledTonalIconButton(onClick = onClick, enabled = enabled, modifier = sizeModifier) {
+                Icon(icon, contentDescription = tooltip)
+            }
         } else {
-            IconButton(onClick = onClick, enabled = enabled) {
-                Icon(icon, contentDescription = tooltip, tint = tint ?: LocalContentColor.current)
+            IconButton(onClick = onClick, enabled = enabled, modifier = sizeModifier) {
+                Icon(
+                    icon,
+                    contentDescription = tooltip,
+                    tint = tint ?: LocalContentColor.current,
+                    modifier = if (size != null) Modifier.size(20.dp) else Modifier,
+                )
             }
         }
     }

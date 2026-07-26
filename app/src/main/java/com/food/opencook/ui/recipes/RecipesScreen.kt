@@ -41,14 +41,15 @@ import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
@@ -221,6 +222,7 @@ fun RecipesScreen(
             onToggleCategory = viewModel::toggleCategory,
             onToggleCookbook = viewModel::toggleCookbook,
             onLikedOnly = viewModel::setLikedOnly,
+            onCookableOnly = viewModel::setCookableOnly,
             onClear = viewModel::clearFilters,
             onDismiss = { showFilterSheet = false },
         )
@@ -258,6 +260,7 @@ private fun FilterSheet(
     onToggleCategory: (String) -> Unit,
     onToggleCookbook: (String) -> Unit,
     onLikedOnly: (Boolean) -> Unit,
+    onCookableOnly: (Boolean) -> Unit,
     onClear: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -325,12 +328,22 @@ private fun FilterSheet(
             }
 
             Spacer(Modifier.height(Spacing.md))
-            FilterChip(
-                selected = filters.likedOnly,
-                onClick = { onLikedOnly(!filters.likedOnly) },
-                leadingIcon = { Icon(Icons.Outlined.FavoriteBorder, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                label = { Text(stringResource(R.string.recipes_filter_liked)) },
-            )
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                FilterChip(
+                    selected = filters.likedOnly,
+                    onClick = { onLikedOnly(!filters.likedOnly) },
+                    leadingIcon = { Icon(Icons.Outlined.FavoriteBorder, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    label = { Text(stringResource(R.string.recipes_filter_liked)) },
+                )
+                // "What can I cook right now?" — everything the pantry covers end to end.
+                // Staples don't count against it, so salt in the recipe doesn't disqualify a dish.
+                FilterChip(
+                    selected = filters.cookableOnly,
+                    onClick = { onCookableOnly(!filters.cookableOnly) },
+                    leadingIcon = { Icon(Icons.Outlined.Inventory2, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    label = { Text(stringResource(R.string.recipes_filter_cookable)) },
+                )
+            }
             Spacer(Modifier.height(Spacing.xl))
         }
     }

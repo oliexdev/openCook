@@ -69,7 +69,31 @@ object MealPlanner {
         val cookedWindowDays: Long = 10,
         val sameProteinPenalty: Double = 4.0,    // per prior use of the same main protein in the week
         val proteinRecencyWindowDays: Long = 3,  // also avoid repeating a protein right across the week boundary
-    )
+    ) {
+        companion object {
+            /**
+             * Per-meal tuning. The defaults are written for the hot meals, where a repeat
+             * within the week reads as a planning failure. Breakfast and snack are the
+             * opposite: they are habitual, the same porridge four mornings running is what
+             * people actually eat, and their ingredients are *meant* to repeat (one pack of
+             * oats covers the week). So there the variety machinery is turned down — and
+             * the category/protein penalties off entirely, since "twice something sweet"
+             * is not a problem at breakfast.
+             */
+            fun forSlot(slot: String): Weights = when (slot) {
+                "breakfast", "snack" -> Weights(
+                    recencyPenalty = 1.5,
+                    recencyWindowDays = 5,
+                    sameCategoryPenalty = 0.0,
+                    monotonyPenalty = 0.5,
+                    maxReuseCount = 4,
+                    cookedRecentlyPenalty = 1.0,
+                    sameProteinPenalty = 0.0,
+                )
+                else -> Weights()
+            }
+        }
+    }
 
     /** Leftovers are only carried to a free day at most this many days later. */
     private const val LEFTOVER_MAX_GAP_DAYS = 2L

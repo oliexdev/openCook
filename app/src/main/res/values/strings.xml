@@ -91,6 +91,7 @@
     <string name="recipes_filter_title">Filter</string>
     <string name="recipes_filter_reset">Reset</string>
     <string name="recipes_filter_liked">Favorites only</string>
+    <string name="recipes_filter_cookable">Cookable now</string>
     <string name="recipes_filter_remove">Remove filter %1$s</string>
     <string name="recipe_delete">Delete</string>
     <string name="recipe_edit">Edit</string>
@@ -220,8 +221,6 @@
     <!-- Meal plan -->
     <string name="mealplan_title">Week plan</string>
     <string name="mealplan_to_shopping">Generate shopping list</string>
-    <string name="mealplan_add_recipe">Add recipe</string>
-    <string name="mealplan_smart_pick">Roll a matching dish</string>
     <string name="mealplan_pick_recipe">Choose recipe</string>
     <string name="mealplan_no_recipes">No recipes to plan yet.</string>
     <string name="mealplan_generated">Ingredients added to the shopping list</string>
@@ -240,8 +239,6 @@
     <string name="mealplan_pin">Pin (kept when rolling)</string>
     <string name="mealplan_unpin">Unpin</string>
     <string name="mealplan_reroll">Roll another dish</string>
-    <string name="mealplan_cooked">Cooked</string>
-    <string name="mealplan_uncooked">Not cooked after all</string>
 
     <!-- Meal-planner reasons (why a dish was picked) -->
     <string name="mealplan_reason_week_reuse">Uses up %1$s</string>
@@ -358,18 +355,6 @@
     <string name="import_share_fallback_name">Recipe</string>
 
     <!-- Home (Today) -->
-    <string name="home_title">Today</string>
-    <string name="home_welcome_title">Welcome to openCook</string>
-    <string name="home_welcome_msg">Add your first recipe — a photo is enough.</string>
-    <string name="home_add_first">Add your first recipe</string>
-    <string name="home_today_empty_title">Nothing planned for today yet.</string>
-    <string name="home_today_empty_msg">Get a week plan suggested or pick a recipe.</string>
-    <string name="home_plan_week">Plan the week</string>
-    <string name="home_quick_shopping">Shopping</string>
-    <string name="home_quick_plan">Plan</string>
-    <string name="home_quick_recipes">Recipes</string>
-    <string name="home_week_section">This week</string>
-    <string name="home_week_empty">No further dishes planned yet.</string>
 
     <!-- Recipes list -->
     <string name="recipes_add">Add recipe</string>
@@ -408,7 +393,6 @@
     <string name="notif_recipe_ready_body">Tap to review the recognized recipe.</string>
 
     <!-- Top-level navigation tabs -->
-    <string name="nav_home">Today</string>
     <string name="nav_plan">Plan</string>
     <string name="nav_shopping_short">Shopping</string>
     <string name="nav_more">More</string>
@@ -516,6 +500,20 @@
     <string name="mealtype_lunch">Lunch</string>
     <string name="mealtype_snack">Snack</string>
     <string name="mealtype_dinner">Dinner</string>
+    <!-- Short forms for the meal-plan slot column (44dp) — the long labels don't fit there. -->
+    <string name="mealtype_short_breakfast">Breakfast</string>
+    <string name="mealtype_short_lunch">Lunch</string>
+    <string name="mealtype_short_snack">Snack</string>
+    <string name="mealtype_short_dinner">Dinner</string>
+    <!-- Household setting: which meals are planned at all -->
+    <string name="household_planned_meals">Planned meals</string>
+    <string name="household_planned_meals_hint">At least one meal must stay active. You can still add any other meal for a single day from the week planner.</string>
+    <!-- Week planner: slots -->
+    <string name="mealplan_slot_add">Plan</string>
+    <string name="mealplan_slot_add_named">Plan %1$s</string>
+    <string name="mealplan_add_missing">Add missing items to the shopping list</string>
+    <string name="mealplan_slot_no_recipes">No %1$s recipes yet</string>
+    <string name="mealplan_fill_day">Fill this day</string>
 
     <!-- Generic -->
     <string name="action_ok">OK</string>
