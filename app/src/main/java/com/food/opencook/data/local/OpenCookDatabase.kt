@@ -21,6 +21,7 @@ package com.food.opencook.data.local
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.food.opencook.data.local.dao.GroceryOverrideDao
+import com.food.opencook.data.local.dao.IngredientLinkDao
 import com.food.opencook.data.local.dao.JobDao
 import com.food.opencook.data.local.dao.MealDayDao
 import com.food.opencook.data.local.dao.MealPlanDao
@@ -32,6 +33,7 @@ import com.food.opencook.data.local.dao.RecipeLikeDao
 import com.food.opencook.data.local.dao.ShoppingDao
 import com.food.opencook.data.local.entity.GroceryOverrideEntity
 import com.food.opencook.data.local.entity.ImageEntity
+import com.food.opencook.data.local.entity.IngredientLinkEntity
 import com.food.opencook.data.local.entity.MealDayEntity
 import com.food.opencook.data.local.entity.MealPlanEntity
 import com.food.opencook.data.local.entity.IngredientEntity
@@ -61,6 +63,7 @@ import com.food.opencook.data.local.entity.ShoppingItemEntity
         RecipeLikeEntity::class,
         ProductCacheEntity::class,
         GroceryOverrideEntity::class,
+        IngredientLinkEntity::class,
     ],
     // v1: the final, collapsed schema for the first public release. The dev-time
     // migration chain (2..17) was squashed here since no published version ever
@@ -69,7 +72,8 @@ import com.food.opencook.data.local.entity.ShoppingItemEntity
     // migrations from this version onward.
     // v2: recipes.mealTypes (nullable TEXT; null = "lunch + dinner" default).
     // v3: grocery_overrides (learned "name → aisle" corrections; synced).
-    version = 3,
+    // v4: ingredient_links (learned "not the same product" distinctions; synced).
+    version = 4,
     exportSchema = true,
 )
 abstract class OpenCookDatabase : RoomDatabase() {
@@ -83,4 +87,5 @@ abstract class OpenCookDatabase : RoomDatabase() {
     abstract fun recipeLikeDao(): RecipeLikeDao
     abstract fun productCacheDao(): ProductCacheDao
     abstract fun groceryOverrideDao(): GroceryOverrideDao
+    abstract fun ingredientLinkDao(): IngredientLinkDao
 }

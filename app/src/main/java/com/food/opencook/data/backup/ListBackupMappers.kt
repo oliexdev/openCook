@@ -19,6 +19,7 @@
 package com.food.opencook.data.backup
 
 import com.food.opencook.data.local.entity.GroceryOverrideEntity
+import com.food.opencook.data.local.entity.IngredientLinkEntity
 import com.food.opencook.data.local.entity.MealDayEntity
 import com.food.opencook.data.local.entity.MealPlanEntity
 import com.food.opencook.data.local.entity.PantryItemEntity
@@ -83,6 +84,20 @@ fun GroceryOverrideEntity.toBackup() = GroceryOverrideBackup(
 fun GroceryOverrideBackup.toEntity() = GroceryOverrideEntity(
     name = name,
     category = category,
+    updatedAt = updatedAt,
+)
+
+fun IngredientLinkEntity.toBackup() = IngredientLinkBackup(
+    nameA = nameA,
+    nameB = nameB,
+    kind = kind,
+    updatedAt = updatedAt,
+)
+
+fun IngredientLinkBackup.toEntity() = IngredientLinkEntity(
+    nameA = nameA,
+    nameB = nameB,
+    kind = kind,
     updatedAt = updatedAt,
 )
 

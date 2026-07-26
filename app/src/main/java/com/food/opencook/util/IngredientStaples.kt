@@ -67,6 +67,15 @@ object IngredientStaples {
     fun isStaple(name: String): Boolean = IngredientMatch.containsLike(ALL, name)
 
     /**
+     * Direct, **non-recursive** membership test for a single already-normalized head word.
+     * [IngredientMatch] uses this to gate its generalization rules (a generic head noun only
+     * covers a compound/variety when the head is itself a staple). It must NOT route back
+     * through [isStaple]/[IngredientMatch.covers], which would recurse endlessly
+     * (isStaple → containsLike → covers → matches → isStapleWord).
+     */
+    fun isStapleWord(normalizedWord: String): Boolean = ALL.contains(normalizedWord)
+
+    /**
      * Items that are seeded into a freshly-created household's pantry so the
      * user doesn't have to type every basic by hand. A subset of [ALL] — combo
      * forms ("salz und pfeffer"), tap-water ("wasser") and alternative

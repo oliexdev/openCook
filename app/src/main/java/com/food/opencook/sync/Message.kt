@@ -46,6 +46,7 @@ object SyncDatasets {
     const val MEAL_DAYS = "mealdays"
     const val RECIPE_LIKES = "recipe_likes"
     const val GROCERY_OVERRIDES = "grocery_overrides"
+    const val INGREDIENT_LINKS = "ingredient_links"
 
     /** Boolean column flipped to true to tombstone (delete) a row across all devices. */
     const val COLUMN_DELETED = "_deleted"

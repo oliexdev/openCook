@@ -75,6 +75,19 @@ class SettingsRepository @Inject constructor(
      */
     val localOnly: Flow<Boolean> = dataStore.data.map { it[LOCAL_ONLY] ?: false }
 
+    /** Whether the one-time swipe peek-hint has been shown — tracked per list, so both the
+     *  shopping list and the pantry each demonstrate the gesture once. */
+    val swipeHintSeenShopping: Flow<Boolean> = dataStore.data.map { it[SWIPE_HINT_SEEN_SHOPPING] ?: false }
+    val swipeHintSeenPantry: Flow<Boolean> = dataStore.data.map { it[SWIPE_HINT_SEEN_PANTRY] ?: false }
+
+    suspend fun setSwipeHintSeenShopping() {
+        dataStore.edit { it[SWIPE_HINT_SEEN_SHOPPING] = true }
+    }
+
+    suspend fun setSwipeHintSeenPantry() {
+        dataStore.edit { it[SWIPE_HINT_SEEN_PANTRY] = true }
+    }
+
     suspend fun setLocalOnly(enabled: Boolean) {
         dataStore.edit { it[LOCAL_ONLY] = enabled }
     }
@@ -207,6 +220,8 @@ class SettingsRepository @Inject constructor(
         val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
         val FONT_SCALE = floatPreferencesKey("font_scale")
         val LOCAL_ONLY = booleanPreferencesKey("local_only")
+        val SWIPE_HINT_SEEN_SHOPPING = booleanPreferencesKey("swipe_hint_seen_shopping")
+        val SWIPE_HINT_SEEN_PANTRY = booleanPreferencesKey("swipe_hint_seen_pantry")
         val CONTENT_LANGUAGE = stringPreferencesKey("content_language")
         val NODE_ID = stringPreferencesKey("node_id")
         val LAST_HLC = stringPreferencesKey("last_hlc")

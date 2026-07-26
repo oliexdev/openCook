@@ -31,7 +31,9 @@ import com.food.opencook.data.notification.JobNotifier
 import com.food.opencook.data.peer.PeerAdvertiser
 import com.food.opencook.data.remote.BaseUrlInterceptor
 import com.food.opencook.data.settings.SettingsRepository
+import com.food.opencook.repository.IngredientLinkRepository
 import com.food.opencook.sync.SyncManager
+import com.food.opencook.util.LearnedIngredientLinks
 import com.food.opencook.work.SyncWorker
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -52,6 +54,7 @@ class OpenCookApplication : Application(), Configuration.Provider {
     @Inject lateinit var syncManager: SyncManager
     @Inject lateinit var localizedLists: LocalizedLists
     @Inject lateinit var peerAdvertiser: PeerAdvertiser
+    @Inject lateinit var ingredientLinkRepository: IngredientLinkRepository
 
     private val appScope = CoroutineScope(SupervisorJob())
 
@@ -71,6 +74,15 @@ class OpenCookApplication : Application(), Configuration.Provider {
         // startup and whenever the household content language changes.
         settingsRepository.contentLanguage
             .onEach { localizedLists.reload() }
+            .launchIn(appScope)
+        // Mirror the household's learned "not the same product" distinctions into the
+        // in-memory holder that IngredientMatch consults (same pattern as the domain lists).
+        ingredientLinkRepository.observeLinks()
+            .onEach { links ->
+                LearnedIngredientLinks.setDistinct(
+                    links.filter { it.kind == "distinct" }.map { it.nameA to it.nameB },
+                )
+            }
             .launchIn(appScope)
         // Auto-sync while the app is alive: initial + periodic + after local changes.
         syncManager.start()

@@ -26,6 +26,7 @@ import com.food.opencook.data.local.OpenCookDatabase
 import com.food.opencook.data.local.RoomTransactor
 import com.food.opencook.data.local.Transactor
 import com.food.opencook.data.local.dao.GroceryOverrideDao
+import com.food.opencook.data.local.dao.IngredientLinkDao
 import com.food.opencook.data.local.dao.JobDao
 import com.food.opencook.data.local.dao.MealDayDao
 import com.food.opencook.data.local.dao.MealPlanDao
@@ -69,12 +70,23 @@ object DatabaseModule {
         }
     }
 
+    /** v3 → v4: the learned "not the same product" distinctions table (see IngredientLinkEntity). */
+    private val MIGRATION_3_4 = object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS ingredient_links(" +
+                    "nameA TEXT NOT NULL, nameB TEXT NOT NULL, kind TEXT NOT NULL, " +
+                    "updatedAt INTEGER NOT NULL, PRIMARY KEY(nameA, nameB))",
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): OpenCookDatabase =
         // v1 is the released baseline schema (see OpenCookDatabase).
         Room.databaseBuilder(context, OpenCookDatabase::class.java, "opencook.db")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .build()
 
     @Provides
@@ -106,4 +118,7 @@ object DatabaseModule {
 
     @Provides
     fun provideGroceryOverrideDao(database: OpenCookDatabase): GroceryOverrideDao = database.groceryOverrideDao()
+
+    @Provides
+    fun provideIngredientLinkDao(database: OpenCookDatabase): IngredientLinkDao = database.ingredientLinkDao()
 }

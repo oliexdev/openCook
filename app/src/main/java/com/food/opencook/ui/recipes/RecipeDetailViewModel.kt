@@ -83,7 +83,7 @@ class RecipeDetailViewModel @Inject constructor(
 
     /** Copy this recipe's ingredients onto the shopping list, skipping pantry staples. */
     fun addToShoppingList(onAdded: () -> Unit) = viewModelScope.launch {
-        recipe.value?.let { shoppingRepository.addFromRecipe(it, pantryRepository.stockedNames()) }
+        recipe.value?.let { shoppingRepository.addFromRecipe(it) }
         onAdded()
     }
 

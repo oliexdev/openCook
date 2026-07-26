@@ -49,6 +49,7 @@ object BackupFormat {
     const val PANTRY = "pantry.json"
     const val MEALPLAN = "mealplan.json"
     const val GROCERY_OVERRIDES = "grocery_overrides.json"
+    const val INGREDIENT_LINKS = "ingredient_links.json"
     const val IMAGES_DIR = "images/"
 
     const val MIME = "application/zip"
@@ -59,7 +60,7 @@ object BackupFormat {
     const val MAX_TOTAL_BYTES = 4L * 1024 * 1024 * 1024
 
     private val IMAGE_ENTRY = Regex("""^images/[A-Za-z0-9._-]{1,80}\.jpg$""")
-    private val JSON_ENTRY = Regex("""^(manifest|recipes|shopping|pantry|mealplan|grocery_overrides)\.json$""")
+    private val JSON_ENTRY = Regex("""^(manifest|recipes|shopping|pantry|mealplan|grocery_overrides|ingredient_links)\.json$""")
 
     /**
      * Whether [name] is an entry we are willing to read. Rejects path traversal
@@ -100,6 +101,8 @@ data class BackupCounts(
     val mealDays: Int = 0,
     /** Learned "name → aisle" corrections (absent in pre-existing archives). */
     val groceryOverrides: Int = 0,
+    /** Learned "not the same product" distinctions (absent in pre-existing archives). */
+    val ingredientLinks: Int = 0,
 )
 
 // --- The lists. schema.org has no meaningful vocabulary for these, so rather than
@@ -153,6 +156,21 @@ data class GroceryOverridesBackup(
 data class GroceryOverrideBackup(
     val name: String,
     val category: String,
+    val updatedAt: Long = 0,
+)
+
+@Serializable
+data class IngredientLinksBackup(
+    val formatVersion: Int = BackupFormat.VERSION,
+    val items: List<IngredientLinkBackup> = emptyList(),
+)
+
+/** One learned "not the same product" distinction (see IngredientLinkEntity). */
+@Serializable
+data class IngredientLinkBackup(
+    val nameA: String,
+    val nameB: String,
+    val kind: String,
     val updatedAt: Long = 0,
 )
 

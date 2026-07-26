@@ -33,7 +33,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -42,9 +41,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.MoreVert
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -57,12 +60,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -79,9 +84,11 @@ import androidx.compose.ui.draganddrop.DragAndDropTransferData
 import androidx.compose.ui.draganddrop.mimeTypes
 import androidx.compose.ui.draganddrop.toAndroidDragEvent
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
@@ -95,6 +102,9 @@ import com.food.opencook.data.local.entity.ShoppingItemEntity
 import com.food.opencook.ui.components.CategoryHeader
 import com.food.opencook.ui.components.ConfettiOverlay
 import com.food.opencook.ui.components.KeepScreenOn
+import com.food.opencook.ui.components.SwipeActionRow
+import com.food.opencook.ui.components.SwipeConfirmEvent
+import com.food.opencook.ui.components.SwipeConfirmLayer
 import com.food.opencook.ui.theme.Spacing
 import com.food.opencook.util.GroceryCategories
 import com.food.opencook.util.GroceryCategory
@@ -115,8 +125,17 @@ fun ShoppingListBody(
     // (Portrait-locking on phones is handled once at the hub level, covering both segments.)
     KeepScreenOn()
     val items by viewModel.items.collectAsStateWithLifecycle()
+    val skipped by viewModel.skippedItems.collectAsStateWithLifecycle()
     val allChecked by viewModel.allChecked.collectAsStateWithLifecycle()
-    val notFound by viewModel.notFound.collectAsStateWithLifecycle()
+    val swipeHintSeen by viewModel.swipeHintSeen.collectAsStateWithLifecycle()
+    // Confirmation-glow overlay, hosted at list level so it outlives the removed row.
+    var swipeEvent by remember { mutableStateOf<SwipeConfirmEvent?>(null) }
+    var swipeTick by remember { mutableIntStateOf(0) }
+    var listBoxOffset by remember { mutableStateOf(Offset.Zero) }
+    val onSwipeConfirm: (Boolean, Rect) -> Unit = { deleting, bounds ->
+        swipeTick += 1
+        swipeEvent = SwipeConfirmEvent(bounds, deleting, swipeTick)
+    }
 
     // Confetti only on a genuine finish: arm once there are open items, fire when they all
     // become checked. Re-opening an already-complete list never arms (no open items were
@@ -140,14 +159,19 @@ fun ShoppingListBody(
     val deleteWithUndo: (ShoppingItemEntity) -> Unit = { item ->
         viewModel.delete(item.id)
         scope.launch {
-            if (snackbar.showSnackbar(deletedMsg, undoMsg, withDismissAction = true, duration = SnackbarDuration.Long) == SnackbarResult.ActionPerformed) viewModel.restore(item)
+            if (snackbar.showSnackbar(deletedMsg, undoMsg, withDismissAction = true, duration = SnackbarDuration.Short) == SnackbarResult.ActionPerformed) viewModel.restore(item)
         }
+    }
+    val movedToPantryMsg = stringResource(R.string.shopping_moved_to_pantry)
+    val alreadyHomeWithHint: (ShoppingItemEntity) -> Unit = { item ->
+        viewModel.markAlreadyAtHome(item)
+        scope.launch { snackbar.showSnackbar(movedToPantryMsg) }
     }
     val adaptedMsg = stringResource(R.string.shopping_adapted)
     val adaptWithUndo: (ShoppingItemEntity) -> Unit = { item ->
-        viewModel.adaptItem(item.id)
+        viewModel.setChecked(item.id, true)
         scope.launch {
-            if (snackbar.showSnackbar(adaptedMsg, undoMsg, withDismissAction = true, duration = SnackbarDuration.Long) == SnackbarResult.ActionPerformed) {
+            if (snackbar.showSnackbar(adaptedMsg, undoMsg, withDismissAction = true, duration = SnackbarDuration.Short) == SnackbarResult.ActionPerformed) {
                 viewModel.setChecked(item.id, false)
             }
         }
@@ -156,7 +180,7 @@ fun ShoppingListBody(
     // Cap the content width on tablets/landscape and centre it, so the item name and
     // its action menu stay close together — a full-width row pushed the menu to the far
     // edge and made it easy to delete the wrong line. On phones this is a no-op.
-    Box(modifier.fillMaxSize()) {
+    Box(modifier.fillMaxSize().onGloballyPositioned { listBoxOffset = it.positionInRoot() }) {
     Column(
         Modifier.fillMaxSize().padding(horizontal = Spacing.screen),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -186,6 +210,8 @@ fun ShoppingListBody(
             val overrides by viewModel.overrides.collectAsStateWithLifecycle()
             val grouped = visible.groupBy { GroceryCategories.categorize(it.item.text, overrides) }
                 .toList().sortedBy { it.first.ordinal }
+            // The very first row peeks its swipe action once (one-time discoverability hint).
+            val firstRowId = grouped.firstOrNull()?.second?.firstOrNull()?.item?.id
             // Every list key (headers + rows) → its section's category, for drop hit-testing.
             val keyCategory = buildMap {
                 grouped.forEach { (category, list) ->
@@ -257,6 +283,16 @@ fun ShoppingListBody(
                 }
             }
 
+            // Recipe items the pantry (apparently) covered, hidden from the list but shown
+            // here so a wrong skip is visible and recoverable. Staples are never listed.
+            if (searchQuery == null && skipped.isNotEmpty()) {
+                SkippedChip(
+                    skipped = skipped,
+                    onKeep = { viewModel.keepAnyway(it) },
+                    modifier = Modifier.widthIn(max = 640.dp).fillMaxWidth(),
+                )
+            }
+
             LazyColumn(
                 state = listState,
                 modifier = Modifier.widthIn(max = 640.dp).fillMaxSize()
@@ -285,9 +321,15 @@ fun ShoppingListBody(
                         ShoppingRow(
                             row = row,
                             onToggle = { viewModel.setChecked(item.id, it) },
-                            onAlreadyHome = { viewModel.markAlreadyAtHome(item) },
-                            onNotFound = { viewModel.openNotFound(item) },
+                            onAlreadyHome = { alreadyHomeWithHint(item) },
+                            onMarkDone = { adaptWithUndo(item) },
                             onDelete = { deleteWithUndo(item) },
+                            onSwipeAlreadyHome = { viewModel.markAlreadyAtHome(item) },
+                            onSwipeDelete = { viewModel.delete(item.id) },
+                            onConfirm = onSwipeConfirm,
+                            modifier = Modifier.animateItem(),
+                            peek = !swipeHintSeen && item.id == firstRowId,
+                            onPeekShown = { viewModel.markSwipeHintSeen() },
                         )
                     }
                 }
@@ -298,18 +340,13 @@ fun ShoppingListBody(
         // Drawn above the list (and not intercepting taps) so the burst rains over the whole
         // screen the moment the last item is checked off.
         ConfettiOverlay(visible = showConfetti, onFinished = { showConfetti = false })
-    }
-
-    notFound?.let { state ->
-        NotFoundDialog(
-            state = state,
-            onLater = viewModel::dismissNotFound,
-            onReplace = viewModel::findAlternatives,
-            onAdapt = { adaptWithUndo(state.item) },
-            onPick = viewModel::replaceWith,
-            onDismiss = viewModel::dismissNotFound,
+        SwipeConfirmLayer(
+            event = swipeEvent,
+            boxOffsetInRoot = listBoxOffset,
+            addLabel = stringResource(R.string.swipe_to_pantry),
         )
     }
+
 }
 
 @Composable
@@ -347,6 +384,56 @@ private fun AllBoughtBanner(onCheckout: () -> Unit, modifier: Modifier = Modifie
     }
 }
 
+/**
+ * Collapsible "N im Vorrat übersprungen" chip: recipe items the pantry covered and thus hid
+ * from the list. Tapping "brauch ich doch" teaches the household that this item and the
+ * covering pantry stock are different products, so the item returns to the list.
+ */
+@Composable
+private fun SkippedChip(
+    skipped: List<SkippedItemUi>,
+    onKeep: (SkippedItemUi) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Surface(
+        modifier = modifier.padding(vertical = Spacing.xs),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+    ) {
+        Column(Modifier.fillMaxWidth().padding(vertical = Spacing.xs)) {
+            Row(
+                Modifier.fillMaxWidth().clickable { expanded = !expanded }
+                    .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                    contentDescription = null,
+                )
+                Text(
+                    stringResource(R.string.shopping_skipped_chip, skipped.size),
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(start = Spacing.sm),
+                )
+            }
+            if (expanded) {
+                skipped.forEach { s ->
+                    Row(
+                        Modifier.fillMaxWidth().padding(start = Spacing.lg, end = Spacing.sm),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(s.text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { onKeep(s) }) {
+                            Text(stringResource(R.string.shopping_need_anyway))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 // Block-based dragAndDropSource is deprecated but is the only variant that triggers on a
 // real long-press (the plain-drag overloads fight the LazyColumn scroll) — same reasoning
 // as the meal planner's PlannedRow.
@@ -356,138 +443,105 @@ private fun AllBoughtBanner(onCheckout: () -> Unit, modifier: Modifier = Modifie
 private fun ShoppingRow(
     row: ShoppingRowUi,
     onToggle: (Boolean) -> Unit,
+    // Menu callbacks keep their snackbar/undo (no overlay there); swipe callbacks are plain
+    // (the confirmation overlay is the feedback, no snackbar on swipe).
     onAlreadyHome: () -> Unit,
-    onNotFound: () -> Unit,
+    onMarkDone: () -> Unit,
     onDelete: () -> Unit,
+    onSwipeAlreadyHome: () -> Unit,
+    onSwipeDelete: () -> Unit,
+    onConfirm: (deleting: Boolean, boundsInRoot: Rect) -> Unit,
+    modifier: Modifier = Modifier,
+    peek: Boolean = false,
+    onPeekShown: () -> Unit = {},
 ) {
     val item = row.item
     var menuOpen by remember { mutableStateOf(false) }
     // Captured here because the drag-shadow lambda below runs in DrawScope (no theme access).
     val shadowColor = MaterialTheme.colorScheme.primaryContainer
-    // Each line is its own card so it reads as one bounded tap target — important on
-    // wide screens where name and action menu would otherwise sit far apart.
-    Card(
-        Modifier.fillMaxWidth().padding(vertical = Spacing.xs),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    // Swipe is an accelerator: left = delete, right = "already at home" (→ pantry). The
+    // visible icon buttons keep both actions discoverable; the ⋮ holds the rare "not found".
+    SwipeActionRow(
+        onDelete = onSwipeDelete,
+        onAction = onSwipeAlreadyHome,
+        actionIcon = Icons.Outlined.Home,
+        actionLabel = stringResource(R.string.shopping_already_home),
+        onConfirm = onConfirm,
+        modifier = modifier.padding(vertical = Spacing.xs),
+        peek = peek,
+        onPeekShown = onPeekShown,
     ) {
-    Row(
-        Modifier.fillMaxWidth()
-            // ONE detector for both gestures (a separate .clickable would swallow the
-            // long-press): tap toggles the checkmark, long-press lifts the line as a
-            // drag source — dropping it on another aisle teaches the categorization.
-            .dragAndDropSource(
-                drawDragDecoration = {
-                    drawRoundRect(color = shadowColor, cornerRadius = CornerRadius(12.dp.toPx()))
-                },
-                block = {
-                    detectTapGestures(
-                        onTap = { onToggle(!item.checked) },
-                        onLongPress = {
-                            startTransfer(
-                                DragAndDropTransferData(ClipData.newPlainText("grocery", item.text)),
+        // Each line is its own card so it reads as one bounded tap target — important on
+        // wide screens where name and actions would otherwise sit far apart.
+        Card(
+            Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        ) {
+            Row(
+                Modifier.fillMaxWidth()
+                    // ONE detector for both gestures (a separate .clickable would swallow the
+                    // long-press): tap toggles the checkmark, long-press lifts the line as a
+                    // drag source — dropping it on another aisle teaches the categorization.
+                    .dragAndDropSource(
+                        drawDragDecoration = {
+                            drawRoundRect(color = shadowColor, cornerRadius = CornerRadius(12.dp.toPx()))
+                        },
+                        block = {
+                            detectTapGestures(
+                                onTap = { onToggle(!item.checked) },
+                                onLongPress = {
+                                    startTransfer(
+                                        DragAndDropTransferData(ClipData.newPlainText("grocery", item.text)),
+                                    )
+                                },
                             )
                         },
                     )
-                },
-            )
-            .padding(vertical = 2.dp, horizontal = Spacing.xs),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Checkbox(checked = item.checked, onCheckedChange = onToggle)
-        Column(Modifier.weight(1f)) {
-            Text(
-                text = Numbers.displayIngredient(item.quantity, item.unit, item.text),
-                style = MaterialTheme.typography.bodyLarge,
-                textDecoration = if (item.checked) TextDecoration.LineThrough else null,
-                color = if (item.checked) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface,
-            )
-            if (row.recipeNames.isNotEmpty()) {
-                Text(
-                    text = stringResource(R.string.shopping_needed_for, row.recipeNames.joinToString(", ")),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        Box {
-            IconButton(onClick = { menuOpen = true }) {
-                Icon(Icons.Outlined.MoreVert, contentDescription = stringResource(R.string.shopping_actions))
-            }
-            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                if (!item.checked) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.shopping_already_home)) },
-                        onClick = { menuOpen = false; onAlreadyHome() },
+                    .padding(vertical = 2.dp, horizontal = Spacing.xs),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Checkbox(checked = item.checked, onCheckedChange = onToggle)
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = Numbers.displayIngredient(item.quantity, item.unit, item.text),
+                        style = MaterialTheme.typography.bodyLarge,
+                        textDecoration = if (item.checked) TextDecoration.LineThrough else null,
+                        color = if (item.checked) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface,
                     )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.shopping_not_found)) },
-                        onClick = { menuOpen = false; onNotFound() },
-                    )
-                }
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.shopping_delete)) },
-                    onClick = { menuOpen = false; onDelete() },
-                )
-            }
-        }
-    }
-    }
-}
-
-@Composable
-private fun NotFoundDialog(
-    state: NotFoundUi,
-    onLater: () -> Unit,
-    onReplace: () -> Unit,
-    onAdapt: () -> Unit,
-    onPick: (String) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.shopping_nf_title, state.item.text)) },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.processing_cancel)) }
-        },
-        text = {
-            if (!state.searched) {
-                Column {
-                    TextButton(onClick = onLater, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.shopping_nf_later))
-                    }
-                    if (state.canReplace) {
-                        TextButton(onClick = onReplace, modifier = Modifier.fillMaxWidth()) {
-                            Text(stringResource(R.string.shopping_nf_replace))
-                        }
-                    } else {
+                    if (row.recipeNames.isNotEmpty()) {
                         Text(
-                            stringResource(R.string.shopping_nf_manual),
+                            text = stringResource(R.string.shopping_needed_for, row.recipeNames.joinToString(", ")),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline,
-                            modifier = Modifier.padding(vertical = 8.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    TextButton(onClick = onAdapt, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.shopping_nf_adapt))
-                    }
                 }
-            } else if (state.suggestions.isEmpty()) {
-                Text(stringResource(R.string.shopping_nf_no_alt))
-            } else {
-                Column {
-                    Text(stringResource(R.string.shopping_nf_pick), style = MaterialTheme.typography.titleSmall)
-                    LazyColumn(Modifier.heightIn(max = 320.dp)) {
-                        items(state.suggestions, key = { it.id }) { suggestion ->
-                            Text(
-                                suggestion.name,
-                                style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.fillMaxWidth().clickable { onPick(suggestion.id) }.padding(vertical = 12.dp),
+                // Single overflow with the full action list; swipe accelerates delete + "→ pantry".
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(Icons.Outlined.MoreVert, contentDescription = stringResource(R.string.shopping_actions))
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        if (!item.checked) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.shopping_already_home)) },
+                                leadingIcon = { Icon(Icons.Outlined.Home, contentDescription = null) },
+                                onClick = { menuOpen = false; onAlreadyHome() },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.shopping_nf_adapt)) },
+                                leadingIcon = { Icon(Icons.Outlined.Check, contentDescription = null) },
+                                onClick = { menuOpen = false; onMarkDone() },
                             )
                         }
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.shopping_delete)) },
+                            leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null) },
+                            onClick = { menuOpen = false; onDelete() },
+                        )
                     }
                 }
             }
-        },
-    )
+        }
+    }
 }

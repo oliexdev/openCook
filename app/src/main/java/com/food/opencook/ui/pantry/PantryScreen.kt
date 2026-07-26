@@ -38,9 +38,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.AddShoppingCart
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -52,8 +56,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -64,9 +70,11 @@ import androidx.compose.ui.draganddrop.DragAndDropTransferData
 import androidx.compose.ui.draganddrop.mimeTypes
 import androidx.compose.ui.draganddrop.toAndroidDragEvent
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
@@ -75,6 +83,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import com.food.opencook.R
 import com.food.opencook.ui.components.CategoryHeader
+import com.food.opencook.ui.components.SwipeActionRow
+import com.food.opencook.ui.components.SwipeConfirmEvent
+import com.food.opencook.ui.components.SwipeConfirmLayer
 import com.food.opencook.ui.theme.Spacing
 import com.food.opencook.util.GroceryCategories
 import com.food.opencook.util.GroceryCategory
@@ -93,9 +104,19 @@ fun PantryBody(
     modifier: Modifier = Modifier,
 ) {
     val items by viewModel.items.collectAsStateWithLifecycle()
+    val swipeHintSeen by viewModel.swipeHintSeen.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
+    // Confirmation-glow overlay, hosted at list level so it outlives the removed row.
+    var swipeEvent by remember { mutableStateOf<SwipeConfirmEvent?>(null) }
+    var swipeTick by remember { mutableIntStateOf(0) }
+    var listBoxOffset by remember { mutableStateOf(Offset.Zero) }
+    val onSwipeConfirm: (Boolean, Rect) -> Unit = { deleting, bounds ->
+        swipeTick += 1
+        swipeEvent = SwipeConfirmEvent(bounds, deleting, swipeTick)
+    }
     val deletedMsg = stringResource(R.string.deleted)
     val undoMsg = stringResource(R.string.undo)
+    val addedToShoppingMsg = stringResource(R.string.shopping_added)
     // Scrolling the list dismisses the keyboard (e.g. while searching), so it doesn't cover results.
     val listState = rememberLazyListState()
     val keyboard = LocalSoftwareKeyboardController.current
@@ -103,8 +124,9 @@ fun PantryBody(
         if (listState.isScrollInProgress) keyboard?.hide()
     }
 
+    Box(modifier.fillMaxSize().onGloballyPositioned { listBoxOffset = it.positionInRoot() }) {
     Column(
-        modifier.fillMaxSize().padding(horizontal = Spacing.screen),
+        Modifier.fillMaxSize().padding(horizontal = Spacing.screen),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         val visible = if (searchQuery.isNullOrBlank()) items
@@ -124,6 +146,8 @@ fun PantryBody(
             val overrides by viewModel.overrides.collectAsStateWithLifecycle()
             val grouped = visible.groupBy { GroceryCategories.categorize(it.name, overrides) }
                 .toList().sortedBy { it.first.ordinal }
+            // The very first row peeks its swipe action once (one-time discoverability hint).
+            val firstRowId = grouped.firstOrNull()?.second?.firstOrNull()?.id
             // Every list key (headers + rows) → its section's category, for drop hit-testing.
             val keyCategory = buildMap {
                 grouped.forEach { (category, list) ->
@@ -220,10 +244,22 @@ fun PantryBody(
                     items(list, key = { it.id }) { item ->
                         PantryRow(
                             name = item.name,
+                            onConfirm = onSwipeConfirm,
+                            modifier = Modifier.animateItem(),
+                            peek = !swipeHintSeen && item.id == firstRowId,
+                            onPeekShown = { viewModel.markSwipeHintSeen() },
+                            // Swipe: plain, no snackbar (overlay is the feedback).
+                            onSwipeAddToShopping = { viewModel.addToShopping(item.name) },
+                            onSwipeDelete = { viewModel.delete(item.id) },
+                            // Menu: keep snackbar feedback / undo.
+                            onAddToShopping = {
+                                viewModel.addToShopping(item.name)
+                                scope.launch { snackbar.showSnackbar(addedToShoppingMsg) }
+                            },
                             onDelete = {
                                 viewModel.delete(item.id)
                                 scope.launch {
-                                    if (snackbar.showSnackbar(deletedMsg, undoMsg, withDismissAction = true, duration = SnackbarDuration.Long) == SnackbarResult.ActionPerformed) {
+                                    if (snackbar.showSnackbar(deletedMsg, undoMsg, withDismissAction = true, duration = SnackbarDuration.Short) == SnackbarResult.ActionPerformed) {
                                         viewModel.restore(item)
                                     }
                                 }
@@ -235,6 +271,12 @@ fun PantryBody(
             }
         }
     }
+        SwipeConfirmLayer(
+            event = swipeEvent,
+            boxOffsetInRoot = listBoxOffset,
+            addLabel = stringResource(R.string.swipe_to_shopping),
+        )
+    }
 }
 
 // Block-based dragAndDropSource is deprecated but is the only variant that triggers on a
@@ -243,42 +285,86 @@ fun PantryBody(
 @Suppress("DEPRECATION")
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun PantryRow(name: String, onDelete: () -> Unit) {
+private fun PantryRow(
+    name: String,
+    // Menu callbacks keep their snackbar (no overlay there); swipe callbacks are plain
+    // (the confirmation overlay is the feedback, no snackbar on swipe).
+    onAddToShopping: () -> Unit,
+    onDelete: () -> Unit,
+    onSwipeAddToShopping: () -> Unit,
+    onSwipeDelete: () -> Unit,
+    onConfirm: (deleting: Boolean, boundsInRoot: Rect) -> Unit,
+    modifier: Modifier = Modifier,
+    peek: Boolean = false,
+    onPeekShown: () -> Unit = {},
+) {
     // Captured here because the drag-shadow lambda below runs in DrawScope (no theme access).
     val shadowColor = MaterialTheme.colorScheme.primaryContainer
-    // Same card chrome as a shopping-list row, so the two views match.
-    Card(
-        Modifier.fillMaxWidth().padding(vertical = Spacing.xs),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    // Left swipe = delete, right swipe = onto the shopping list (see SwipeActionRow). The full
+    // action list also lives in the row's ⋮ menu, so swipe is only an accelerator.
+    // actionRemovesRow = false: the pantry keeps the item (it's still in stock), so the right
+    // swipe snaps back rather than sliding off.
+    SwipeActionRow(
+        onDelete = onSwipeDelete,
+        onAction = onSwipeAddToShopping,
+        actionIcon = Icons.Outlined.AddShoppingCart,
+        actionLabel = stringResource(R.string.shopping_add_from_recipe),
+        onConfirm = onConfirm,
+        modifier = modifier.padding(vertical = Spacing.xs),
+        actionRemovesRow = false,
+        peek = peek,
+        onPeekShown = onPeekShown,
     ) {
-        Row(
-            Modifier.fillMaxWidth()
-                // Long-press lifts the line as a drag source — dropping it on another
-                // aisle teaches the categorization (pantry rows have no tap action).
-                .dragAndDropSource(
-                    drawDragDecoration = {
-                        drawRoundRect(color = shadowColor, cornerRadius = CornerRadius(12.dp.toPx()))
-                    },
-                    block = {
-                        detectTapGestures(
-                            onLongPress = {
-                                startTransfer(
-                                    DragAndDropTransferData(ClipData.newPlainText("grocery", name)),
-                                )
-                            },
-                        )
-                    },
-                )
-                .padding(vertical = 2.dp, horizontal = Spacing.xs),
-            verticalAlignment = Alignment.CenterVertically,
+        // Same card chrome as a shopping-list row, so the two views match.
+        Card(
+            Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         ) {
-            Text(
-                name,
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.weight(1f).padding(start = Spacing.sm),
-            )
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.shopping_delete))
+            Row(
+                Modifier.fillMaxWidth()
+                    // Long-press lifts the line as a drag source — dropping it on another
+                    // aisle teaches the categorization.
+                    .dragAndDropSource(
+                        drawDragDecoration = {
+                            drawRoundRect(color = shadowColor, cornerRadius = CornerRadius(12.dp.toPx()))
+                        },
+                        block = {
+                            detectTapGestures(
+                                onLongPress = {
+                                    startTransfer(
+                                        DragAndDropTransferData(ClipData.newPlainText("grocery", name)),
+                                    )
+                                },
+                            )
+                        },
+                    )
+                    .padding(vertical = 2.dp, horizontal = Spacing.xs),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f).padding(start = Spacing.sm),
+                )
+                // Single overflow with the full action list; swipe accelerates the same two.
+                var menuOpen by remember { mutableStateOf(false) }
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(Icons.Outlined.MoreVert, contentDescription = stringResource(R.string.shopping_actions))
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.shopping_add_from_recipe)) },
+                            leadingIcon = { Icon(Icons.Outlined.AddShoppingCart, contentDescription = null) },
+                            onClick = { menuOpen = false; onAddToShopping() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.shopping_delete)) },
+                            leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null) },
+                            onClick = { menuOpen = false; onDelete() },
+                        )
+                    }
+                }
             }
         }
     }

@@ -19,6 +19,7 @@
 package com.food.opencook
 
 import com.food.opencook.util.IngredientMatch
+import com.food.opencook.util.LearnedIngredientLinks
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -48,13 +49,19 @@ class IngredientMatchTest {
     }
 
     @Test
-    fun compoundNounHeadMatches() {
-        // German compound nouns: head is on the right — having "Mehl" covers "Weizenmehl".
+    fun compoundNounHeadMatchesOnlyForStapleHeads() {
+        // German compound nouns: head is on the right. We only generalize by the head when
+        // that head is a *staple* — "Mehl"/"Öl"/"Salz" are, so their varieties collapse.
         assertTrue(IngredientMatch.matches("Mehl", "Weizenmehl"))
         assertTrue(IngredientMatch.matches("Weizenmehl", "Mehl"))
         assertTrue(IngredientMatch.matches("Salz", "Meersalz"))
-        assertTrue(IngredientMatch.matches("Brot", "Vollkornbrot"))
+        assertTrue(IngredientMatch.matches("Brühe", "Gemüsebrühe"))
         assertTrue(IngredientMatch.containsLike(setOf("mehl"), "Weizenmehl"))
+        // A non-staple head does NOT generalize: distinct products that merely share a
+        // suffix must stay apart (this is the fix for the reported bug).
+        assertFalse(IngredientMatch.matches("Erbsen", "Kichererbsen"))
+        assertFalse(IngredientMatch.matches("Milch", "Buttermilch"))
+        assertFalse(IngredientMatch.matches("Brot", "Vollkornbrot"))
     }
 
     @Test
@@ -71,14 +78,61 @@ class IngredientMatchTest {
     }
 
     @Test
-    fun pantryGenericCoversSpecificIngredient() {
-        // Generic pantry noun covers the adjective-qualified recipe form.
+    fun pantryStapleGenericCoversSpecificIngredient() {
+        // A *staple* generic pantry noun covers the adjective-qualified recipe form —
+        // having pepper means you don't buy a more specific pepper.
         assertTrue(IngredientMatch.covers("Pfeffer", "schwarzer Pfeffer"))
         assertTrue(IngredientMatch.covers("Muskatnuss", "geriebene Muskatnuss"))
-        assertTrue(IngredientMatch.covers("Paprika", "rote Paprika"))
-        assertTrue(IngredientMatch.covers("paprika", "Rote Paprika")) // case-insensitive
+        assertTrue(IngredientMatch.covers("Öl", "kaltgepresstes Öl"))
         // Covers also works through covers() → containsLike, the shopping-list pantry filter.
         assertTrue(IngredientMatch.containsLike(setOf("pfeffer"), "schwarzer Pfeffer"))
+    }
+
+    @Test
+    fun pantryNonStapleGenericDoesNotCoverNamedVariety() {
+        // The reported bug: generic "Bohnen" in the pantry must NOT drop "weiße Bohnen"
+        // from the list — a named variety of a non-staple stays on the list to buy.
+        assertFalse(IngredientMatch.covers("Bohnen", "weiße Bohnen"))
+        assertFalse(IngredientMatch.covers("Paprika", "rote Paprika"))
+        assertFalse(IngredientMatch.containsLike(setOf("bohnen"), "weiße Bohnen"))
+    }
+
+    @Test
+    fun curatedDistinctPairsAreNeverMerged() {
+        assertFalse(IngredientMatch.matches("Kichererbsen", "Erbsen"))
+        assertFalse(IngredientMatch.matches("Buttermilch", "Milch"))
+        assertFalse(IngredientMatch.covers("Zucker", "Puderzucker"))
+        assertFalse(IngredientMatch.covers("Zucker", "brauner Zucker"))
+    }
+
+    @Test
+    fun curatedSynonymsMatch() {
+        assertTrue(IngredientMatch.matches("Frühlingszwiebel", "Lauchzwiebel"))
+        assertTrue(IngredientMatch.matches("passierte Tomaten", "Passata"))
+        assertTrue(IngredientMatch.containsLike(setOf("lauchzwiebel"), "Frühlingszwiebeln"))
+    }
+
+    @Test
+    fun leakedLeadingAmountsAreStripped() {
+        // The staple/coverage checks must fire even when a quantity leaked into the name.
+        assertTrue(IngredientMatch.matches("3 Löffel Öl", "Öl"))
+        assertTrue(IngredientMatch.matches("etwas Öl", "Öl"))
+        assertTrue(IngredientMatch.matches("eine Prise Salz", "Salz"))
+        assertTrue(IngredientMatch.matches("2 EL Olivenöl", "Olivenöl"))
+    }
+
+    @Test
+    fun learnedDistinctionBlocksCoverage() {
+        try {
+            // Before the lesson, a staple head generalizes to its compound variety.
+            assertTrue(IngredientMatch.covers("Mehl", "Vollkornmehl"))
+            LearnedIngredientLinks.setDistinct(listOf("Vollkornmehl" to "Mehl"))
+            // After the lesson, coverage is blocked in both directions.
+            assertFalse(IngredientMatch.covers("Mehl", "Vollkornmehl"))
+            assertFalse(IngredientMatch.matches("Vollkornmehl", "Mehl"))
+        } finally {
+            LearnedIngredientLinks.setDistinct(emptyList())
+        }
     }
 
     @Test

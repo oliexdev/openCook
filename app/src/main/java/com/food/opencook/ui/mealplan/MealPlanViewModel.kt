@@ -27,6 +27,7 @@ import com.food.opencook.repository.RecipeRepository
 import com.food.opencook.repository.ShoppingRepository
 import com.food.opencook.util.DateLabels
 import com.food.opencook.util.IngredientMatch
+import com.food.opencook.util.IngredientStaples
 import com.food.opencook.util.WeekDates
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -109,7 +110,13 @@ class MealPlanViewModel @Inject constructor(
                         entries = entries.filter { it.date == key }.map { entry ->
                             val recipe = byId[entry.recipeId]
                             val missingItems = recipe?.ingredients?.mapNotNull { ing ->
-                                ing.name.trim().takeIf { it.isNotEmpty() && !IngredientMatch.containsLike(pantryNames, it) }
+                                // Staples count as always on hand (same rule as the shopping list),
+                                // so "Alles da" isn't spoiled by salt/oil not sitting in the pantry.
+                                ing.name.trim().takeIf {
+                                    it.isNotEmpty() &&
+                                        !IngredientStaples.isStaple(it) &&
+                                        !IngredientMatch.containsLike(pantryNames, it)
+                                }
                             }.orEmpty()
                             PlannedRecipe(
                                 entryId = entry.id,
@@ -296,19 +303,19 @@ class MealPlanViewModel @Inject constructor(
     fun generateShoppingList(onDone: () -> Unit) = viewModelScope.launch {
         _generating.value = true
         try {
-            val pantry = pantryRepository.stockedNames()
             val householdSize = settingsRepository.householdSizeOnce()
             // Always scoped to the currently-visible week: "what you see is what you shop for".
             val dateKeys = currentDateKeys()
             // One contribution per (recipe, day) so items carry their planned-day provenance.
             // Skip days already confirmed cooked — that meal happened, no need to shop for it.
+            // Pantry-covered / staple items are filtered at the view layer, not here.
             mealPlanRepository.getForDates(dateKeys)
                 .filter { it.cookedAt == null }
                 .distinctBy { it.recipeId to it.date }
                 .forEach { entry ->
                     recipeRepository.getRecipeOnce(entry.recipeId)?.let { recipe ->
                         val scale = com.food.opencook.util.Numbers.scaleFor(recipe.recipe.servings, householdSize)
-                        shoppingRepository.addFromRecipe(recipe, pantry, sourceDate = entry.date, scale = scale)
+                        shoppingRepository.addFromRecipe(recipe, sourceDate = entry.date, scale = scale)
                     }
                 }
             onDone()

@@ -21,7 +21,6 @@ package com.food.opencook.repository
 import com.food.opencook.data.local.dao.ShoppingDao
 import com.food.opencook.data.local.entity.ShoppingItemEntity
 import com.food.opencook.data.local.relation.RecipeWithDetails
-import com.food.opencook.util.IngredientMatch
 import com.food.opencook.util.Numbers
 import com.food.opencook.sync.MessageRecorder
 import com.food.opencook.sync.ShoppingMessageEncoder
@@ -171,14 +170,16 @@ class ShoppingRepository @Inject constructor(
     }
 
     /**
-     * Add a recipe's ingredients to the list (amount → quantity), skipping any
-     * whose name is already in the pantry ([skipNames], lower-cased). [sourceDate]
-     * tags the items with their planned day so the "not found" flow can find the
-     * dish to replace.
+     * Add a recipe's ingredients to the list (amount → quantity). [sourceDate] tags the
+     * items with their planned day so the "not found" flow can find the dish to replace.
+     *
+     * All ingredients become rows — pantry-covered and staple items are **not** dropped
+     * here. Hiding them is the view layer's job (`ShoppingListViewModel`), which keeps the
+     * rows in the DB so they stay syncable and can resurface via the "brauch ich doch" chip
+     * or when the pantry item is removed.
      */
     suspend fun addFromRecipe(
         recipe: RecipeWithDetails,
-        skipNames: Set<String> = emptySet(),
         sourceDate: String? = null,
         scale: Double = 1.0,
     ) {
@@ -194,15 +195,13 @@ class ShoppingRepository @Inject constructor(
         if (alreadyOnList) return
 
         recipe.ingredients.sortedBy { it.position }.forEach { ingredient ->
-            if (!IngredientMatch.containsLike(skipNames, ingredient.name)) {
-                addItem(
-                    text = ingredient.name,
-                    quantity = Numbers.scaleQuantity(ingredient.quantity, scale),
-                    unit = ingredient.unit,
-                    sourceRecipeId = recipe.recipe.id,
-                    sourceDate = sourceDate,
-                )
-            }
+            addItem(
+                text = ingredient.name,
+                quantity = Numbers.scaleQuantity(ingredient.quantity, scale),
+                unit = ingredient.unit,
+                sourceRecipeId = recipe.recipe.id,
+                sourceDate = sourceDate,
+            )
         }
     }
 
@@ -215,13 +214,12 @@ class ShoppingRepository @Inject constructor(
         oldRecipeId: String,
         date: String,
         newRecipe: RecipeWithDetails,
-        skipNames: Set<String> = emptySet(),
         scale: Double = 1.0,
     ) {
         shoppingDao.getBySource(oldRecipeId, date).forEach { item ->
             shoppingDao.deleteById(item.id)
             messageRecorder.record(ShoppingMessageEncoder.tombstone(item.id))
         }
-        addFromRecipe(newRecipe, skipNames, sourceDate = date, scale = scale)
+        addFromRecipe(newRecipe, sourceDate = date, scale = scale)
     }
 }

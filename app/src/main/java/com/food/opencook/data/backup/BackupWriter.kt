@@ -20,6 +20,7 @@ package com.food.opencook.data.backup
 
 import com.food.opencook.BuildConfig
 import com.food.opencook.data.local.dao.GroceryOverrideDao
+import com.food.opencook.data.local.dao.IngredientLinkDao
 import com.food.opencook.data.local.dao.MealDayDao
 import com.food.opencook.data.local.dao.MealPlanDao
 import com.food.opencook.data.local.dao.PantryDao
@@ -64,6 +65,7 @@ class BackupWriter @Inject constructor(
     private val mealPlanDao: MealPlanDao,
     private val mealDayDao: MealDayDao,
     private val groceryOverrideDao: GroceryOverrideDao,
+    private val ingredientLinkDao: IngredientLinkDao,
     private val settings: SettingsRepository,
     private val json: Json,
 ) {
@@ -161,6 +163,13 @@ class BackupWriter @Inject constructor(
                     GroceryOverridesBackup(items = overrides.map { it.toBackup() }),
                 )
             }
+            val links = ingredientLinkDao.getAll()
+            zip.entry(BackupFormat.INGREDIENT_LINKS) {
+                json.encodeToString(
+                    IngredientLinksBackup.serializer(),
+                    IngredientLinksBackup(items = links.map { it.toBackup() }),
+                )
+            }
 
             val manifest = BackupManifest(
                 createdAt = isoNow(),
@@ -175,6 +184,7 @@ class BackupWriter @Inject constructor(
                     mealPlan = planEntries.size,
                     mealDays = planDays.size,
                     groceryOverrides = overrides.size,
+                    ingredientLinks = links.size,
                 ),
             )
             zip.entry(BackupFormat.MANIFEST) { json.encodeToString(BackupManifest.serializer(), manifest) }

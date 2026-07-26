@@ -21,8 +21,10 @@ package com.food.opencook.ui.pantry
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.food.opencook.data.local.entity.PantryItemEntity
+import com.food.opencook.data.settings.SettingsRepository
 import com.food.opencook.repository.GroceryOverrideRepository
 import com.food.opencook.repository.PantryRepository
+import com.food.opencook.repository.ShoppingRepository
 import com.food.opencook.repository.SuggestionRepository
 import com.food.opencook.util.GroceryCategory
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,9 +37,17 @@ import javax.inject.Inject
 @HiltViewModel
 class PantryViewModel @Inject constructor(
     private val repository: PantryRepository,
+    private val shoppingRepository: ShoppingRepository,
     private val suggestionRepository: SuggestionRepository,
     private val overrideRepository: GroceryOverrideRepository,
+    private val settings: SettingsRepository,
 ) : ViewModel() {
+
+    /** One-time swipe peek-hint gate for the pantry list. */
+    val swipeHintSeen: StateFlow<Boolean> =
+        settings.swipeHintSeenPantry.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
+    fun markSwipeHintSeen() = viewModelScope.launch { settings.setSwipeHintSeenPantry() }
 
     val items: StateFlow<List<PantryItemEntity>> =
         repository.observeItems()
@@ -59,6 +69,15 @@ class PantryViewModel @Inject constructor(
 
     fun add(name: String) = viewModelScope.launch { repository.addItem(name) }
     fun delete(id: String) = viewModelScope.launch { repository.deleteItem(id) }
+
+    /**
+     * "Running low" → put this pantry item on the shopping list. Added as a **manual** entry
+     * so the shopping list's pantry-coverage filter doesn't immediately hide it again (the
+     * item is, after all, still in the pantry). The pantry row stays.
+     */
+    fun addToShopping(name: String) = viewModelScope.launch {
+        shoppingRepository.addItem(name, manual = true)
+    }
 
     /** Re-add a just-deleted pantry item (Undo). */
     fun restore(item: PantryItemEntity) = viewModelScope.launch { repository.addItem(item.name) }
