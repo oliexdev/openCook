@@ -48,6 +48,15 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE dataset = :dataset AND rowId = :rowId")
     suspend fun forRow(dataset: String, rowId: String): List<MessageEntity>
 
+    /** Whether this exact field value was already recorded — lets a retrying writer skip
+     *  re-announcing something the log already says (e.g. an image pushed to a peer again
+     *  while the server is still offline). */
+    @Query(
+        "SELECT EXISTS(SELECT 1 FROM messages WHERE dataset = :dataset AND rowId = :rowId " +
+            "AND col_key = :column AND value = :value)",
+    )
+    suspend fun hasValue(dataset: String, rowId: String, column: String, value: String): Boolean
+
     /** Which of these timestamps are already in the log. Lets the applier skip messages
      *  it has seen — peers push their whole log each round, and re-projecting every row
      *  inside one big transaction stalled all other DB writes (UI froze during sync). */

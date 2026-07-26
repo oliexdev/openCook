@@ -163,6 +163,8 @@ private class FakeMessageDao : MessageDao {
     override suspend fun all(): List<MessageEntity> = messages.sortedBy { it.timestamp }
     override suspend fun since(cursor: String): List<MessageEntity> = messages.filter { it.timestamp > cursor }.sortedBy { it.timestamp }
     override suspend fun forRow(dataset: String, rowId: String): List<MessageEntity> = messages.filter { it.dataset == dataset && it.rowId == rowId }
+    override suspend fun hasValue(dataset: String, rowId: String, column: String, value: String): Boolean =
+        messages.any { it.dataset == dataset && it.rowId == rowId && it.column == column && it.value == value }
     override suspend fun existingTimestamps(timestamps: List<String>): List<String> =
         messages.map { it.timestamp }.filter { it in timestamps.toSet() }
     override suspend fun count(): Int = messages.size

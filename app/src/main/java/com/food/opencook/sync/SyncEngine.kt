@@ -186,13 +186,16 @@ class SyncEngine @Inject constructor(
     ): Int {
         // Push any device-local images (bundle imports, camera shots) first, so the
         // imageRef they emit travels in this same round. Best-effort: a failure here
-        // must not abort the message sync below. To a peer this only happens in
-        // serverless households — with a server configured it stays the image
-        // authority, and marking an image "uploaded" after pushing it to a phone
-        // would leave the server permanently without the bytes.
-        if (!isPeer || settings.serverUrlOnce().isNullOrBlank()) {
-            runCatching { uploadLocalImages(api, code) }
-        }
+        // must not abort the message sync below.
+        //
+        // Pushing to a peer while a server is configured used to be skipped entirely, to
+        // keep the server the single image authority. But a server that is switched off
+        // most of the time (a desktop, say) then meant the other phone never got a single
+        // photo — recipes synced, images never did. Now the bytes go to the peer either
+        // way; with a server in play the row merely stays queued so the server still gets
+        // its own copy later (see [uploadLocalImages]).
+        val hasServer = !settings.serverUrlOnce().isNullOrBlank()
+        runCatching { uploadLocalImages(api, code, keepQueued = isPeer && hasServer) }
 
         val local = messageDao.all()
         val localTrie = MerkleTrie.build(local.map { it.timestamp })
@@ -270,12 +273,20 @@ class SyncEngine @Inject constructor(
     /**
      * Upload device-local images (a recipe's primary photo from a bundle import) to the
      * sync target so other devices can fetch them via GET /images/{name} and they survive
-     * a reinstall. Each upload sets the row's [remoteName] and emits an `imageRef` message
-     * (freshly stamped, so it wins) — exactly the shape AI photo crops already sync in.
-     * Per-image best-effort: one failure (unreadable file / target error) skips that
-     * image and leaves it local-only for the next round.
+     * a reinstall. Each upload emits an `imageRef` message (freshly stamped, so it wins) —
+     * exactly the shape AI photo crops already sync in. Per-image best-effort: one failure
+     * (unreadable file / target error) skips that image and leaves it local-only for the
+     * next round.
+     *
+     * [keepQueued] is set when pushing to a *peer* while a server is configured but was
+     * unreachable. The bytes reach the other phone right away, but the row stays in the
+     * local-only queue so the server still gets its copy once it is back — otherwise
+     * marking the image "uploaded" here would leave the server permanently without it.
+     * That is safe because names are content-addressed (sha256.jpg on both the Python
+     * server and a peer phone), so the later server upload lands under the very name the
+     * imageRef message already carries, and re-uploading identical bytes is idempotent.
      */
-    private suspend fun uploadLocalImages(api: SyncApi, code: String) {
+    private suspend fun uploadLocalImages(api: SyncApi, code: String, keepQueued: Boolean = false) {
         val locals = recipeDao.localOnlyImages()
         if (locals.isEmpty()) return
         val now = System.currentTimeMillis()
@@ -285,18 +296,24 @@ class SyncEngine @Inject constructor(
             val name = runCatching {
                 api.uploadImage(code, bytes.toRequestBody("image/jpeg".toMediaType()))
             }.getOrNull()?.name ?: continue
-            recipeDao.setImageRemoteName(img.id, name)
+            if (!keepQueued) recipeDao.setImageRemoteName(img.id, name)
             if (img.isPrimary) {
-                messageDao.insert(
-                    MessageEntity(
-                        timestamp = syncClock.stamp().pack(),
-                        dataset = SyncDatasets.RECIPES,
-                        rowId = img.recipeId,
-                        column = "imageRef",
-                        value = Json.encodeToString(String.serializer(), name),
-                        createdAt = now,
-                    ),
-                )
+                val value = Json.encodeToString(String.serializer(), name)
+                // A queued image is pushed again on every peer round until the server is
+                // back; announcing the same reference each time would grow the log without
+                // saying anything new, so emit it once per (recipe, image).
+                if (!messageDao.hasValue(SyncDatasets.RECIPES, img.recipeId, "imageRef", value)) {
+                    messageDao.insert(
+                        MessageEntity(
+                            timestamp = syncClock.stamp().pack(),
+                            dataset = SyncDatasets.RECIPES,
+                            rowId = img.recipeId,
+                            column = "imageRef",
+                            value = value,
+                            createdAt = now,
+                        ),
+                    )
+                }
             }
         }
     }

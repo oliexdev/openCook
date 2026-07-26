@@ -85,15 +85,25 @@ class RecipeExporter @Inject constructor(
             }
         }
 
-    /** A standalone JSON file carries no image reference — there is no `images/` beside it. */
+    /**
+     * A standalone JSON file has no `images/` folder beside it to point at, so the photo
+     * travels *inside* it as a `data:image/jpeg;base64,…` URI — the same embedding the
+     * Markdown export uses. schema.org allows a data URI wherever it allows an image URL,
+     * and openCook's own import reads it back (see `ImportViewModel.saveOne`), so a single
+     * .json is a complete recipe again instead of one that silently loses its picture.
+     * Null when there are no local bytes — then the field simply stays absent.
+     */
     private fun renderJson(details: RecipeWithDetails): String =
-        prettyJson.encodeToString(RecipeDto.serializer(), RecipeDtoEncoder.encode(details, imageRef = null)) + "\n"
+        prettyJson.encodeToString(
+            RecipeDto.serializer(),
+            RecipeDtoEncoder.encode(details, imageRef = imageDataUri(details, banner = false)),
+        ) + "\n"
 
     private fun renderMarkdown(details: RecipeWithDetails): String =
         RecipeMarkdown.render(
             details = details,
             labels = labels(),
-            imageDataUri = imageDataUri(details),
+            imageDataUri = imageDataUri(details, banner = true),
             exportDate = LocalDate.now().format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)),
         )
 
@@ -122,14 +132,17 @@ class RecipeExporter @Inject constructor(
     )
 
     /**
-     * The primary photo as a `data:image/jpeg;base64,…` URI, center-cropped to the
-     * [BANNER_RATIO] strip the detail screen's header uses and downscaled to at most
-     * [MAX_IMAGE_DIM] px wide, so the Markdown file stays a few hundred KB and the
-     * photo renders as a banner in every viewer — a portrait shot must never unroll
-     * to full height in the document. Null when the recipe has no local image bytes
-     * (e.g. synced in but never downloaded).
+     * The primary photo as a `data:image/jpeg;base64,…` URI, downscaled to at most
+     * [MAX_IMAGE_DIM] px on its long side so the document stays a few hundred KB. Null
+     * when the recipe has no local image bytes (e.g. synced in but never downloaded).
+     *
+     * [banner] center-crops to the [BANNER_RATIO] strip the detail screen's header uses:
+     * right for Markdown, where the photo has to render as a banner in every viewer and a
+     * portrait shot must never unroll to full height. **Wrong for JSON** — that file is a
+     * transfer format, and cropping there would permanently cut the top and bottom off the
+     * photo the moment someone imports it back.
      */
-    private fun imageDataUri(details: RecipeWithDetails): String? {
+    private fun imageDataUri(details: RecipeWithDetails, banner: Boolean): String? {
         val file = primaryImageFile(details) ?: return null
         return runCatching {
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -143,34 +156,8 @@ class RecipeExporter @Inject constructor(
             val decoded = file.inputStream().use { BitmapFactory.decodeStream(it, null, options) }
                 ?: return null
 
-            // Center-crop to the banner strip (same framing as ContentScale.Crop in the app).
-            val cropWidth: Int
-            val cropHeight: Int
-            if (decoded.width.toFloat() / decoded.height >= BANNER_RATIO) {
-                cropHeight = decoded.height
-                cropWidth = (decoded.height * BANNER_RATIO).toInt().coerceAtMost(decoded.width)
-            } else {
-                cropWidth = decoded.width
-                cropHeight = (decoded.width / BANNER_RATIO).toInt().coerceAtMost(decoded.height)
-            }
-            val cropped = Bitmap.createBitmap(
-                decoded,
-                (decoded.width - cropWidth) / 2,
-                (decoded.height - cropHeight) / 2,
-                cropWidth,
-                cropHeight,
-            ).also { if (it !== decoded) decoded.recycle() }
-
-            val bitmap = if (cropped.width > MAX_IMAGE_DIM) {
-                Bitmap.createScaledBitmap(
-                    cropped,
-                    MAX_IMAGE_DIM,
-                    (MAX_IMAGE_DIM / BANNER_RATIO).toInt().coerceAtLeast(1),
-                    true,
-                ).also { if (it !== cropped) cropped.recycle() }
-            } else {
-                cropped
-            }
+            val framed = if (banner) centerCropToBanner(decoded) else decoded
+            val bitmap = downscale(framed, banner)
             val bytes = ByteArrayOutputStream().use { buffer ->
                 bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, buffer)
                 bitmap.recycle()
@@ -178,6 +165,39 @@ class RecipeExporter @Inject constructor(
             }
             "data:image/jpeg;base64," + Base64.encodeToString(bytes, Base64.NO_WRAP)
         }.getOrNull()
+    }
+
+    /** Center-crop to the banner strip (same framing as ContentScale.Crop in the app). */
+    private fun centerCropToBanner(decoded: Bitmap): Bitmap {
+        val cropWidth: Int
+        val cropHeight: Int
+        if (decoded.width.toFloat() / decoded.height >= BANNER_RATIO) {
+            cropHeight = decoded.height
+            cropWidth = (decoded.height * BANNER_RATIO).toInt().coerceAtMost(decoded.width)
+        } else {
+            cropWidth = decoded.width
+            cropHeight = (decoded.width / BANNER_RATIO).toInt().coerceAtMost(decoded.height)
+        }
+        return Bitmap.createBitmap(
+            decoded,
+            (decoded.width - cropWidth) / 2,
+            (decoded.height - cropHeight) / 2,
+            cropWidth,
+            cropHeight,
+        ).also { if (it !== decoded) decoded.recycle() }
+    }
+
+    /** Cap the long side at [MAX_IMAGE_DIM]; a banner keeps its fixed ratio, an uncropped
+     *  photo keeps its own so nothing is distorted. */
+    private fun downscale(source: Bitmap, banner: Boolean): Bitmap {
+        val longSide = maxOf(source.width, source.height)
+        if (longSide <= MAX_IMAGE_DIM) return source
+        val scale = MAX_IMAGE_DIM.toFloat() / longSide
+        val width = if (banner) MAX_IMAGE_DIM else (source.width * scale).toInt().coerceAtLeast(1)
+        val height = if (banner) (MAX_IMAGE_DIM / BANNER_RATIO).toInt().coerceAtLeast(1)
+        else (source.height * scale).toInt().coerceAtLeast(1)
+        return Bitmap.createScaledBitmap(source, width, height, true)
+            .also { if (it !== source) source.recycle() }
     }
 
     /** Mirrors [com.food.opencook.data.backup.BackupWriter.primaryImageFile]. */
