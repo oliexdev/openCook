@@ -89,8 +89,11 @@ fun ConfettiOverlay(
                 startRotation = rnd.nextFloat() * 360f,
                 rotationTurns = (rnd.nextFloat() - 0.5f) * 5f,
                 driftFraction = (rnd.nextFloat() - 0.5f) * 0.3f,
-                fallDelay = rnd.nextFloat() * 0.25f,
-                fallSpeed = 0.85f + rnd.nextFloat() * 0.5f,
+                // Wider staggered entry + a per-piece fall duration (fraction of its remaining
+                // time) so pieces reach the bottom at different moments — spread across the
+                // whole screen instead of bunching into a line near the end.
+                fallDelay = rnd.nextFloat() * 0.4f,
+                fallSpeed = 0.5f + rnd.nextFloat() * 0.5f,
                 flutterFreq = 1f + rnd.nextFloat() * 2f,
                 flutterAmpDp = 6f + rnd.nextFloat() * 16f,
                 circle = rnd.nextInt(4) == 0,
@@ -107,12 +110,14 @@ fun ConfettiOverlay(
     Canvas(modifier.fillMaxSize()) {
         val t = progress.value
         pieces.forEach { p ->
-            // Per-piece local time so pieces start staggered and finish at different moments.
-            val local = ((t - p.fallDelay) / (1f - p.fallDelay)).coerceIn(0f, 1f)
-            if (local <= 0f) return@forEach
+            if (t < p.fallDelay) return@forEach
+            // Own fall duration (a varied fraction of the time left) → pieces finish at different
+            // moments and are scattered across heights, not lined up at the bottom near the end.
+            val dur = (1f - p.fallDelay) * p.fallSpeed
+            val local = ((t - p.fallDelay) / dur).coerceIn(0f, 1f)
 
             val margin = 48.dp.toPx()
-            val y = -margin + local * (size.height + margin * 2f) * p.fallSpeed
+            val y = -margin + local * (size.height + margin * 2f)
             val flutter = sin(local * p.flutterFreq * 2f * PI.toFloat()) * p.flutterAmpDp.dp.toPx()
             val x = p.xFraction * size.width + p.driftFraction * size.width * local + flutter
 
