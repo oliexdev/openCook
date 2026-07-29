@@ -43,8 +43,16 @@
     <string name="scan_intro">Photograph a cookbook page or pick an image from the gallery. The AI recognizes the recipes for you.</string>
     <string name="scan_take_photo">Take photo</string>
     <string name="scan_pick_gallery">Choose from gallery</string>
-    <string name="scan_no_server">No server configured. Enter the server address in settings first.</string>
+    <string name="scan_no_server_title">Photo recognition needs a server</string>
+    <string name="scan_no_server">The AI runs on your openCook server. Without one you can still add recipes by hand or import them from a file.</string>
     <string name="scan_go_to_settings">Go to settings</string>
+    <string name="scan_server_offline_title">Server not reachable right now</string>
+    <string name="scan_server_offline">You can still take photos — they stay on the phone and are recognized automatically as soon as the server answers again.</string>
+    <plurals name="scan_server_offline_queued">
+        <item quantity="one">%d scan is waiting.</item>
+        <item quantity="other">%d scans are waiting.</item>
+    </plurals>
+    <string name="scan_server_retry">Check again</string>
 
     <!-- Camera -->
     <string name="camera_capture">Capture</string>

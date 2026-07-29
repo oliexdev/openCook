@@ -24,29 +24,55 @@ import androidx.lifecycle.viewModelScope
 import com.food.opencook.data.image.ImageStore
 import com.food.opencook.data.settings.SettingsRepository
 import com.food.opencook.repository.RecipeRepository
+import com.food.opencook.sync.SyncManager
 import com.food.opencook.work.WorkScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
 import javax.inject.Inject
 
+/**
+ * What the AI-backed entry points (photo, gallery) can do right now. Extraction runs
+ * on the server, so a serverless household (peer-to-peer or standalone) can't use them
+ * at all, and a configured-but-offline server means a scan waits in the queue.
+ */
+data class ScanUiState(
+    /** False for serverless households — photo/gallery stay visible but disabled. */
+    val serverConfigured: Boolean = false,
+    /** Null until the first sync round finished; only meaningful with a server. */
+    val serverReachable: Boolean? = null,
+    /** Scans already taken that are still waiting to be uploaded. */
+    val queuedScans: Int = 0,
+) {
+    /** Server there but not answering — a new scan will queue instead of running now. */
+    val serverOffline: Boolean get() = serverConfigured && serverReachable == false
+}
+
 @HiltViewModel
 class ScanViewModel @Inject constructor(
     private val repository: RecipeRepository,
     private val scheduler: WorkScheduler,
     private val imageStore: ImageStore,
+    private val syncManager: SyncManager,
     settings: SettingsRepository,
 ) : ViewModel() {
 
-    /** Without a server address the scan can never be uploaded, so we gate on it. */
-    val serverConfigured: StateFlow<Boolean> =
-        settings.serverUrl
-            .map { !it.isNullOrBlank() }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+    val uiState: StateFlow<ScanUiState> =
+        combine(
+            settings.serverUrl.map { !it.isNullOrBlank() },
+            syncManager.serverReachable,
+            // A job without a server id has not been uploaded yet — that's the queue.
+            repository.observeActiveJobs().map { jobs -> jobs.count { it.serverJobId == null } },
+        ) { configured, reachable, queued -> ScanUiState(configured, reachable, queued) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ScanUiState())
+
+    /** Re-probe the server after the user tapped "try again" on the offline hint. */
+    fun retryServerCheck() = syncManager.syncNow()
 
     fun newCaptureFile(): File = imageStore.newCaptureFile()
 

@@ -26,13 +26,17 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.FileOpen
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.Button
@@ -43,13 +47,17 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -67,7 +75,7 @@ fun ScanScreen(
     onBack: () -> Unit = {},
     viewModel: ScanViewModel = hiltViewModel(),
 ) {
-    val serverConfigured by viewModel.serverConfigured.collectAsStateWithLifecycle()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     // Ask for notification permission once (API 33+) so the background "recipe
     // ready" notification can be shown if the user leaves the app mid-scan.
@@ -129,37 +137,56 @@ fun ScanScreen(
             style = MaterialTheme.typography.bodyMedium,
         )
 
-        if (!serverConfigured) {
-            Text(
-                stringResource(R.string.scan_no_server),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.error,
+        // Why the AI options are off / delayed. Shown above them so the reason is read
+        // before the greyed-out button is tapped.
+        if (!state.serverConfigured) {
+            HintCard(
+                icon = Icons.Outlined.Info,
+                title = stringResource(R.string.scan_no_server_title),
+                body = stringResource(R.string.scan_no_server),
+                actionLabel = stringResource(R.string.scan_go_to_settings),
+                onAction = onNavigateToSettings,
             )
-            Button(onClick = onNavigateToSettings, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.scan_go_to_settings))
-            }
-        } else {
-            Button(onClick = onNavigateToCamera, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Outlined.PhotoCamera, contentDescription = null)
-                Text(
-                    stringResource(R.string.scan_take_photo),
-                    modifier = Modifier.padding(start = 8.dp),
-                )
-            }
-            OutlinedButton(
-                onClick = {
-                    galleryLauncher.launch(
-                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                    )
+        } else if (state.serverOffline) {
+            HintCard(
+                icon = Icons.Outlined.CloudOff,
+                title = stringResource(R.string.scan_server_offline_title),
+                body = stringResource(R.string.scan_server_offline),
+                note = state.queuedScans.takeIf { it > 0 }?.let {
+                    pluralStringResource(R.plurals.scan_server_offline_queued, it, it)
                 },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Icon(Icons.Outlined.PhotoLibrary, contentDescription = null)
-                Text(
-                    stringResource(R.string.scan_pick_gallery),
-                    modifier = Modifier.padding(start = 8.dp),
+                actionLabel = stringResource(R.string.scan_server_retry),
+                onAction = viewModel::retryServerCheck,
+            )
+        }
+
+        // Photo & gallery need the server's AI, so they stay visible but disabled
+        // without one — the hint above says why.
+        Button(
+            onClick = onNavigateToCamera,
+            enabled = state.serverConfigured,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(Icons.Outlined.PhotoCamera, contentDescription = null)
+            Text(
+                stringResource(R.string.scan_take_photo),
+                modifier = Modifier.padding(start = 8.dp),
+            )
+        }
+        OutlinedButton(
+            onClick = {
+                galleryLauncher.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
                 )
-            }
+            },
+            enabled = state.serverConfigured,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(Icons.Outlined.PhotoLibrary, contentDescription = null)
+            Text(
+                stringResource(R.string.scan_pick_gallery),
+                modifier = Modifier.padding(start = 8.dp),
+            )
         }
 
         // Create a recipe by hand — opens the editor with a blank draft. Always available,
@@ -198,5 +225,49 @@ fun ScanScreen(
             ImportState.Idle -> Unit
         }
     }
+    }
+}
+
+/**
+ * Calm, tonal explainer above the AI entry points: neither missing nor sleeping
+ * server is an error the user did wrong, so it uses the secondary container rather
+ * than the error colours — same reasoning as the top bar's muted sync icon.
+ */
+@Composable
+private fun HintCard(
+    icon: ImageVector,
+    title: String,
+    body: String,
+    actionLabel: String,
+    onAction: () -> Unit,
+    note: String? = null,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            Modifier.padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleSmall)
+                Text(body, style = MaterialTheme.typography.bodySmall)
+                if (note != null) {
+                    Text(
+                        note,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+                TextButton(
+                    onClick = onAction,
+                    modifier = Modifier.padding(top = 4.dp),
+                ) { Text(actionLabel) }
+            }
+        }
     }
 }

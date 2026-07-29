@@ -70,6 +70,14 @@ class SyncManager @Inject constructor(
     /** Observable sync state for the shared top-bar indicator. */
     val status: StateFlow<SyncStatus> = _status.asStateFlow()
 
+    private val _serverReachable = MutableStateFlow<Boolean?>(null)
+    /**
+     * Whether the last completed round actually reached the *server* (not just a peer)
+     * — `null` until the first round finishes. Screens that need the server itself (the
+     * AI scan) use this to explain why their action is queued rather than running.
+     */
+    val serverReachable: StateFlow<Boolean?> = _serverReachable.asStateFlow()
+
     private val _importedEvents = MutableSharedFlow<ImportInboxSyncer.Result>(extraBufferCapacity = 4, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     /** Emits the outcome of draining the browser-import inbox (imported + skipped duplicates). */
     val importedEvents: SharedFlow<ImportInboxSyncer.Result> = _importedEvents.asSharedFlow()
@@ -110,6 +118,14 @@ class SyncManager @Inject constructor(
                 )
             }
         }.getOrElse { SyncEngine.Result.Failed(it.message ?: "error") }
+        // The engine always tries the server first, so "answered by a peer" means the
+        // server did not answer. A 404 is an answer — the server is up, it just lost us.
+        _serverReachable.value = when (result) {
+            is SyncEngine.Result.Ok -> result.via == SyncVia.Server
+            SyncEngine.Result.UnknownHousehold -> true
+            is SyncEngine.Result.Failed -> false
+            SyncEngine.Result.NoHousehold -> null
+        }
         _status.value = when (result) {
             is SyncEngine.Result.Ok -> {
                 lastSuccessEpochMs = System.currentTimeMillis()

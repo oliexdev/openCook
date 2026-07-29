@@ -42,8 +42,16 @@
     <string name="scan_intro">Fotografiere eine Kochbuchseite oder wähle ein Bild aus der Galerie. Die KI erkennt die Rezepte für dich.</string>
     <string name="scan_take_photo">Foto aufnehmen</string>
     <string name="scan_pick_gallery">Aus Galerie wählen</string>
-    <string name="scan_no_server">Kein Server konfiguriert. Trage zuerst in den Einstellungen die Server-Adresse ein.</string>
+    <string name="scan_no_server_title">Foto-Erkennung braucht einen Server</string>
+    <string name="scan_no_server">Die KI läuft auf deinem openCook-Server. Ohne Server kannst du Rezepte weiterhin manuell anlegen oder aus einer Datei importieren.</string>
     <string name="scan_go_to_settings">Zu den Einstellungen</string>
+    <string name="scan_server_offline_title">Server gerade nicht erreichbar</string>
+    <string name="scan_server_offline">Du kannst trotzdem fotografieren — die Fotos bleiben auf dem Handy und werden automatisch erkannt, sobald der Server wieder antwortet.</string>
+    <plurals name="scan_server_offline_queued">
+        <item quantity="one">%d Scan wartet.</item>
+        <item quantity="other">%d Scans warten.</item>
+    </plurals>
+    <string name="scan_server_retry">Erneut prüfen</string>
 
     <!-- Camera -->
     <string name="camera_capture">Aufnehmen</string>
