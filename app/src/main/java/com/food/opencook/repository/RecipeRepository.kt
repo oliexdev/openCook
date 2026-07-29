@@ -25,6 +25,7 @@ import com.food.opencook.sync.RecipeMessageEncoder
 import com.food.opencook.sync.SyncDatasets
 import com.food.opencook.data.local.dao.JobDao
 import com.food.opencook.data.local.dao.RecipeDao
+import com.food.opencook.data.local.dao.RecipeIdName
 import com.food.opencook.data.local.dao.RecipeLikeDao
 import com.food.opencook.data.local.entity.RecipeLikeEntity
 import com.food.opencook.sync.RecipeLikeMessageEncoder
@@ -70,7 +71,13 @@ sealed interface DrainOutcome {
 /** Outcome of saving a recipe — a same-named recipe already exists ⇒ [Duplicate], not saved. */
 sealed interface SaveResult {
     data object Saved : SaveResult
-    data object Duplicate : SaveResult
+
+    /**
+     * A *different* recipe already carries this name. It is identified so callers can
+     * offer a way out (replace it, drop this one, rename) instead of dead-ending — the
+     * common cause is the same cookbook page photographed twice.
+     */
+    data class Duplicate(val existingId: String, val existingName: String?) : SaveResult
 }
 
 /** Normalize a recipe name for duplicate comparison: trim, lowercase, collapse whitespace. */
@@ -100,12 +107,12 @@ class RecipeRepository @Inject constructor(
     suspend fun getAllRecipesOnce(): List<RecipeWithDetails> = recipeDao.getAllOnce()
 
     /**
-     * The id of an existing recipe whose name matches [name] (normalized), or null.
-     * Used for name-based duplicate detection across all creation paths.
+     * The existing recipe whose name matches [name] (normalized), or null. Used for
+     * name-based duplicate detection across all creation paths.
      */
-    suspend fun existingRecipeNameId(name: String?): String? {
+    suspend fun existingRecipeByName(name: String?): RecipeIdName? {
         val key = normalizeRecipeName(name) ?: return null
-        return recipeDao.allIdAndNames().firstOrNull { normalizeRecipeName(it.name) == key }?.id
+        return recipeDao.allIdAndNames().firstOrNull { normalizeRecipeName(it.name) == key }
     }
     fun observeJob(jobId: String): Flow<JobEntity?> = jobDao.observeById(jobId)
 
@@ -270,9 +277,59 @@ class RecipeRepository @Inject constructor(
         nutrition: NutritionEntity?,
         images: List<ImageEntity>,
     ): SaveResult {
-        val clashId = existingRecipeNameId(recipe.name)
-        if (clashId != null && clashId != recipe.id) return SaveResult.Duplicate
+        val clash = existingRecipeByName(recipe.name)
+        if (clash != null && clash.id != recipe.id) {
+            return SaveResult.Duplicate(clash.id, clash.name)
+        }
+        write(recipe, ingredients, instructions, nutrition, images)
+        return SaveResult.Saved
+    }
 
+    /**
+     * Resolve a name clash by letting [recipe] take over the recipe it collides with:
+     * the edited content is written onto [targetId] and the source row is deleted.
+     *
+     * Overwriting the *existing* row (rather than deleting it and keeping the new one)
+     * is what keeps meal-plan entries, shopping items and likes pointing at a live
+     * recipe — they reference the id, and the household's other devices already know it.
+     * The target's own history ([RecipeEntity.createdAt], [RecipeEntity.lastCookedAt])
+     * survives; everything the user just edited wins.
+     */
+    suspend fun replaceRecipe(
+        targetId: String,
+        recipe: RecipeEntity,
+        ingredients: List<IngredientEntity>,
+        instructions: List<InstructionEntity>,
+        nutrition: NutritionEntity?,
+        images: List<ImageEntity>,
+    ) {
+        val target = recipeDao.getByIdOnce(targetId)?.recipe
+        val sourceId = recipe.id
+        val merged = recipe.copy(
+            id = targetId,
+            createdAt = target?.createdAt ?: recipe.createdAt,
+            lastCookedAt = recipe.lastCookedAt ?: target?.lastCookedAt,
+        )
+        write(
+            merged,
+            ingredients.map { it.copy(recipeId = targetId) },
+            instructions.map { it.copy(recipeId = targetId) },
+            nutrition?.copy(recipeId = targetId),
+            images.map { it.copy(recipeId = targetId) },
+        )
+        // Only now drop the row we merged from — if it *is* the target (nothing to merge),
+        // deleting would tombstone what we just wrote.
+        if (sourceId != targetId) deleteRecipe(sourceId)
+    }
+
+    /** The write half of [saveRecipe], shared with [replaceRecipe] (which needs no name check). */
+    private suspend fun write(
+        recipe: RecipeEntity,
+        ingredients: List<IngredientEntity>,
+        instructions: List<InstructionEntity>,
+        nutrition: NutritionEntity?,
+        images: List<ImageEntity>,
+    ) {
         // Child rows that existed before this save but are gone now → tombstone them
         // so the removal also syncs (stable ids mean edits update in place).
         val removedIngredients = recipeDao.ingredientIdsFor(recipe.id).toSet() - ingredients.map { it.id }.toSet()
@@ -293,7 +350,6 @@ class RecipeRepository @Inject constructor(
             removedIngredients.map { FieldChange(SyncDatasets.INGREDIENTS, it, SyncDatasets.COLUMN_DELETED, "true") } +
                 removedInstructions.map { FieldChange(SyncDatasets.INSTRUCTIONS, it, SyncDatasets.COLUMN_DELETED, "true") }
         recordChanges(tombstones)
-        return SaveResult.Saved
     }
 
     // --- Feedback (planner signals) ---------------------------------------

@@ -72,7 +72,7 @@ class ImportInboxSyncer @Inject constructor(
             when (result) {
                 SaveResult.Saved -> { runCatching { importApi.consume(item.id, code) }; imported++ }
                 // Duplicate of an existing recipe: don't keep it, but consume so it stops recurring.
-                SaveResult.Duplicate -> { runCatching { importApi.consume(item.id, code) }; duplicates++ }
+                is SaveResult.Duplicate -> { runCatching { importApi.consume(item.id, code) }; duplicates++ }
                 // null = parse/save error: leave claimed; reverts to pending after the server TTL.
                 null -> {}
             }

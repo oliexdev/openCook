@@ -476,8 +476,14 @@
     <!-- Admin error messages -->
 
     <!-- Review save: duplicate-name feedback -->
-    <string name="review_duplicate_one">A recipe with this name already exists.</string>
-    <string name="review_duplicate_many">Skipped %1$d recipes with names already in use.</string>
+    <string name="review_conflict_title">“%1$s” already exists</string>
+    <string name="review_conflict_body_scan">Another recipe from your open scans has this name — most likely you photographed the same page twice.</string>
+    <string name="review_conflict_body">Another recipe already has this name.</string>
+    <string name="review_conflict_replace">Replace the existing one</string>
+    <string name="review_conflict_discard">Discard this draft</string>
+    <string name="review_conflict_rename">Rename</string>
+    <string name="review_conflict_replaced">“%1$s” was merged into the existing recipe.</string>
+    <string name="review_conflict_discarded">Draft discarded.</string>
 
     <!-- Recipe content language (AI extraction, categories, grocery keywords) -->
     <string name="settings_content_language">Recipe language</string>

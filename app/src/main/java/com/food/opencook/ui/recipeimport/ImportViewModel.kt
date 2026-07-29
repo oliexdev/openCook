@@ -124,7 +124,7 @@ class ImportViewModel @Inject constructor(
                 val info = saveOne(imp, System.currentTimeMillis())
                 when (info.result) {
                     SaveResult.Saved -> ShareImportState.Saved(info.name, info.recipeId)
-                    SaveResult.Duplicate -> ShareImportState.Duplicate(info.name)
+                    is SaveResult.Duplicate -> ShareImportState.Duplicate(info.name)
                 }
             }.getOrElse {
                 ShareImportState.Error(it.message ?: context.getString(R.string.import_generic_failed))

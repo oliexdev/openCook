@@ -25,8 +25,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
@@ -116,8 +118,12 @@ private fun WizardNavBar(
         Modifier
             .fillMaxWidth()
             // Inset for the system navigation bar / gesture area so the buttons stay tappable
-            // when the app draws edge-to-edge (targetSdk 36 default).
-            .windowInsetsPadding(WindowInsets.navigationBars)
+            // when the app draws edge-to-edge (targetSdk 36 default). Edge-to-edge also means
+            // the IME does *not* resize the window, so the keyboard would otherwise cover this
+            // bar — union with the IME inset lifts it above the keyboard instead. Since the
+            // page content sits in a weight(1f) box above, that box shrinks accordingly and
+            // the focused field scrolls into the remaining space.
+            .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime))
             .padding(horizontal = Spacing.md, vertical = Spacing.sm),
         horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,

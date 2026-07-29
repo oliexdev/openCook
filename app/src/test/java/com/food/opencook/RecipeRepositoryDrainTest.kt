@@ -45,6 +45,7 @@ import com.food.opencook.data.remote.dto.RecipeDto
 import com.food.opencook.repository.DrainOutcome
 import com.food.opencook.repository.PantryRepository
 import com.food.opencook.repository.RecipeRepository
+import com.food.opencook.repository.SaveResult
 import com.food.opencook.repository.ShoppingRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.test.runTest
@@ -84,10 +85,26 @@ private class FakeRecipeDao : RecipeDao {
     val ingredients = mutableListOf<IngredientEntity>()
     val instructions = mutableListOf<InstructionEntity>()
     val images = mutableListOf<ImageEntity>()
-    override suspend fun insertRecipe(recipe: RecipeEntity) { recipes += recipe }
-    override suspend fun insertIngredients(ingredients: List<IngredientEntity>) { this.ingredients += ingredients }
-    override suspend fun insertInstructions(instructions: List<InstructionEntity>) { this.instructions += instructions }
-    override suspend fun insertImages(images: List<ImageEntity>) { this.images += images }
+    // Room's OnConflictStrategy.REPLACE semantics: same primary key overwrites in place.
+    override suspend fun insertRecipe(recipe: RecipeEntity) {
+        recipes.removeAll { it.id == recipe.id }
+        recipes += recipe
+    }
+    override suspend fun insertIngredients(ingredients: List<IngredientEntity>) {
+        val ids = ingredients.map { it.id }.toSet()
+        this.ingredients.removeAll { it.id in ids }
+        this.ingredients += ingredients
+    }
+    override suspend fun insertInstructions(instructions: List<InstructionEntity>) {
+        val ids = instructions.map { it.id }.toSet()
+        this.instructions.removeAll { it.id in ids }
+        this.instructions += instructions
+    }
+    override suspend fun insertImages(images: List<ImageEntity>) {
+        val ids = images.map { it.id }.toSet()
+        this.images.removeAll { it.id in ids }
+        this.images += images
+    }
     override suspend fun localOnlyImages(): List<ImageEntity> = images.filter { it.remoteName == null && it.localPath != null }
     override suspend fun remoteOnlyImages(): List<ImageEntity> = images.filter { it.remoteName != null && it.localPath == null }
     override suspend fun setImageRemoteName(id: String, name: String) {
@@ -107,13 +124,28 @@ private class FakeRecipeDao : RecipeDao {
     override suspend fun deleteImageById(id: String) { images.removeAll { it.id == id } }
     override suspend fun deleteImagesForRecipe(recipeId: String) { images.removeAll { it.recipeId == recipeId } }
     override suspend fun insertNutrition(nutrition: NutritionEntity) {}
-    override suspend fun deleteIngredientsFor(recipeId: String) {}
-    override suspend fun deleteInstructionsFor(recipeId: String) {}
+    override suspend fun deleteIngredientsFor(recipeId: String) { ingredients.removeAll { it.recipeId == recipeId } }
+    override suspend fun deleteInstructionsFor(recipeId: String) { instructions.removeAll { it.recipeId == recipeId } }
     override suspend fun deleteNutritionFor(recipeId: String) {}
-    override suspend fun deleteRecipe(recipeId: String) {}
+    // Deleting a recipe cascades to its child rows (FK ON DELETE CASCADE in the schema).
+    override suspend fun deleteRecipe(recipeId: String) {
+        recipes.removeAll { it.id == recipeId }
+        ingredients.removeAll { it.recipeId == recipeId }
+        instructions.removeAll { it.recipeId == recipeId }
+        images.removeAll { it.recipeId == recipeId }
+    }
     override fun observeAll(): Flow<List<RecipeWithDetails>> = throw NotImplementedError()
     override fun observeById(id: String): Flow<RecipeWithDetails?> = throw NotImplementedError()
-    override suspend fun getByIdOnce(id: String): RecipeWithDetails? = null
+    override suspend fun getByIdOnce(id: String): RecipeWithDetails? =
+        recipes.firstOrNull { it.id == id }?.let { recipe ->
+            RecipeWithDetails(
+                recipe = recipe,
+                ingredients = ingredients.filter { it.recipeId == id },
+                instructions = instructions.filter { it.recipeId == id },
+                images = images.filter { it.recipeId == id },
+                nutrition = null,
+            )
+        }
     override suspend fun getAllOnce(): List<RecipeWithDetails> = emptyList()
     override suspend fun pageWithDetails(limit: Int, offset: Int): List<RecipeWithDetails> = emptyList()
     override suspend fun recipeCount(): Int = recipes.size
@@ -279,5 +311,94 @@ class RecipeRepositoryDrainTest {
     fun drainMissingJobIsNoOp() = runTest {
         val outcome = repo(FakeJobDao(), FakeRecipeDao()).drainJobResults("nope", sampleRecipes)
         assertTrue(outcome is DrainOutcome.AlreadyDrained)
+    }
+
+    // --- name clashes -----------------------------------------------------
+
+    private fun recipe(id: String, name: String, createdAt: Long = 0, lastCookedAt: String? = null) =
+        RecipeEntity(id = id, name = name, createdAt = createdAt, updatedAt = createdAt, lastCookedAt = lastCookedAt)
+
+    private fun ingredient(id: String, recipeId: String, name: String) =
+        IngredientEntity(id = id, recipeId = recipeId, position = 0, quantity = 1.0, unit = null, name = name)
+
+    @Test
+    fun duplicateNameSaveIdentifiesTheClashingRecipe() = runTest {
+        val recipeDao = FakeRecipeDao()
+        val repository = repo(FakeJobDao(), recipeDao)
+        recipeDao.recipes += recipe("existing", "Apfelkuchen")
+
+        val result = repository.saveRecipe(
+            recipe("draft", " apfelkuchen "), // normalization: case + surrounding space
+            emptyList(), emptyList(), null, emptyList(),
+        )
+
+        assertTrue(result is SaveResult.Duplicate)
+        assertEquals("existing", (result as SaveResult.Duplicate).existingId)
+        assertEquals("Apfelkuchen", result.existingName)
+        assertEquals(1, recipeDao.recipes.size) // nothing written
+    }
+
+    @Test
+    fun savingUnderItsOwnNameIsNotADuplicate() = runTest {
+        val recipeDao = FakeRecipeDao()
+        val repository = repo(FakeJobDao(), recipeDao)
+        recipeDao.recipes += recipe("r1", "Apfelkuchen")
+
+        val result = repository.saveRecipe(
+            recipe("r1", "Apfelkuchen"), emptyList(), emptyList(), null, emptyList(),
+        )
+
+        assertEquals(SaveResult.Saved, result)
+    }
+
+    @Test
+    fun replaceKeepsTheExistingIdAndDropsTheDraft() = runTest {
+        val recipeDao = FakeRecipeDao()
+        val repository = repo(FakeJobDao(), recipeDao)
+        // The recipe that already holds the name — planner/shopping rows point at this id.
+        recipeDao.recipes += recipe("existing", "Apfelkuchen", createdAt = 100, lastCookedAt = "2026-01-05")
+        recipeDao.ingredients += ingredient("ing-old", "existing", "Mehl")
+        // The second scan of the same page, edited by the user.
+        recipeDao.recipes += recipe("draft", "Apfelkuchen (Scan 2)", createdAt = 900)
+        recipeDao.ingredients += ingredient("ing-new", "draft", "Butter")
+
+        repository.replaceRecipe(
+            targetId = "existing",
+            recipe = recipe("draft", "Apfelkuchen", createdAt = 900),
+            ingredients = listOf(ingredient("ing-new", "draft", "Butter")),
+            instructions = emptyList(),
+            nutrition = null,
+            images = emptyList(),
+        )
+
+        // One recipe left, under the *existing* id, carrying the edited content.
+        assertEquals(1, recipeDao.recipes.size)
+        val merged = recipeDao.recipes.single()
+        assertEquals("existing", merged.id)
+        assertEquals("Apfelkuchen", merged.name)
+        // The target's own history survives the merge.
+        assertEquals(100L, merged.createdAt)
+        assertEquals("2026-01-05", merged.lastCookedAt)
+        // Ingredients are the edited ones, re-pointed at the surviving recipe.
+        assertEquals(listOf("Butter"), recipeDao.ingredients.map { it.name })
+        assertEquals(listOf("existing"), recipeDao.ingredients.map { it.recipeId })
+    }
+
+    @Test
+    fun replacedRecipeCanBeSavedAgainWithoutClashing() = runTest {
+        val recipeDao = FakeRecipeDao()
+        val repository = repo(FakeJobDao(), recipeDao)
+        recipeDao.recipes += recipe("existing", "Apfelkuchen")
+        recipeDao.recipes += recipe("draft", "Apfelkuchen (Scan 2)")
+
+        repository.replaceRecipe(
+            "existing", recipe("draft", "Apfelkuchen"), emptyList(), emptyList(), null, emptyList(),
+        )
+        // The merged row is the only holder of the name, so a follow-up edit saves cleanly.
+        val again = repository.saveRecipe(
+            recipe("existing", "Apfelkuchen"), emptyList(), emptyList(), null, emptyList(),
+        )
+
+        assertEquals(SaveResult.Saved, again)
     }
 }

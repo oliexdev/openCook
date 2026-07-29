@@ -29,6 +29,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -71,6 +72,7 @@ fun ReviewScreen(
     }
 
     val message by viewModel.message.collectAsStateWithLifecycle()
+    val conflict by viewModel.conflict.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val nameRequiredMsg = stringResource(R.string.wizard_name_required)
@@ -159,4 +161,59 @@ fun ReviewScreen(
         }
         SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
     }
+
+    conflict?.let { c ->
+        NameConflictDialog(
+            conflict = c,
+            onReplace = { viewModel.resolveByReplacing(onSaved) },
+            onDiscard = { viewModel.resolveByDiscarding(onSaved) },
+            onRename = {
+                scope.launch { pagerState.animateScrollToPage(c.pageIndex) }
+                viewModel.resolveByRenaming()
+            },
+        )
+    }
+}
+
+/**
+ * The way out of a name clash. Three actions, so they stack in the confirm slot rather
+ * than fighting over confirm/dismiss: replacing is the common one (the same page scanned
+ * twice), renaming is the escape hatch, and discarding is offered only where the draft
+ * really is disposable — never when the editor was opened on a saved recipe.
+ */
+@Composable
+private fun NameConflictDialog(
+    conflict: NameConflict,
+    onReplace: () -> Unit,
+    onDiscard: () -> Unit,
+    onRename: () -> Unit,
+) {
+    AlertDialog(
+        // Tapping outside means "let me keep editing", not "throw something away".
+        onDismissRequest = onRename,
+        title = { Text(stringResource(R.string.review_conflict_title, conflict.name)) },
+        text = {
+            Text(
+                stringResource(
+                    if (conflict.isDraft) R.string.review_conflict_body_scan
+                    else R.string.review_conflict_body,
+                ),
+            )
+        },
+        confirmButton = {
+            Column(horizontalAlignment = Alignment.End) {
+                TextButton(onClick = onReplace) {
+                    Text(stringResource(R.string.review_conflict_replace))
+                }
+                if (conflict.canDiscard) {
+                    TextButton(onClick = onDiscard) {
+                        Text(stringResource(R.string.review_conflict_discard))
+                    }
+                }
+                TextButton(onClick = onRename) {
+                    Text(stringResource(R.string.review_conflict_rename))
+                }
+            }
+        },
+    )
 }

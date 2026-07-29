@@ -58,6 +58,25 @@ import javax.inject.Inject
  *  progress indicator (BASICS = step 1 of 5, SUMMARY = step 5 of 5). */
 enum class WizardStep { BASICS, INGREDIENTS, STEPS, DETAILS, SUMMARY }
 
+/**
+ * A save the app refused because another recipe already carries this name. Carries
+ * everything the dialog needs to explain the clash and to act on it.
+ */
+data class NameConflict(
+    /** Which page of the review pager the blocked draft sits on. */
+    val pageIndex: Int,
+    val name: String,
+    /** The recipe already holding the name — the one "replace" writes onto. */
+    val existingId: String,
+    /** True when that recipe is itself an unreviewed scan result — i.e. a double scan. */
+    val isDraft: Boolean,
+    /**
+     * Whether "discard this one" may be offered. False when the editor was opened on an
+     * already-saved recipe: there, throwing the draft away would delete that recipe.
+     */
+    val canDiscard: Boolean,
+)
+
 /** Editable in-memory copies of the detected recipes; mapped back to entities on save. */
 data class EditableRecipe(
     val id: String,
@@ -129,10 +148,14 @@ class ReviewViewModel @Inject constructor(
     private val _recipes = MutableStateFlow<List<EditableRecipe>?>(null)
     val recipes: StateFlow<List<EditableRecipe>?> = _recipes.asStateFlow()
 
-    /** Transient user message (e.g. a duplicate-name warning); the screen shows + clears it. */
+    /** Transient user message (e.g. "merged into the existing recipe"); the screen shows + clears it. */
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
     fun clearMessage() { _message.value = null }
+
+    private val _conflict = MutableStateFlow<NameConflict?>(null)
+    /** Set when a save was blocked by a same-named recipe; the screen offers the way out. */
+    val conflict: StateFlow<NameConflict?> = _conflict.asStateFlow()
 
     private val serverBaseUrl: StateFlow<String?> =
         settings.serverUrl.map { it?.trimEnd('/') }
@@ -297,22 +320,104 @@ class ReviewViewModel @Inject constructor(
     }
 
     fun save(onSaved: () -> Unit) {
-        viewModelScope.launch {
-            val now = System.currentTimeMillis()
-            val list = _recipes.value ?: return@launch
-            var duplicates = 0
-            list.forEach { editable -> if (persist(editable, now) == SaveResult.Duplicate) duplicates++ }
-            if (duplicates > 0) {
-                // Don't close — tell the user a same-named recipe already exists.
-                _message.value = if (duplicates == 1) context.getString(R.string.review_duplicate_one)
-                else context.getString(R.string.review_duplicate_many, duplicates)
-            } else {
-                onSaved()
+        viewModelScope.launch { saveFrom(0, onSaved) }
+    }
+
+    /**
+     * Save the drafts from [startIndex] on, stopping at the first name clash so the
+     * user can resolve it. Re-saving an already-saved draft is a no-op write (same id),
+     * which is what lets every resolution simply resume the loop.
+     */
+    private suspend fun saveFrom(startIndex: Int, onSaved: () -> Unit) {
+        val now = System.currentTimeMillis()
+        val list = _recipes.value ?: return
+        for (index in startIndex until list.size) {
+            val editable = list[index]
+            when (val result = persist(editable, now)) {
+                SaveResult.Saved -> Unit
+                is SaveResult.Duplicate -> {
+                    _conflict.value = NameConflict(
+                        pageIndex = index,
+                        name = editable.name,
+                        existingId = result.existingId,
+                        isDraft = result.existingId in unreviewedIds(),
+                        canDiscard = recipeId == null,
+                    )
+                    return
+                }
             }
+        }
+        _conflict.value = null
+        onSaved()
+    }
+
+    /** Ids of recipes that are themselves still-unreviewed scan results. */
+    private suspend fun unreviewedIds(): Set<String> =
+        repository.getUnreviewedRecipes().map { it.recipe.id }.toSet()
+
+    /**
+     * Take over the recipe we collide with: the edited content is written onto it and
+     * this draft disappears. The usual cause is the same page scanned twice.
+     */
+    fun resolveByReplacing(onSaved: () -> Unit) {
+        val conflict = _conflict.value ?: return
+        viewModelScope.launch {
+            val editable = _recipes.value?.getOrNull(conflict.pageIndex) ?: return@launch
+            val now = System.currentTimeMillis()
+            val e = entities(editable, now)
+            repository.replaceRecipe(
+                conflict.existingId, e.recipe, e.ingredients, e.instructions, e.nutrition, e.images,
+            )
+            dropPage(conflict.pageIndex)
+            _message.value = context.getString(R.string.review_conflict_replaced, editable.name)
+            _conflict.value = null
+            // The list shrank by one, so this index now holds the *next* unsaved draft.
+            saveFrom(conflict.pageIndex, onSaved)
         }
     }
 
+    /** Throw this draft away and keep what is already saved. */
+    fun resolveByDiscarding(onSaved: () -> Unit) {
+        val conflict = _conflict.value ?: return
+        viewModelScope.launch {
+            val editable = _recipes.value?.getOrNull(conflict.pageIndex) ?: return@launch
+            // A manually created draft was never written, so there is nothing to tombstone.
+            if (repository.getRecipeOnce(editable.id) != null) repository.deleteRecipe(editable.id)
+            dropPage(conflict.pageIndex)
+            _message.value = context.getString(R.string.review_conflict_discarded)
+            _conflict.value = null
+            saveFrom(conflict.pageIndex, onSaved)
+        }
+    }
+
+    /** Keep both recipes — back to the name field so the user can pick another title. */
+    fun resolveByRenaming() {
+        val conflict = _conflict.value ?: return
+        setStep(conflict.pageIndex, WizardStep.BASICS)
+        _conflict.value = null
+    }
+
+    private fun dropPage(index: Int) {
+        _recipes.update { list -> list?.filterIndexed { i, _ -> i != index } }
+    }
+
+    /** Entity form of a draft, shared by the plain save and the "replace" resolution. */
+    private data class Entities(
+        val recipe: RecipeEntity,
+        val ingredients: List<IngredientEntity>,
+        val instructions: List<InstructionEntity>,
+        val nutrition: NutritionEntity?,
+        val images: List<ImageEntity>,
+    )
+
     private suspend fun persist(e: EditableRecipe, now: Long): SaveResult {
+        val entities = entities(e, now)
+        return repository.saveRecipe(
+            entities.recipe, entities.ingredients, entities.instructions, entities.nutrition, entities.images,
+        )
+    }
+
+    private fun entities(e: EditableRecipe, now: Long): Entities {
         val servingsNum = e.servings.trim().toIntOrNull()
         val recipe = RecipeEntity(
             id = e.id,
@@ -353,7 +458,7 @@ class ReviewViewModel @Inject constructor(
                 InstructionEntity(step.id ?: UUID.randomUUID().toString(), e.id, i, step.text)
             }
         val nutrition = e.nutrition?.toEntity(e.id)
-        return repository.saveRecipe(recipe, ingredients, instructions, nutrition, e.images)
+        return Entities(recipe, ingredients, instructions, nutrition, e.images)
     }
 }
 

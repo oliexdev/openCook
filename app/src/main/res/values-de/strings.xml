@@ -478,8 +478,14 @@
     <!-- Admin error messages -->
 
     <!-- Review save: duplicate-name feedback -->
-    <string name="review_duplicate_one">Ein Rezept mit diesem Namen existiert bereits.</string>
-    <string name="review_duplicate_many">%1$d Rezepte mit bereits vergebenem Namen übersprungen.</string>
+    <string name="review_conflict_title">„%1$s“ gibt es schon</string>
+    <string name="review_conflict_body_scan">Ein anderes Rezept aus deinen offenen Scans trägt diesen Namen — wahrscheinlich hast du dieselbe Seite zweimal fotografiert.</string>
+    <string name="review_conflict_body">Ein anderes Rezept trägt bereits diesen Namen.</string>
+    <string name="review_conflict_replace">Vorhandenes ersetzen</string>
+    <string name="review_conflict_discard">Diesen Entwurf verwerfen</string>
+    <string name="review_conflict_rename">Umbenennen</string>
+    <string name="review_conflict_replaced">„%1$s“ wurde ins vorhandene Rezept übernommen.</string>
+    <string name="review_conflict_discarded">Entwurf verworfen.</string>
 
     <!-- Recipe content language (AI extraction, categories, grocery keywords) -->
     <string name="settings_content_language">Rezeptsprache</string>
