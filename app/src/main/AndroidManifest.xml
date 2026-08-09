@@ -32,15 +32,12 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Notification deep-link into the review screen (opencook://review/{jobId}). -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="opencook" android:host="review" />
             </intent-filter>
-            <!-- Share a recipe page URL from a browser ("Teilen → openCook"): the URL
-                 arrives as EXTRA_TEXT and is imported via schema.org JSON-LD. -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />

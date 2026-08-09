@@ -1,0 +1,6 @@
+* Phone-to-phone Wi-Fi sync: run a household with no server at all.
+* Meal slots — plan breakfast, lunch, snack and dinner separately.
+* New "Cookable now" filter and a search/filter sheet for recipes.
+* Backup and restore as a ZIP; export single recipes as Markdown or JSON.
+* Smarter pantry matching; drag items to teach shopping-list aisles.
+* Adjustable text size, celebration animations, clearer offline hints.
