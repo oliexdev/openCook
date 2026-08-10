@@ -100,13 +100,22 @@ class PeerAdvertiser @Inject constructor(
                 }
         }
         scope.launch {
-            combine(settings.p2pEnabled, settings.householdCode, foreground) { p2p, code, _ ->
-                p2p && !code.isNullOrBlank()
+            combine(settings.p2pEnabled, settings.householdCode, foreground) { p2p, code, fg ->
+                (p2p && !code.isNullOrBlank()) to fg
             }
-                // No distinctUntilChanged on purpose: every foreground flip re-emits, so
-                // a service start that was denied while backgrounded is retried on the
-                // next app open.
-                .collect { shouldRun -> PeerStandbyService.ensure(context, shouldRun) }
+                // Deduped on the *pair*, not on the desired state alone: a foreground flip
+                // is a real value change and still re-emits (that is the retry window for a
+                // start that wasn't allowed while backgrounded), while repeated identical
+                // settings emissions are dropped.
+                .distinctUntilChanged()
+                .collect { (shouldRun, fg) ->
+                    // Only ever start while the app is visible. A background start is either
+                    // rejected outright or — with an FGS exemption in play — accepted with a
+                    // ~10 s deadline for startForeground() that a cached/busy process can
+                    // miss, which crashes the app. Stopping is always allowed.
+                    if (shouldRun && !fg) return@collect
+                    PeerStandbyService.ensure(context, shouldRun)
+                }
         }
     }
 

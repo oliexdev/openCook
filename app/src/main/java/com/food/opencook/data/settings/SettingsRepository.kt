@@ -28,6 +28,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.food.opencook.data.remote.dto.HouseholdSettings
 import com.food.opencook.ui.mealplan.MealPlanSlots
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.util.Locale
@@ -44,14 +45,24 @@ import javax.inject.Singleton
 class SettingsRepository @Inject constructor(
     private val dataStore: DataStore<Preferences>,
 ) {
-    val serverUrl: Flow<String?> = dataStore.data.map { it[SERVER_URL] }
-    val householdCode: Flow<String?> = dataStore.data.map { it[HOUSEHOLD_CODE] }
-    val householdId: Flow<String?> = dataStore.data.map { it[HOUSEHOLD_ID] }
+    /**
+     * One setting, read reactively. [DataStore.data] re-emits the whole preference map on
+     * **every** write, no matter which key changed — and the app writes constantly (the HLC
+     * is persisted per tick, see SyncClock). Without the dedupe every collector would be woken
+     * for values that did not change; the one place that genuinely wants repeats (PeerAdvertiser's
+     * standby retry) keys on its own foreground flow, not on these.
+     */
+    private fun <T> pref(read: (Preferences) -> T): Flow<T> =
+        dataStore.data.map(read).distinctUntilChanged()
+
+    val serverUrl: Flow<String?> = pref { it[SERVER_URL] }
+    val householdCode: Flow<String?> = pref { it[HOUSEHOLD_CODE] }
+    val householdId: Flow<String?> = pref { it[HOUSEHOLD_ID] }
     /** Human-readable household name shown in Settings (cached from the server). */
-    val householdName: Flow<String?> = dataStore.data.map { it[HOUSEHOLD_NAME] }
+    val householdName: Flow<String?> = pref { it[HOUSEHOLD_NAME] }
 
     /** Use Material You (wallpaper-based) colors instead of the brand palette. Default off. */
-    val dynamicColor: Flow<Boolean> = dataStore.data.map { it[DYNAMIC_COLOR] ?: false }
+    val dynamicColor: Flow<Boolean> = pref { it[DYNAMIC_COLOR] ?: false }
 
     suspend fun setDynamicColor(enabled: Boolean) {
         dataStore.edit { it[DYNAMIC_COLOR] = enabled }
@@ -62,7 +73,7 @@ class SettingsRepository @Inject constructor(
      * from arm's length at the stove. Clamped on read so shortening [FontScales.STEPS]
      * later can't leave a device stuck at an unreachable size.
      */
-    val fontScale: Flow<Float> = dataStore.data.map {
+    val fontScale: Flow<Float> = pref {
         (it[FONT_SCALE] ?: FontScales.DEFAULT).coerceIn(FontScales.MIN, FontScales.MAX)
     }
 
@@ -75,12 +86,12 @@ class SettingsRepository @Inject constructor(
      * household. Lets the app gate past onboarding without a household (offline-first).
      * Cleared again when a household is joined, so it always means "currently local-only".
      */
-    val localOnly: Flow<Boolean> = dataStore.data.map { it[LOCAL_ONLY] ?: false }
+    val localOnly: Flow<Boolean> = pref { it[LOCAL_ONLY] ?: false }
 
     /** Whether the one-time swipe peek-hint has been shown — tracked per list, so both the
      *  shopping list and the pantry each demonstrate the gesture once. */
-    val swipeHintSeenShopping: Flow<Boolean> = dataStore.data.map { it[SWIPE_HINT_SEEN_SHOPPING] ?: false }
-    val swipeHintSeenPantry: Flow<Boolean> = dataStore.data.map { it[SWIPE_HINT_SEEN_PANTRY] ?: false }
+    val swipeHintSeenShopping: Flow<Boolean> = pref { it[SWIPE_HINT_SEEN_SHOPPING] ?: false }
+    val swipeHintSeenPantry: Flow<Boolean> = pref { it[SWIPE_HINT_SEEN_PANTRY] ?: false }
 
     suspend fun setSwipeHintSeenShopping() {
         dataStore.edit { it[SWIPE_HINT_SEEN_SHOPPING] = true }
@@ -98,7 +109,7 @@ class SettingsRepository @Inject constructor(
      * Language of recipe CONTENT (AI extraction, categories, grocery keywords, staples).
      * Household-wide (synced); null means "follow this device's system language".
      */
-    val contentLanguage: Flow<String?> = dataStore.data.map { it[CONTENT_LANGUAGE] }
+    val contentLanguage: Flow<String?> = pref { it[CONTENT_LANGUAGE] }
 
     suspend fun setContentLanguage(lang: String?) {
         dataStore.edit {
@@ -119,7 +130,7 @@ class SettingsRepository @Inject constructor(
      * behaved before slots existed, so an update never silently multiplies anyone's week.
      */
     val plannedMeals: Flow<List<String>> =
-        dataStore.data.map { MealPlanSlots.plannedFromStored(it[PLANNED_MEALS]) }
+        pref { MealPlanSlots.plannedFromStored(it[PLANNED_MEALS]) }
 
     suspend fun plannedMealsOnce(): List<String> =
         MealPlanSlots.plannedFromStored(dataStore.data.first()[PLANNED_MEALS])
@@ -155,7 +166,7 @@ class SettingsRepository @Inject constructor(
      * across devices). Cached locally so the meal planner works offline; refreshed
      * from the server on join and on every sync.
      */
-    val householdSize: Flow<Int> = dataStore.data.map { it[HOUSEHOLD_SIZE] ?: DEFAULT_HOUSEHOLD_SIZE }
+    val householdSize: Flow<Int> = pref { it[HOUSEHOLD_SIZE] ?: DEFAULT_HOUSEHOLD_SIZE }
 
     suspend fun setServerUrl(url: String) {
         dataStore.edit { it[SERVER_URL] = url.trim() }
@@ -222,7 +233,7 @@ class SettingsRepository @Inject constructor(
      * "default by household kind": ON for serverless households (P2P is their only
      * transport), OFF when a server is configured (it covers the job invisibly).
      */
-    val p2pEnabled: Flow<Boolean> = dataStore.data.map { prefs ->
+    val p2pEnabled: Flow<Boolean> = pref { prefs ->
         prefs[P2P_ENABLED] ?: prefs[SERVER_URL].isNullOrBlank()
     }
 

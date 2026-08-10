@@ -63,14 +63,31 @@ class PeerStandbyService : Service() {
     private var wifiCallback: ConnectivityManager.NetworkCallback? = null
 
     override fun onCreate() {
-        super.onCreate()
+        // startForeground() has to land within ~10 s of the startForegroundService() that
+        // brought us up, or the system kills the process with an uncatchable
+        // ForegroundServiceDidNotStartInTimeException. So it goes first — before
+        // super.onCreate(), which is where Hilt builds/injects the graph and which on a cold
+        // process start is anything but instant.
         ensureChannel()
         val startType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
         } else {
             0
         }
-        ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(), startType)
+        val promoted = runCatching {
+            ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(), startType)
+        }.onFailure {
+            // Refused (e.g. a system-initiated START_STICKY restart while backgrounded, which
+            // has no FGS exemption). Stop cleanly instead of crashing; the next app open
+            // re-runs the advertiser's controller and starts us properly.
+            Log.w(TAG, "startForeground refused — standby not available right now", it)
+        }.isSuccess
+
+        super.onCreate() // Hilt field injection
+        if (!promoted) {
+            stopSelf()
+            return
+        }
         peerAdvertiser.setStandby(true)
 
         // "Coming home" catch-up: joining a Wi-Fi network triggers one sync round so
@@ -134,11 +151,12 @@ class PeerStandbyService : Service() {
         private const val NOTIFICATION_ID = 4210
 
         /**
-         * Bring the service in line with the desired state. Best-effort: starting a
-         * foreground service is only allowed while the app is (about to be) visible —
-         * a background-started process (e.g. WorkManager) simply skips and the next
-         * app open re-runs this (the advertiser's controller includes the foreground
-         * signal in its trigger exactly for that retry).
+         * Bring the service in line with the desired state. Callers must only ask for a
+         * *start* while the app is visible — see the gate in [PeerAdvertiser.install]. A
+         * background start is not merely refused: with an FGS exemption in play the system
+         * accepts it and then demands startForeground() within ~10 s, which a cached or
+         * cold-starting process can miss (uncatchable crash). Stopping is always safe.
+         * Still best-effort — a refused start is logged, and the next app open retries.
          */
         fun ensure(context: Context, shouldRun: Boolean) {
             val intent = Intent(context, PeerStandbyService::class.java)
