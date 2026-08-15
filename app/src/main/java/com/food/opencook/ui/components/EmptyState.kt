@@ -53,11 +53,12 @@ fun EmptyState(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
-            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer) {
+            // Neutral: an empty list is not a success, and green means "done" elsewhere.
+            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceContainerHighest) {
                 Icon(
                     icon,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(Spacing.lg).size(40.dp),
                 )
             }

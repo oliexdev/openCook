@@ -37,6 +37,11 @@ interface MealPlanDao {
     @Query("SELECT * FROM meal_plan WHERE date >= :start AND date <= :end")
     suspend fun getForDateRange(start: String, end: String): List<MealPlanEntity>
 
+    /** How many times a recipe is still planned on [from] or later — "is this dish coming up
+     *  at all?", which decides whether its ingredients may leave the shopping list. */
+    @Query("SELECT COUNT(*) FROM meal_plan WHERE recipeId = :recipeId AND date >= :from")
+    suspend fun countForRecipeFrom(recipeId: String, from: String): Int
+
     @Query("SELECT * FROM meal_plan WHERE id = :id")
     suspend fun getById(id: String): MealPlanEntity?
 

@@ -227,26 +227,34 @@
     <string name="shopping_added">Added to shopping list</string>
 
     <!-- Meal plan -->
-    <string name="mealplan_title">Week plan</string>
+    <string name="mealplan_title">Meal plan</string>
     <string name="mealplan_to_shopping">Generate shopping list</string>
     <string name="mealplan_pick_recipe">Choose recipe</string>
+    <string name="mealplan_suggestion">Suggestion</string>
+    <string name="mealplan_swap_dish">Swap dish</string>
+    <string name="mealplan_pick_clear_filter">Remove the filter above to choose from all recipes.</string>
     <string name="mealplan_no_recipes">No recipes to plan yet.</string>
     <string name="mealplan_generated">Ingredients added to the shopping list</string>
-    <string name="mealplan_suggest_week">Suggest a week</string>
+    <string name="mealplan_suggest_week">Suggest the next 7 days</string>
     <string name="mealplan_no_recipes_suggest">Scan some recipes first, then the app suggests a week.</string>
-    <string name="mealplan_regenerate_title">Create a new week plan?</string>
-    <string name="mealplan_regenerate_text">All dishes already planned this week will be replaced. Skipped days stay empty.</string>
+    <string name="mealplan_regenerate_title">Re-plan the next 7 days?</string>
+    <string name="mealplan_regenerate_text">Every dish planned for today and the six days after it will be replaced. Days that have gone by stay as they are.</string>
     <string name="mealplan_regenerate_confirm">Recreate</string>
     <string name="mealplan_remove_dish">Remove dish</string>
+    <string name="mealplan_day_not_planned">Not planned</string>
+    <string name="mealplan_day_yesterday">Yesterday</string>
+    <string name="mealplan_day_today">Today</string>
+    <string name="mealplan_day_tomorrow">Tomorrow</string>
+    <string name="mealplan_week_last">Last week</string>
     <string name="mealplan_week_current">This week</string>
     <string name="mealplan_week_next">Next week</string>
-    <string name="mealplan_week_range">%1$s – %2$s</string>
+    <string name="mealplan_week_after_next">Week after next</string>
+    <string name="mealplan_jump_today">Today</string>
     <string name="mealplan_skip">Skip</string>
     <string name="mealplan_unskip">Plan</string>
     <string name="mealplan_skipped_label">skipped</string>
     <string name="mealplan_pin">Pin (kept when rolling)</string>
     <string name="mealplan_unpin">Unpin</string>
-    <string name="mealplan_reroll">Roll another dish</string>
 
     <!-- Meal-planner reasons (why a dish was picked) -->
     <string name="mealplan_reason_week_reuse">Uses up %1$s</string>
@@ -525,9 +533,9 @@
     <!-- Week planner: slots -->
     <string name="mealplan_slot_add">Plan</string>
     <string name="mealplan_slot_add_named">Plan %1$s</string>
+    <string name="mealplan_already_on_list">Already on the shopping list — nothing added</string>
     <string name="mealplan_add_missing">Add missing items to the shopping list</string>
     <string name="mealplan_slot_no_recipes">No %1$s recipes yet</string>
-    <string name="mealplan_fill_day">Fill this day</string>
 
     <!-- Generic -->
     <string name="action_ok">OK</string>

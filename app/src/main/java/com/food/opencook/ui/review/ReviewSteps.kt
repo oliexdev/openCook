@@ -192,7 +192,7 @@ private fun ImageHero(
             .fillMaxWidth()
             .height(220.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.primaryContainer),
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
     ) {
         if (imageUrl != null) {
             AsyncImage(
@@ -205,7 +205,7 @@ private fun ImageHero(
             Icon(
                 Icons.Outlined.Restaurant,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(56.dp).align(Alignment.Center),
             )
         }
@@ -423,7 +423,7 @@ private fun IngredientCard(
 ) {
     Card(
         Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     ) {
         Column(Modifier.padding(Spacing.md)) {
             // Name is the primary field — give it the full width.
@@ -534,7 +534,7 @@ private fun StepCard(
 ) {
     Card(
         Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     ) {
         Row(
             Modifier.padding(Spacing.md),

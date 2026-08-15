@@ -51,6 +51,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -90,12 +91,15 @@ data class SwipeConfirmEvent(
  * Rows that leave the list slide fully off (`confirmValueChange` returns true where the row is
  * removed; the caller's `animateItem()` collapses the gap). The pantry's "→ shopping" keeps the
  * item in stock, so it snaps back (`actionRemovesRow = false`).
+ *
+ * Passing `onAction = null` gives a **delete-only** row: swiping right does nothing at all, and
+ * the gesture is disabled rather than merely ignored.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SwipeActionRow(
     onDelete: () -> Unit,
-    onAction: () -> Unit,
+    onAction: (() -> Unit)?,
     actionIcon: ImageVector,
     actionLabel: String,
     onConfirm: (deleting: Boolean, boundsInRoot: Rect) -> Unit,
@@ -107,15 +111,35 @@ fun SwipeActionRow(
 ) {
     var rowBounds by remember { mutableStateOf(Rect.Zero) }
 
+    // `confirmValueChange` is a predicate, and the drag machinery is free to ask it more than
+    // once while a single gesture settles — so it is the wrong place to run a side effect
+    // unguarded. A latch makes the action fire once per swipe; it re-arms when the row has
+    // come back to rest. Without it, a right swipe ran its action twice, which stayed
+    // invisible for delete-style actions but showed up as two stacked confirmations.
+    var fired by remember { mutableStateOf(false) }
+
     val state = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
-            when (value) {
-                SwipeToDismissBoxValue.EndToStart -> { onDelete(); onConfirm(true, rowBounds); true }
-                SwipeToDismissBoxValue.StartToEnd -> { onAction(); onConfirm(false, rowBounds); actionRemovesRow }
-                SwipeToDismissBoxValue.Settled -> false
+            when {
+                fired -> false
+                value == SwipeToDismissBoxValue.EndToStart -> {
+                    fired = true; onDelete(); onConfirm(true, rowBounds); true
+                }
+                value == SwipeToDismissBoxValue.StartToEnd && onAction != null -> {
+                    fired = true; onAction(); onConfirm(false, rowBounds); actionRemovesRow
+                }
+                else -> false
             }
         },
     )
+
+    // Re-arm once the row is back at rest. Uses the target value rather than a `Settled` branch
+    // in the predicate above: a rejected change never moves `currentValue`, so that branch
+    // would never be reached and the row would answer exactly one swipe for its whole life.
+    LaunchedEffect(state) {
+        snapshotFlow { state.targetValue }
+            .collect { if (it == SwipeToDismissBoxValue.Settled) fired = false }
+    }
 
     // One-time peek: gently reveal both swipe actions in turn (right = positive, left = delete),
     // then settle back — a discoverability hint. Purely visual, independent of [state].
@@ -137,6 +161,7 @@ fun SwipeActionRow(
     SwipeToDismissBox(
         state = state,
         modifier = modifier.onGloballyPositioned { rowBounds = it.boundsInRoot() },
+        enableDismissFromStartToEnd = onAction != null,
         backgroundContent = {
             val direction = when {
                 peekOffset.value > 0.5f -> SwipeToDismissBoxValue.StartToEnd

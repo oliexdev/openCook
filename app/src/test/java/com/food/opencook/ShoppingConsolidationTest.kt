@@ -173,4 +173,119 @@ class ShoppingConsolidationTest {
         assertEquals("r1,r2", item.sourceRecipeIds)
         assertEquals(4.0, item.quantity!!, 0.0001)
     }
+
+    // --- Undo of a single "add this dish to the list" ---------------------------------
+
+    @Test
+    fun `undo removes the rows the add created`() = runTest {
+        val dao = InMemoryShoppingDao()
+        val r = repo(dao)
+        val undo = r.addFromRecipe(recipe("r1", "Mehl" to 500.0, "Zucker" to 100.0), sourceDate = "2026-08-15")
+        assertEquals(2, dao.items.size)
+        r.undoAddFromRecipe(undo!!)
+        assertTrue(dao.items.isEmpty())
+    }
+
+    /** The whole reason the undo carries a snapshot: a line summed into somebody else's row
+     *  has to give back exactly its own share, not take the row with it. */
+    @Test
+    fun `undo restores a row another dish had contributed to`() = runTest {
+        val dao = InMemoryShoppingDao()
+        val r = repo(dao)
+        r.addFromRecipe(recipe("r1", "Nudeln" to 400.0), sourceDate = "2026-08-15")
+        val undo = r.addFromRecipe(recipe("r2", "Nudeln" to 100.0), sourceDate = "2026-08-15")
+        assertEquals(500.0, dao.items.single().quantity!!, 0.0001)
+
+        r.undoAddFromRecipe(undo!!)
+        val item = dao.items.single()
+        assertEquals(400.0, item.quantity!!, 0.0001)
+        assertEquals("r1", item.sourceRecipeIds)
+    }
+
+    /** Two lines of the *same* recipe landing on one row: the row is this call's own doing,
+     *  so undo must delete it rather than restore a "before" that never existed. */
+    @Test
+    fun `undo drops a row the same add both created and merged into`() = runTest {
+        val dao = InMemoryShoppingDao()
+        val r = repo(dao)
+        val undo = r.addFromRecipe(recipe("r1", "Zwiebeln" to 1.0, "Zwiebeln" to 2.0), sourceDate = "2026-08-15")
+        assertEquals(3.0, dao.items.single().quantity!!, 0.0001)
+        r.undoAddFromRecipe(undo!!)
+        assertTrue(dao.items.isEmpty())
+    }
+
+    // --- Deleting a planned dish takes its own lines back off the list ----------------
+
+    @Test
+    fun `deleting a dish removes the lines only it contributed`() = runTest {
+        val dao = InMemoryShoppingDao()
+        val r = repo(dao)
+        r.addFromRecipe(recipe("r1", "Basilikum" to 1.0), sourceDate = "2026-08-15")
+        val removed = r.removeContributionOf("r1")
+        assertEquals(1, removed.size)
+        assertTrue(dao.items.isEmpty())
+    }
+
+    @Test
+    fun `a line another dish also contributed to survives`() = runTest {
+        val dao = InMemoryShoppingDao()
+        val r = repo(dao)
+        r.addFromRecipe(recipe("r1", "Nudeln" to 400.0), sourceDate = "2026-08-15")
+        r.addFromRecipe(recipe("r2", "Nudeln" to 100.0), sourceDate = "2026-08-15")
+
+        assertTrue(r.removeContributionOf("r1").isEmpty())
+        assertEquals(500.0, dao.items.single().quantity!!, 0.0001)
+    }
+
+    /** Already in the trolley — changing the plan does not un-buy it. */
+    @Test
+    fun `a checked line survives`() = runTest {
+        val dao = InMemoryShoppingDao()
+        val r = repo(dao)
+        r.addFromRecipe(recipe("r1", "Mehl" to 500.0), sourceDate = "2026-08-15")
+        r.setChecked(dao.items.single().id, true)
+
+        assertTrue(r.removeContributionOf("r1").isEmpty())
+        assertEquals(1, dao.items.size)
+    }
+
+    /** The removed rows come back byte-for-byte, so the deletion's Undo is complete. */
+    @Test
+    fun `removed lines can be restored`() = runTest {
+        val dao = InMemoryShoppingDao()
+        val r = repo(dao)
+        r.addFromRecipe(recipe("r1", "Mehl" to 500.0, "Hefe" to 1.0), sourceDate = "2026-08-15")
+        val before = dao.items.sortedBy { it.text }.toList()
+
+        val removed = r.removeContributionOf("r1")
+        assertTrue(dao.items.isEmpty())
+        r.importItems(removed)
+        assertEquals(before, dao.items.sortedBy { it.text })
+    }
+
+    /** The same dish on two days shares one consolidated row, tagged with the first day only.
+     *  Removal is therefore recipe-wide — scoping it to a day would miss the row whenever the
+     *  days are deleted in the other order. */
+    @Test
+    fun `removal finds the row whichever day tagged it`() = runTest {
+        val dao = InMemoryShoppingDao()
+        val r = repo(dao)
+        r.addFromRecipe(recipe("r1", "Mehl" to 500.0), sourceDate = "2026-08-18")
+        r.addFromRecipe(recipe("r1", "Mehl" to 500.0), sourceDate = "2026-08-21")
+        assertEquals("2026-08-18", dao.items.single().sourceDate)
+        assertEquals(1000.0, dao.items.single().quantity!!, 0.0001)
+
+        assertEquals(1, r.removeContributionOf("r1").size)
+        assertTrue(dao.items.isEmpty())
+    }
+
+    @Test
+    fun `a repeat add reports nothing to undo`() = runTest {
+        val dao = InMemoryShoppingDao()
+        val r = repo(dao)
+        val rec = recipe("r1", "Mehl" to 500.0)
+        assertTrue(r.addFromRecipe(rec, sourceDate = "2026-08-15") != null)
+        assertEquals(null, r.addFromRecipe(rec, sourceDate = "2026-08-15"))
+        assertEquals(1, dao.items.size)
+    }
 }

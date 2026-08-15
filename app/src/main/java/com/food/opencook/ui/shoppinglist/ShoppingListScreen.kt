@@ -308,7 +308,9 @@ fun ShoppingListBody(
                             category,
                             modifier = Modifier.fillMaxWidth().background(
                                 if (hoveredCategory.value == category) {
-                                    MaterialTheme.colorScheme.secondaryContainer
+                                    // Transient drag feedback: the app pointing at a target,
+                                    // not a state of the food. Green is reserved for the latter.
+                                    MaterialTheme.colorScheme.primaryContainer
                                 } else {
                                     MaterialTheme.colorScheme.background.copy(alpha = 0f)
                                 },
@@ -458,7 +460,7 @@ private fun ShoppingRow(
     val item = row.item
     var menuOpen by remember { mutableStateOf(false) }
     // Captured here because the drag-shadow lambda below runs in DrawScope (no theme access).
-    val shadowColor = MaterialTheme.colorScheme.primaryContainer
+    val shadowColor = MaterialTheme.colorScheme.surfaceContainerHighest
     // Swipe is an accelerator: left = delete, right = "already at home" (→ pantry). The
     // visible icon buttons keep both actions discoverable; the ⋮ holds the rare "not found".
     SwipeActionRow(

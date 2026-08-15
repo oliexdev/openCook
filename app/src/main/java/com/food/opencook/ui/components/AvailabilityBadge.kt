@@ -40,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -58,8 +59,11 @@ fun AvailabilityBadge(
     missingItems: List<String> = emptyList(),
 ) {
     val ok = missingCount <= 0
-    val bg = if (ok) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.tertiaryContainer
-    val fg = if (ok) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onTertiaryContainer
+    // No filled pill. Next to a dish photo these were the second most saturated thing on the
+    // screen, and there is one on every row — a status note was out-shouting the food it
+    // belongs to. Same information, carried by the glyph and the colour of the text alone.
+    val bg = Color.Transparent
+    val fg = if (ok) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.tertiary
     var showDialog by remember { mutableStateOf(false) }
     val tappable = !ok && missingItems.isNotEmpty()
     val desc = if (ok) {
@@ -76,7 +80,7 @@ fun AvailabilityBadge(
         modifier = modifier.semantics { contentDescription = desc },
     ) {
         Row(
-            Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            Modifier.padding(horizontal = 2.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {

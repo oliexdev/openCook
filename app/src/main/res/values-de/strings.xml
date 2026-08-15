@@ -229,26 +229,34 @@
     <string name="shopping_added">Zur Einkaufsliste hinzugefügt</string>
 
     <!-- Meal plan -->
-    <string name="mealplan_title">Wochenplan</string>
+    <string name="mealplan_title">Essensplan</string>
     <string name="mealplan_to_shopping">Einkaufsliste erzeugen</string>
     <string name="mealplan_pick_recipe">Rezept wählen</string>
+    <string name="mealplan_suggestion">Vorschlag</string>
+    <string name="mealplan_swap_dish">Gericht wechseln</string>
+    <string name="mealplan_pick_clear_filter">Entferne den Filter oben, um aus allen Rezepten zu wählen.</string>
     <string name="mealplan_no_recipes">Noch keine Rezepte zum Planen.</string>
     <string name="mealplan_generated">Zutaten zur Einkaufsliste hinzugefügt</string>
-    <string name="mealplan_suggest_week">Woche vorschlagen</string>
+    <string name="mealplan_suggest_week">Nächste 7 Tage vorschlagen</string>
     <string name="mealplan_no_recipes_suggest">Erst Rezepte scannen, dann schlägt die App eine Woche vor.</string>
-    <string name="mealplan_regenerate_title">Neuen Wochenplan erstellen?</string>
-    <string name="mealplan_regenerate_text">Alle bereits geplanten Gerichte dieser Woche werden ersetzt. Ausgesetzte Tage bleiben leer.</string>
+    <string name="mealplan_regenerate_title">Nächste 7 Tage neu planen?</string>
+    <string name="mealplan_regenerate_text">Alle Gerichte, die für heute und die sechs folgenden Tage geplant sind, werden ersetzt. Vergangene Tage bleiben unverändert.</string>
     <string name="mealplan_regenerate_confirm">Neu erstellen</string>
     <string name="mealplan_remove_dish">Gericht entfernen</string>
+    <string name="mealplan_day_not_planned">Nicht geplant</string>
+    <string name="mealplan_day_yesterday">Gestern</string>
+    <string name="mealplan_day_today">Heute</string>
+    <string name="mealplan_day_tomorrow">Morgen</string>
+    <string name="mealplan_week_last">Letzte Woche</string>
     <string name="mealplan_week_current">Diese Woche</string>
     <string name="mealplan_week_next">Nächste Woche</string>
-    <string name="mealplan_week_range">%1$s – %2$s</string>
+    <string name="mealplan_week_after_next">Übernächste Woche</string>
+    <string name="mealplan_jump_today">Heute</string>
     <string name="mealplan_skip">Aussetzen</string>
     <string name="mealplan_unskip">Einplanen</string>
     <string name="mealplan_skipped_label">ausgesetzt</string>
     <string name="mealplan_pin">Anpinnen (bleibt beim Würfeln)</string>
     <string name="mealplan_unpin">Lösen</string>
-    <string name="mealplan_reroll">Anderes Gericht würfeln</string>
 
     <!-- Meal-planner reasons (why a dish was picked) -->
     <string name="mealplan_reason_week_reuse">Verwertet %1$s</string>
@@ -527,9 +535,9 @@
     <!-- Week planner: slots -->
     <string name="mealplan_slot_add">planen</string>
     <string name="mealplan_slot_add_named">%1$s planen</string>
+    <string name="mealplan_already_on_list">Steht schon auf der Einkaufsliste – nichts hinzugefügt</string>
     <string name="mealplan_add_missing">Fehlendes auf die Einkaufsliste</string>
     <string name="mealplan_slot_no_recipes">Noch keine %1$s-Rezepte</string>
-    <string name="mealplan_fill_day">Tag füllen</string>
 
     <!-- Generic -->
     <string name="action_ok">OK</string>

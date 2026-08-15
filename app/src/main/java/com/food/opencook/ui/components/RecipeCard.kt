@@ -18,6 +18,7 @@
 
 package com.food.opencook.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,11 +59,16 @@ fun RecipeCard(
     modifier: Modifier = Modifier,
     liked: Boolean = false,
     imageHeight: Int = 150,
+    /** Override the card's ground — used to lift one card out of an otherwise uniform list. */
+    containerColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    /** Optional outline, for the same purpose. */
+    border: BorderStroke? = null,
 ) {
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = border,
     ) {
         Box(Modifier.fillMaxWidth().height(imageHeight.dp)) {
             if (imageModel != null) {
@@ -74,13 +80,13 @@ fun RecipeCard(
                 )
             } else {
                 Box(
-                    Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primaryContainer),
+                    Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerHighest),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         Icons.Outlined.Restaurant,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(40.dp),
                     )
                 }

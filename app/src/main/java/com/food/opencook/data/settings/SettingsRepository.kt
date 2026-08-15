@@ -88,10 +88,12 @@ class SettingsRepository @Inject constructor(
      */
     val localOnly: Flow<Boolean> = pref { it[LOCAL_ONLY] ?: false }
 
-    /** Whether the one-time swipe peek-hint has been shown — tracked per list, so both the
-     *  shopping list and the pantry each demonstrate the gesture once. */
+    /** Whether the one-time swipe peek-hint has been shown — tracked per list, so the
+     *  shopping list, the pantry and the meal planner each demonstrate the gesture once.
+     *  They are separate keys because the gestures mean different things in each. */
     val swipeHintSeenShopping: Flow<Boolean> = pref { it[SWIPE_HINT_SEEN_SHOPPING] ?: false }
     val swipeHintSeenPantry: Flow<Boolean> = pref { it[SWIPE_HINT_SEEN_PANTRY] ?: false }
+    val swipeHintSeenPlan: Flow<Boolean> = pref { it[SWIPE_HINT_SEEN_PLAN] ?: false }
 
     suspend fun setSwipeHintSeenShopping() {
         dataStore.edit { it[SWIPE_HINT_SEEN_SHOPPING] = true }
@@ -99,6 +101,10 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setSwipeHintSeenPantry() {
         dataStore.edit { it[SWIPE_HINT_SEEN_PANTRY] = true }
+    }
+
+    suspend fun setSwipeHintSeenPlan() {
+        dataStore.edit { it[SWIPE_HINT_SEEN_PLAN] = true }
     }
 
     suspend fun setLocalOnly(enabled: Boolean) {
@@ -273,6 +279,7 @@ class SettingsRepository @Inject constructor(
         val LOCAL_ONLY = booleanPreferencesKey("local_only")
         val SWIPE_HINT_SEEN_SHOPPING = booleanPreferencesKey("swipe_hint_seen_shopping")
         val SWIPE_HINT_SEEN_PANTRY = booleanPreferencesKey("swipe_hint_seen_pantry")
+        val SWIPE_HINT_SEEN_PLAN = booleanPreferencesKey("swipe_hint_seen_plan")
         val CONTENT_LANGUAGE = stringPreferencesKey("content_language")
         val NODE_ID = stringPreferencesKey("node_id")
         val LAST_HLC = stringPreferencesKey("last_hlc")

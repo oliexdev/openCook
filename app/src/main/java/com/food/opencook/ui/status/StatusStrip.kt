@@ -81,7 +81,11 @@ fun StatusStrip(
             }
         }
 
-        StripMode.FINISHED -> StripSurface(onClickRow = onReview) {
+        StripMode.FINISHED -> StripSurface(
+            container = MaterialTheme.colorScheme.secondaryContainer,
+            content = MaterialTheme.colorScheme.onSecondaryContainer,
+            onClickRow = onReview,
+        ) {
             Text(
                 finishedText(state.finishedRecipeNames),
                 style = MaterialTheme.typography.bodyMedium,
@@ -99,8 +103,9 @@ fun StatusStrip(
 
 @Composable
 private fun StripSurface(
-    container: Color = MaterialTheme.colorScheme.secondaryContainer,
-    content: Color = MaterialTheme.colorScheme.onSecondaryContainer,
+    // Neutral by default — only the FINISHED strip passes the green of a completed job.
+    container: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
+    content: Color = MaterialTheme.colorScheme.onSurface,
     onClickRow: (() -> Unit)? = null,
     rowContent: @Composable RowScope.() -> Unit,
 ) {

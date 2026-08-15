@@ -65,9 +65,10 @@ import java.time.LocalDate
 import com.food.opencook.util.DateLabels
 
 /**
- * Sheet that lets the user assign the current recipe to any day in the current
- * or next calendar week. Occupied days surface their currently-planned dish and
- * ask for confirmation before being overwritten.
+ * Sheet that lets the user assign the current recipe to any of the next fourteen days,
+ * grouped by calendar week (which is what [weeks] carries — one group per week, in order,
+ * starting with the one today falls in). Occupied days surface their currently-planned dish
+ * and ask for confirmation before being overwritten.
  *
  * With more than one meal planned, a chip row picks the meal *once* for the whole sheet
  * rather than per day — you are adding one dish, and "which meal" is a property of the
@@ -123,10 +124,16 @@ fun AddToMealPlanSheet(
             LazyColumn(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
                 weeks.forEachIndexed { weekIndex, dates ->
                     item(key = "h_$weekIndex") {
+                        // The first group is whatever week today sits in, so the offset is the
+                        // group's index — starting mid-week, a rolling fortnight can reach into
+                        // a third one.
                         Text(
                             text = stringResource(
-                                if (weekIndex == 0) R.string.mealplan_week_current
-                                else R.string.mealplan_week_next,
+                                when (weekIndex) {
+                                    0 -> R.string.mealplan_week_current
+                                    1 -> R.string.mealplan_week_next
+                                    else -> R.string.mealplan_week_after_next
+                                },
                             ),
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -199,8 +206,8 @@ private fun DayPickRow(
 ) {
     val container = when {
         isToday -> MaterialTheme.colorScheme.primaryContainer
-        planned != null -> MaterialTheme.colorScheme.surfaceVariant
-        else -> MaterialTheme.colorScheme.surfaceContainer
+        planned != null -> MaterialTheme.colorScheme.surfaceContainerHigh
+        else -> MaterialTheme.colorScheme.surfaceVariant
     }
     Row(
         Modifier
@@ -228,7 +235,7 @@ private fun DayPickRow(
                 Modifier
                     .size(44.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer),
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                 contentAlignment = Alignment.Center,
             ) {
                 if (planned.imageModel != null) {
@@ -242,7 +249,7 @@ private fun DayPickRow(
                     Icon(
                         Icons.Outlined.Restaurant,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp),
                     )
                 }

@@ -233,7 +233,9 @@ fun PantryBody(
                             category,
                             modifier = Modifier.fillMaxWidth().background(
                                 if (hoveredCategory.value == category) {
-                                    MaterialTheme.colorScheme.secondaryContainer
+                                    // Transient drag feedback: the app pointing at a target,
+                                    // not a state of the food. Green is reserved for the latter.
+                                    MaterialTheme.colorScheme.primaryContainer
                                 } else {
                                     MaterialTheme.colorScheme.background.copy(alpha = 0f)
                                 },
@@ -299,7 +301,7 @@ private fun PantryRow(
     onPeekShown: () -> Unit = {},
 ) {
     // Captured here because the drag-shadow lambda below runs in DrawScope (no theme access).
-    val shadowColor = MaterialTheme.colorScheme.primaryContainer
+    val shadowColor = MaterialTheme.colorScheme.surfaceContainerHighest
     // Left swipe = delete, right swipe = onto the shopping list (see SwipeActionRow). The full
     // action list also lives in the row's ⋮ menu, so swipe is only an accelerator.
     // actionRemovesRow = false: the pantry keeps the item (it's still in stock), so the right

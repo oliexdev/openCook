@@ -34,7 +34,7 @@ import com.food.opencook.ui.mealplan.MealPlanSlots
 import com.food.opencook.ui.navigation.Routes
 import com.food.opencook.util.IngredientMatch
 import com.food.opencook.util.MealTypes
-import com.food.opencook.util.WeekDates
+import com.food.opencook.util.PlanWindow
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -318,11 +318,12 @@ class RecipeDetailViewModel @Inject constructor(
 
     // --- Add to meal plan ---
 
-    /** Current + next week, Mon–Sun (14 dates), as ISO strings. */
-    val planWeekDates: List<List<String>> = listOf(
-        WeekDates.weekOf(weekOffset = 0).map(LocalDate::toString),
-        WeekDates.weekOf(weekOffset = 1).map(LocalDate::toString),
-    )
+    /** Rolling: today … today+13, grouped by calendar week, as ISO strings. Rolling rather
+     *  than two fixed Mon–Sun pages, to match the planner — and because offering to put a
+     *  recipe on a day that has already passed never made sense. */
+    val planWeekDates: List<List<String>> =
+        PlanWindow.byWeek((0L..13L).map { LocalDate.now().plusDays(it) })
+            .map { group -> group.days.map(LocalDate::toString) }
 
     /** Which meals the household plans — the sheet offers a slot choice only when >1. */
     val plannedMeals: StateFlow<List<String>> = settings.plannedMeals

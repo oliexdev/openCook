@@ -63,6 +63,11 @@ class MealPlanRepository @Inject constructor(
     suspend fun getForDates(dates: List<String>): List<MealPlanEntity> = mealPlanDao.getForDates(dates)
     suspend fun getForDateRange(start: String, end: String): List<MealPlanEntity> =
         mealPlanDao.getForDateRange(start, end)
+
+    /** Is this dish still on the plan for [from] or later? Days gone by don't count — nobody
+     *  shops for a meal that has already passed. */
+    suspend fun isPlannedFrom(recipeId: String, from: String): Boolean =
+        mealPlanDao.countForRecipeFrom(recipeId, from) > 0
     suspend fun skippedDates(dates: List<String>): Set<String> = mealDayDao.skippedDates(dates).toSet()
 
     suspend fun addEntry(date: String, recipeId: String, slot: String) {

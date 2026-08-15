@@ -414,13 +414,13 @@ private fun ImageHeader(model: Any?, liked: Boolean, cooked: Boolean, modifier: 
             )
         } else {
             Box(
-                Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primaryContainer),
+                Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerHighest),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     Icons.Outlined.Restaurant,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(48.dp),
                 )
             }
