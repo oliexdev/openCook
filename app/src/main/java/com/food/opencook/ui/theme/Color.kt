@@ -28,15 +28,15 @@ import androidx.compose.ui.graphics.Color
  */
 
 // Light
-private val Terracotta = Color(0xFFC4572B)
+private val Terracotta = Color(0xFF993F19)
 private val TerracottaContainer = Color(0xFFF6E2D6)
-private val Herb = Color(0xFF5B7A36)
+private val Herb = Color(0xFF486227)
 private val HerbContainer = Color(0xFFE3EBD4)
-private val Gold = Color(0xFFB07B2B)
+private val Gold = Color(0xFF845B16)
 private val GoldContainer = Color(0xFFF3E4C7)
 private val Cream = Color(0xFFFBF5EE)
 private val Ink = Color(0xFF2C2118)
-private val WarmMuted = Color(0xFF7E7163)
+private val WarmMuted = Color(0xFF625647)
 private val WarmOutline = Color(0xFFD8CCBE)
 
 val LightColors = lightColorScheme(
@@ -93,14 +93,14 @@ val DarkColors = darkColorScheme(
     surface = Color(0xFF211B15),
     onSurface = Color(0xFFF3E9DE),
     surfaceVariant = Color(0xFF4C4034),
-    onSurfaceVariant = Color(0xFFB5A593),
+    onSurfaceVariant = Color(0xFFD6C8B6),
     surfaceContainerLowest = Color(0xFF150F0B),
     surfaceContainerLow = Color(0xFF211B15),
     surfaceContainer = Color(0xFF271F18),
-    surfaceContainerHigh = Color(0xFF634D3C), // the raised card, see the light scheme
-    surfaceContainerHighest = Color(0xFF665746), // L* 38.0
+    surfaceContainerHigh = Color(0xFF332920), // L* 17.4
+    surfaceContainerHighest = Color(0xFF403528), // L* 23.0
     outline = Color(0xFF9C8E7E),
-    outlineVariant = Color(0xFF4C4034),
+    outlineVariant = Color(0xFF635546),
     error = Color(0xFFF2B8B5),
     onError = Color(0xFF601410),
     errorContainer = Color(0xFF8C1D18),
