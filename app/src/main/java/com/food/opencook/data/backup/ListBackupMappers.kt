@@ -128,6 +128,7 @@ fun MealPlanEntryBackup.toEntity() = MealPlanEntity(
 fun MealDayEntity.toBackup() = MealDayBackup(
     date = date,
     skipped = skipped,
+    autoPlanned = autoPlanned,
     createdAt = createdAt,
     updatedAt = updatedAt,
 )
@@ -135,6 +136,7 @@ fun MealDayEntity.toBackup() = MealDayBackup(
 fun MealDayBackup.toEntity() = MealDayEntity(
     date = date,
     skipped = skipped,
+    autoPlanned = autoPlanned,
     createdAt = createdAt,
     updatedAt = updatedAt,
 )

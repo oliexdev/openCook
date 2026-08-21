@@ -323,6 +323,7 @@ class MessageApplier @Inject constructor(
                     MealDayEntity(
                         date = rowId,
                         skipped = MessageCodec.isTrue(winning["skipped"]),
+                        autoPlanned = MessageCodec.isTrue(winning["autoPlanned"]),
                         createdAt = now,
                         updatedAt = now,
                     ),

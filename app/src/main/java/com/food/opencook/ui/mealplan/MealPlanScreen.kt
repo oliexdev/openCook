@@ -51,15 +51,14 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.AddShoppingCart
-import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.Today
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -115,6 +114,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -128,6 +128,7 @@ import com.food.opencook.ui.components.AppTopBar
 import com.food.opencook.ui.components.AvailabilityBadge
 import com.food.opencook.ui.components.CookedBadge
 import com.food.opencook.ui.components.SwipeActionRow
+import com.food.opencook.ui.retrospect.monthName
 import com.food.opencook.ui.theme.Spacing
 import com.food.opencook.util.MealTypes
 import java.time.LocalDate
@@ -144,15 +145,16 @@ private val WEEK_HEADER_HEIGHT = 40.dp
 fun MealPlanScreen(
     onOpenRecipe: (recipeId: String, planEntryId: String) -> Unit = { _, _ -> },
     onPickRecipe: (date: String, slot: String) -> Unit = { _, _ -> },
+    onOpenRetrospect: () -> Unit = {},
     viewModel: MealPlanViewModel = hiltViewModel(),
 ) {
     val week by viewModel.week.collectAsStateWithLifecycle()
+    val retrospect by viewModel.retrospect.collectAsStateWithLifecycle()
     val options by viewModel.recipeOptions.collectAsStateWithLifecycle()
     val todayKey by viewModel.todayKey.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val generatedMsg = stringResource(R.string.mealplan_generated)
-    val noRecipesMsg = stringResource(R.string.mealplan_no_recipes_suggest)
     val deletedMsg = stringResource(R.string.deleted)
     val undoMsg = stringResource(R.string.undo)
     val addedMsg = stringResource(R.string.shopping_added)
@@ -162,12 +164,15 @@ fun MealPlanScreen(
     // Idempotent, so running once per screen entry is enough — no daily confirmation.
     // Re-anchoring the window on the same pass keeps a phone left on this screen overnight
     // from insisting that yesterday is today.
+    //
+    // The rolling fill runs *after* the reconcile, so a dish that just rolled forward counts
+    // as occupying its new day and the planner doesn't plan on top of it.
     LaunchedEffect(Unit) {
         viewModel.refreshToday()
         viewModel.reconcilePastDays()
+        viewModel.autoFillWindow()
     }
 
-    var showSuggestConfirm by remember { mutableStateOf(false) }
     val appBar: AppBarViewModel = hiltViewModel()
     val syncStatus by appBar.status.collectAsStateWithLifecycle()
     val generating by viewModel.generating.collectAsStateWithLifecycle()
@@ -207,16 +212,6 @@ fun MealPlanScreen(
                 )
                 if (result == SnackbarResult.ActionPerformed) viewModel.undoAddToShoppingList()
             }
-        }
-    }
-
-    // "Suggest" overwrites the next seven days, so warn first when something is planned there.
-    val hasPlan = week.any { it.date >= todayKey && it.entries.isNotEmpty() }
-    val onSuggest: () -> Unit = {
-        when {
-            options.isEmpty() -> { scope.launch { snackbarHostState.showSnackbar(noRecipesMsg) } }
-            hasPlan -> { showSuggestConfirm = true }
-            else -> { viewModel.generateUpcoming() }
         }
     }
 
@@ -266,12 +261,6 @@ fun MealPlanScreen(
                 syncStatus = syncStatus,
                 onSync = appBar::sync,
                 actions = {
-                    TooltipIcon(
-                        tooltip = stringResource(R.string.mealplan_suggest_week),
-                        icon = Icons.Outlined.AutoAwesome,
-                        enabled = !generating,
-                        onClick = onSuggest,
-                    )
                     TooltipIcon(
                         tooltip = stringResource(R.string.mealplan_to_shopping),
                         icon = Icons.Outlined.AddShoppingCart,
@@ -398,6 +387,11 @@ fun MealPlanScreen(
                 // has scrolled to one of the two ends of the list.
                 contentPadding = PaddingValues(bottom = 88.dp),
             ) {
+                // Above the oldest day, so it is met by scrolling back rather than looked
+                // for in a menu — the list opens on today, so it starts out of sight.
+                retrospect?.let { teaser ->
+                    item(key = "retrospect") { RetrospectCard(teaser, onOpenRetrospect) }
+                }
                 sections.forEach { section ->
                     stickyHeader(key = "week_${section.weekOffset}") {
                         WeekHeader(section.weekOffset)
@@ -423,24 +417,6 @@ fun MealPlanScreen(
         }
     }
 
-    if (showSuggestConfirm) {
-        AlertDialog(
-            onDismissRequest = { showSuggestConfirm = false },
-            title = { Text(stringResource(R.string.mealplan_regenerate_title)) },
-            text = { Text(stringResource(R.string.mealplan_regenerate_text)) },
-            confirmButton = {
-                Button(onClick = { showSuggestConfirm = false; viewModel.generateUpcoming() }) {
-                    Text(stringResource(R.string.mealplan_regenerate_confirm))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showSuggestConfirm = false }) {
-                    Text(stringResource(R.string.processing_cancel))
-                }
-            },
-        )
-    }
-
 }
 
 /** "Yesterday" / "Today" / "Tomorrow" for the three days around [today], null for the rest —
@@ -461,6 +437,59 @@ private fun relativeDayRes(date: String, today: String): Int? {
  * not about naming the days — it is about keeping "am I looking at last week or next week?"
  * answerable at a glance while scrolling a continuous fifteen-day list.
  */
+/**
+ * The way into the retrospective, sitting above the oldest day the list reaches.
+ *
+ * It carries today's card treatment — surfaceVariant under a terracotta outline — because in
+ * this list an outline already means "not merely a day". The two can never be on screen at
+ * once: they are a week apart.
+ */
+@Composable
+private fun RetrospectCard(
+    teaser: MealPlanViewModel.RetrospectTeaser,
+    onClick: () -> Unit,
+) {
+    val month = monthName(LocalDate.now().month)
+    Card(
+        Modifier.fillMaxWidth().clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+        ) {
+            Icon(
+                Icons.Outlined.History,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Column(Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.retrospect_entry_title),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    pluralStringResource(
+                        R.plurals.retrospect_entry_subtitle,
+                        teaser.monthCooked,
+                        month,
+                        teaser.monthCooked,
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Icon(
+                Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
 @Composable
 private fun WeekHeader(weekOffset: Int) {
     val label = when (weekOffset) {

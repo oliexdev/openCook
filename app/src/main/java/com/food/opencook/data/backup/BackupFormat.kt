@@ -199,6 +199,9 @@ data class MealPlanEntryBackup(
 data class MealDayBackup(
     val date: String,
     val skipped: Boolean = false,
+    /** Belongs with the plan entries restored alongside it — without it, restored days would
+     *  be offered to the rolling planner again and could gain a second dish. */
+    val autoPlanned: Boolean = false,
     val createdAt: Long = 0,
     val updatedAt: Long = 0,
 )

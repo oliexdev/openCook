@@ -18,6 +18,7 @@
 
 package com.food.opencook.ui.recipes
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -42,6 +43,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Inventory2
+import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Badge
@@ -75,6 +77,7 @@ import com.food.opencook.ui.components.AppTopBar
 import com.food.opencook.ui.components.EmptyState
 import com.food.opencook.ui.components.RecipeCard
 import com.food.opencook.ui.theme.Spacing
+import com.food.opencook.util.CookedFilter
 import com.food.opencook.util.MealTypes
 import com.food.opencook.util.RecipeCategories
 
@@ -89,6 +92,7 @@ fun RecipesScreen(
     val query by viewModel.query.collectAsStateWithLifecycle()
     val cookbooks by viewModel.cookbooks.collectAsStateWithLifecycle()
     val filters by viewModel.filters.collectAsStateWithLifecycle()
+    val likedIds by viewModel.likedIds.collectAsStateWithLifecycle()
     var showFilterSheet by remember { mutableStateOf(false) }
     val appBar: AppBarViewModel = hiltViewModel()
     val syncStatus by appBar.status.collectAsStateWithLifecycle()
@@ -155,6 +159,22 @@ fun RecipesScreen(
                         )
                     }
                 }
+                if (filters.cookableOnly) {
+                    item(key = "filter-cookable") {
+                        ActiveFilterChip(
+                            label = stringResource(R.string.recipes_filter_cookable),
+                            onRemove = { viewModel.setCookableOnly(false) },
+                        )
+                    }
+                }
+                filters.cooked?.let { cooked ->
+                    item(key = "filter-cooked") {
+                        ActiveFilterChip(
+                            label = stringResource(cookedFilterLabel(cooked)),
+                            onRemove = { viewModel.toggleCooked(cooked) },
+                        )
+                    }
+                }
                 items(MealTypes.KEYS.filter { it in filters.mealTypes }, key = { "filter-meal-$it" }) { key ->
                     ActiveFilterChip(
                         label = stringResource(MealTypes.labelRes(key)),
@@ -205,6 +225,7 @@ fun RecipesScreen(
                             title = recipe.recipe.name ?: "—",
                             subtitle = listOfNotNull(recipe.recipe.recipeYield, recipe.recipe.cookbook).joinToString(" · ").ifBlank { null },
                             imageModel = imageModelFor(recipe.images, baseUrl),
+                            liked = recipe.recipe.id in likedIds,
                             onClick = { onRecipeClick(recipe.recipe.id) },
                         )
                     }
@@ -223,10 +244,19 @@ fun RecipesScreen(
             onToggleCookbook = viewModel::toggleCookbook,
             onLikedOnly = viewModel::setLikedOnly,
             onCookableOnly = viewModel::setCookableOnly,
+            onCooked = viewModel::toggleCooked,
             onClear = viewModel::clearFilters,
             onDismiss = { showFilterSheet = false },
         )
     }
+}
+
+/** Label for a cooking-status choice — shared by the sheet's chips and the active-filter row. */
+@StringRes
+private fun cookedFilterLabel(value: CookedFilter): Int = when (value) {
+    CookedFilter.COOKED -> R.string.recipes_filter_cooked
+    CookedFilter.NEVER -> R.string.recipes_filter_never_cooked
+    CookedFilter.STALE -> R.string.recipes_filter_stale
 }
 
 /** An active sheet-filter in the chip row: label + ✕, one tap removes the criterion. */
@@ -261,6 +291,7 @@ private fun FilterSheet(
     onToggleCookbook: (String) -> Unit,
     onLikedOnly: (Boolean) -> Unit,
     onCookableOnly: (Boolean) -> Unit,
+    onCooked: (CookedFilter) -> Unit,
     onClear: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -327,8 +358,16 @@ private fun FilterSheet(
                 }
             }
 
-            Spacer(Modifier.height(Spacing.md))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            // These two used to sit unlabelled at the foot of the sheet. They are states of
+            // the dish rather than facets of it, so they get a heading of their own — which
+            // is also what makes room for the cooking status below.
+            Text(
+                stringResource(R.string.recipes_filter_status),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = Spacing.md),
+            )
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                 FilterChip(
                     selected = filters.likedOnly,
                     onClick = { onLikedOnly(!filters.likedOnly) },
@@ -343,6 +382,27 @@ private fun FilterSheet(
                     leadingIcon = { Icon(Icons.Outlined.Inventory2, contentDescription = null, modifier = Modifier.size(18.dp)) },
                     label = { Text(stringResource(R.string.recipes_filter_cookable)) },
                 )
+            }
+
+            // Where the dish stands in the rotation. Single-select, because the three
+            // contradict each other — "cooked before" and "never" cannot both be wanted.
+            Text(
+                stringResource(R.string.recipes_filter_cooked_group),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = Spacing.md),
+            )
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                CookedFilter.entries.forEach { value ->
+                    FilterChip(
+                        selected = filters.cooked == value,
+                        onClick = { onCooked(value) },
+                        leadingIcon = if (value == CookedFilter.COOKED) {
+                            { Icon(Icons.Outlined.Restaurant, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                        } else null,
+                        label = { Text(stringResource(cookedFilterLabel(value))) },
+                    )
+                }
             }
             Spacer(Modifier.height(Spacing.xl))
         }

@@ -33,6 +33,10 @@ interface MealDayDao {
     @Query("SELECT date FROM meal_days WHERE skipped = 1 AND date IN (:dates)")
     suspend fun skippedDates(dates: List<String>): List<String>
 
+    /** Days the rolling planner has already handled — it never returns to them. */
+    @Query("SELECT date FROM meal_days WHERE autoPlanned = 1 AND date IN (:dates)")
+    suspend fun autoPlannedDates(dates: List<String>): List<String>
+
     @Query("SELECT * FROM meal_days WHERE date = :date")
     suspend fun getByDate(date: String): MealDayEntity?
 

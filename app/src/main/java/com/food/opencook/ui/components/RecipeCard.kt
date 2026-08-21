@@ -91,20 +91,11 @@ fun RecipeCard(
                     )
                 }
             }
-            if (liked) {
-                Surface(
-                    shape = androidx.compose.foundation.shape.CircleShape,
-                    color = Color.Black.copy(alpha = 0.35f),
-                    modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.sm),
-                ) {
-                    Icon(
-                        Icons.Filled.Favorite,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.padding(6.dp).size(16.dp),
-                    )
-                }
-            }
+            // The very badge the detail screen wears, in the same corner: a dish the household
+            // likes has to be recognisable as the same dish in the list and on its own page.
+            // It used to be a private white-on-black variant here, which read as a different
+            // mark and was the only place in the app painting a colour outside the theme.
+            if (liked) LikedBadge(Modifier.align(Alignment.TopStart))
         }
         Column(Modifier.padding(Spacing.md)) {
             Text(

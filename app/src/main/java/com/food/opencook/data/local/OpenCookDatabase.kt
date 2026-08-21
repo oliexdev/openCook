@@ -74,7 +74,7 @@ import com.food.opencook.data.local.entity.ShoppingItemEntity
     // v3: grocery_overrides (learned "name → aisle" corrections; synced).
     // v4: ingredient_links (learned "not the same product" distinctions; synced).
     // v5: meal_plan.slot (nullable TEXT; null = the primary slot, resolved at read time).
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 abstract class OpenCookDatabase : RoomDatabase() {

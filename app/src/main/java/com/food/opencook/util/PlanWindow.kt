@@ -62,6 +62,18 @@ object PlanWindow {
     fun futureDays(today: LocalDate = LocalDate.now()): List<LocalDate> =
         range(today, DAYS_FORWARD + 1)
 
+    /**
+     * The days the rolling planner still owes an attempt: [futureDays] minus the ones already
+     * marked `autoPlanned` (ISO date strings, as stored).
+     *
+     * Used every time the plan is opened, and that single rule covers both cadences: opened
+     * daily it yields exactly the one day that just rolled in at the far end; opened after
+     * three weeks away it yields the whole forward window at once. Days behind us are never
+     * in it — there is no plan to invent for a day that has gone.
+     */
+    fun autoFillDates(today: LocalDate = LocalDate.now(), alreadyPlanned: Set<String>): List<LocalDate> =
+        futureDays(today).filterNot { it.toString() in alreadyPlanned }
+
     /** One calendar week's worth of the window, keyed by its Monday. */
     data class WeekGroup(val monday: LocalDate, val days: List<LocalDate>)
 

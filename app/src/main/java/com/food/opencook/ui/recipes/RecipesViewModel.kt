@@ -25,6 +25,8 @@ import com.food.opencook.data.local.relation.RecipeWithDetails
 import com.food.opencook.data.settings.SettingsRepository
 import com.food.opencook.repository.PantryRepository
 import com.food.opencook.repository.RecipeRepository
+import com.food.opencook.util.CookedFilter
+import com.food.opencook.util.CookedStatus
 import com.food.opencook.util.MealTypes
 import com.food.opencook.util.RecipeAvailability
 import com.food.opencook.util.RecipeCategories
@@ -39,6 +41,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import java.time.LocalDate
 
 /** Filter-sheet state: multi-select within a group, AND between groups. Empty = off. */
 data class RecipeFilters(
@@ -48,11 +51,14 @@ data class RecipeFilters(
     val likedOnly: Boolean = false,
     /** Only dishes the pantry covers end to end — "what can I cook right now?". */
     val cookableOnly: Boolean = false,
+    /** Where a dish stands in the rotation. Single-select: the three states contradict
+     *  each other, so they are one choice rather than three switches. Null = off. */
+    val cooked: CookedFilter? = null,
 ) {
     /** Number of active filters — drives the badge on the search field's filter icon. */
     val activeCount: Int get() =
         mealTypes.size + categories.size + cookbooks.size +
-            (if (likedOnly) 1 else 0) + (if (cookableOnly) 1 else 0)
+            (if (likedOnly) 1 else 0) + (if (cookableOnly) 1 else 0) + (if (cooked != null) 1 else 0)
 }
 
 /**
@@ -67,6 +73,7 @@ internal object RecipeSearchFilter {
         filters: RecipeFilters,
         likedIds: Set<String>,
         pantry: Set<String> = emptySet(),
+        today: LocalDate = LocalDate.now(),
         categoryLabel: (String?) -> String,
     ): Boolean {
         val q = query.trim()
@@ -86,8 +93,9 @@ internal object RecipeSearchFilter {
         val matchesCookbook = filters.cookbooks.isEmpty() || item.recipe.cookbook in filters.cookbooks
         val matchesLiked = !filters.likedOnly || item.recipe.id in likedIds
         val matchesCookable = !filters.cookableOnly || RecipeAvailability.isStocked(item, pantry)
+        val matchesCooked = CookedStatus.matches(filters.cooked, item.recipe.lastCookedAt, today)
         return matchesQuery && matchesMeal && matchesCategory && matchesCookbook &&
-            matchesLiked && matchesCookable
+            matchesLiked && matchesCookable && matchesCooked
     }
 }
 
@@ -119,7 +127,9 @@ class RecipesViewModel @Inject constructor(
         .map { list -> list.mapNotNull { it.recipe.cookbook?.takeIf(String::isNotBlank) }.distinct().sorted() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    private val likedIds: StateFlow<Set<String>> =
+    /** Recipes anyone in the household likes — feeds the "favorites only" filter *and* the
+     *  heart badge on each card, so a liked dish is marked in the list, not only on its page. */
+    val likedIds: StateFlow<Set<String>> =
         repository.observeLikedRecipeIds()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
@@ -159,6 +169,11 @@ class RecipesViewModel @Inject constructor(
     fun setLikedOnly(value: Boolean) = _filters.update { it.copy(likedOnly = value) }
 
     fun setCookableOnly(value: Boolean) = _filters.update { it.copy(cookableOnly = value) }
+
+    /** Single-select: tapping the active chip again turns the group off. */
+    fun toggleCooked(value: CookedFilter) = _filters.update {
+        it.copy(cooked = if (it.cooked == value) null else value)
+    }
 
     fun clearFilters() { _filters.value = RecipeFilters() }
 }

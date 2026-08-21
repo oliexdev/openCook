@@ -39,6 +39,9 @@ object Routes {
     /** Local backup & restore (export/import a zip), opened from Settings. */
     const val BACKUP = "backup"
 
+    /** The household's cooking history, opened from the top of the plan list. */
+    const val RETROSPECT = "retrospect"
+
     /** Pick a recipe for one cell of the meal plan — a day *and* a meal (full list + search). */
     const val ARG_DATE = "date"
     const val ARG_SLOT = "slot"
@@ -81,6 +84,7 @@ object Routes {
     /** Routes that should hide the bottom navigation bar (focused full-screen flow). */
     val fullScreenRoutes = setOf(
         SCAN, CAMERA, REVIEW_CAMERA, REVIEW, RECIPE_DETAIL, EDIT, BARCODE_SCAN, PLAN_PICK,
-        BACKUP, SETTINGS_HOUSEHOLD, SETTINGS_SYNC, SETTINGS_APPEARANCE, SETTINGS_ABOUT,
+        BACKUP, RETROSPECT,
+        SETTINGS_HOUSEHOLD, SETTINGS_SYNC, SETTINGS_APPEARANCE, SETTINGS_ABOUT,
     )
 }

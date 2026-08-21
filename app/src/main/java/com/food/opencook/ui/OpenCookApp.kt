@@ -74,6 +74,7 @@ import com.food.opencook.ui.recipeimport.ImportViewModel
 import com.food.opencook.ui.recipeimport.ShareImportState
 import com.food.opencook.ui.recipes.RecipeDetailScreen
 import com.food.opencook.ui.recipes.RecipesScreen
+import com.food.opencook.ui.retrospect.RetrospectScreen
 import com.food.opencook.ui.review.ReviewScreen
 import com.food.opencook.ui.scan.ScanScreen
 import com.food.opencook.ui.settings.AboutScreen
@@ -272,6 +273,7 @@ private fun AppNavHost(navController: NavHostController, navigateToTab: (String)
                     navController.navigate(Routes.recipeDetail(recipeId, planEntryId))
                 },
                 onPickRecipe = { date, slot -> navController.navigate(Routes.planPick(date, slot)) },
+                onOpenRetrospect = { navController.navigate(Routes.RETROSPECT) },
             )
         }
         composable(TopLevelDestination.SHOPPING.route) {
@@ -303,6 +305,12 @@ private fun AppNavHost(navController: NavHostController, navigateToTab: (String)
         }
         composable(Routes.BACKUP) {
             BackupScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.RETROSPECT) {
+            RetrospectScreen(
+                onBack = { navController.popBackStack() },
+                onOpenRecipe = { navController.navigate(Routes.recipeDetail(it)) },
+            )
         }
         composable(
             Routes.PLAN_PICK,

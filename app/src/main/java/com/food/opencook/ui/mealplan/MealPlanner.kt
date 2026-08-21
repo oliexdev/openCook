@@ -149,6 +149,7 @@ object MealPlanner {
         weights: Weights = Weights(),
         coreByRecipe: Map<String, Set<String>>? = null,
         proteinByRecipe: Map<String, String?>? = null,
+        minRepeatGapDays: Long = 0L,
     ): Map<LocalDate, PickedRecipe> {
         if (candidates.isEmpty()) {
             return pinned.mapValues { (_, id) ->
@@ -183,10 +184,25 @@ object MealPlanner {
         for (date in dates) {
             if (date in skipped || result.containsKey(date)) continue
 
-            // Fair rotation: when every recipe has been used, start a fresh cycle but keep
-            // yesterday's dish out, so a small library never repeats back-to-back.
             var pool = candidates.filter { it.recipe.id !in used }
-            if (pool.isEmpty()) {
+
+            if (minRepeatGapDays > 0L) {
+                // Hard cool-down: a dish planned or cooked less than [minRepeatGapDays] before
+                // this date is out of the question, and if that empties the pool the day stays
+                // **empty**. The rolling planner runs unattended, so a small library would
+                // otherwise settle into a visible short loop; an empty row is the honest signal
+                // that there aren't enough recipes to plan automatically.
+                pool = pool.filter { rwd ->
+                    val id = rwd.recipe.id
+                    val last = listOfNotNull(recentlyPlanned[id], lastCookedAt[id]).maxOrNull()
+                    last == null || ChronoUnit.DAYS.between(last, date) >= minRepeatGapDays
+                }
+                if (pool.isEmpty()) continue
+            } else if (pool.isEmpty()) {
+                // Fair rotation: when every recipe has been used, start a fresh cycle but keep
+                // yesterday's dish out, so a small library never repeats back-to-back. Only the
+                // attended paths (single-cell suggestion) take this branch — they must always
+                // return something.
                 val yesterday = result[date.minusDays(1)]?.recipeId
                 used.clear()
                 if (yesterday != null) used += yesterday
@@ -257,6 +273,7 @@ object MealPlanner {
         lastCookedAt: Map<String, LocalDate> = emptyMap(),
         weights: Weights = Weights(),
         restarts: Int = 4,
+        minRepeatGapDays: Long = 0L,
     ): Map<LocalDate, PickedRecipe> {
         // Compute staple-filtered ingredient sets once for the whole sweep — the same
         // recipes are scored [restarts] × [days] times, no point re-filtering each pass.
@@ -272,6 +289,7 @@ object MealPlanner {
                 householdSize, today, seed = seed + i, liked = liked,
                 lastCookedAt = lastCookedAt, weights = weights,
                 coreByRecipe = coreByRecipe, proteinByRecipe = proteinByRecipe,
+                minRepeatGapDays = minRepeatGapDays,
             )
             val scoreSum = plan.values.sumOf { it.score }
             // Aggregate Cardinality: count distinct non-staple ingredients across all

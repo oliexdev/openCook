@@ -101,6 +101,11 @@
     <string name="recipes_filter_liked">Favorites only</string>
     <string name="recipes_filter_cookable">Cookable now</string>
     <string name="recipes_filter_remove">Remove filter %1$s</string>
+    <string name="recipes_filter_status">Status</string>
+    <string name="recipes_filter_cooked_group">Cooked</string>
+    <string name="recipes_filter_cooked">Cooked before</string>
+    <string name="recipes_filter_never_cooked">Never</string>
+    <string name="recipes_filter_stale">Not for a while</string>
     <string name="recipe_delete">Delete</string>
     <string name="recipe_edit">Edit</string>
     <string name="recipe_like">Liked</string>
@@ -123,6 +128,39 @@
     <string name="recipe_liked_label">♥ Liked</string>
     <string name="recipe_cook_moved">Moved “%1$s” to %2$s</string>
     <string name="recipe_cook_removed">Removed “%1$s” from today</string>
+    <plurals name="recipe_cooked_times">
+        <item quantity="one">cooked %1$d time</item>
+        <item quantity="other">cooked %1$d times</item>
+    </plurals>
+    <string name="recipe_cooked_last_short">last %1$s</string>
+
+    <!-- Retrospective ("what we've cooked"), reached from the top of the plan list -->
+    <string name="retrospect_title">Looking back</string>
+    <string name="retrospect_entry_title">What we\'ve cooked</string>
+    <plurals name="retrospect_entry_subtitle">
+        <item quantity="one">%1$s: %2$d meal</item>
+        <item quantity="other">%1$s: %2$d meals</item>
+    </plurals>
+    <string name="retrospect_month_headline">In %1$s</string>
+    <plurals name="retrospect_month_meals">
+        <item quantity="one">%1$d meal cooked</item>
+        <item quantity="other">%1$d meals cooked</item>
+    </plurals>
+    <string name="retrospect_month_days">on %1$d of %2$d days</string>
+    <string name="retrospect_month_none">Nothing cooked this month yet</string>
+    <string name="retrospect_section_most_cooked">Cooked most often</string>
+    <string name="retrospect_section_favourites">Everyone likes</string>
+    <string name="retrospect_section_stale">Not cooked in a long time</string>
+    <string name="retrospect_times">%1$d×</string>
+    <string name="retrospect_likes_label">Likes</string>
+    <string name="retrospect_never_cooked">never</string>
+    <plurals name="retrospect_months_ago">
+        <item quantity="one">%1$d month ago</item>
+        <item quantity="other">%1$d months ago</item>
+    </plurals>
+    <string name="retrospect_show_all">Show all</string>
+    <string name="retrospect_empty_title">Nothing to look back on yet</string>
+    <string name="retrospect_empty_message">Once you mark meals as cooked, they collect here.</string>
 
     <!-- Barcode scanning -->
     <string name="barcode_scan_cd">Scan barcode</string>
@@ -235,11 +273,6 @@
     <string name="mealplan_pick_clear_filter">Remove the filter above to choose from all recipes.</string>
     <string name="mealplan_no_recipes">No recipes to plan yet.</string>
     <string name="mealplan_generated">Ingredients added to the shopping list</string>
-    <string name="mealplan_suggest_week">Suggest the next 7 days</string>
-    <string name="mealplan_no_recipes_suggest">Scan some recipes first, then the app suggests a week.</string>
-    <string name="mealplan_regenerate_title">Re-plan the next 7 days?</string>
-    <string name="mealplan_regenerate_text">Every dish planned for today and the six days after it will be replaced. Days that have gone by stay as they are.</string>
-    <string name="mealplan_regenerate_confirm">Recreate</string>
     <string name="mealplan_remove_dish">Remove dish</string>
     <string name="mealplan_day_not_planned">Not planned</string>
     <string name="mealplan_day_yesterday">Yesterday</string>

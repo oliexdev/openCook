@@ -34,4 +34,16 @@ object DateLabels {
         val skeleton = if (fullWeekday) "EEEEMd" else "EEEMd"
         return DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, skeleton), locale)
     }
+
+    /** Weekday and day only, e.g. de → "Sa. 16.", en → "Sat 16". The month is carried by the
+     *  section header above, so repeating it on every row would only add noise. */
+    fun weekdayDay(): DateTimeFormatter = ofSkeleton("EEEd")
+
+    /** Month and year, e.g. de → "August 2026", en → "August 2026". */
+    fun monthYear(): DateTimeFormatter = ofSkeleton("yMMMM")
+
+    private fun ofSkeleton(skeleton: String): DateTimeFormatter {
+        val locale = Locale.getDefault()
+        return DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, skeleton), locale)
+    }
 }

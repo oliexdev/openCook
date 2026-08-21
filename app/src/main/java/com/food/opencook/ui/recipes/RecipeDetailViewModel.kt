@@ -97,6 +97,12 @@ class RecipeDetailViewModel @Inject constructor(
     val serverBaseUrl: StateFlow<String?> =
         settings.serverUrl.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+    /** How often the household has cooked this dish. `lastCookedAt` only remembers the most
+     *  recent day; the count comes from the plan's confirmed-cooked entries. */
+    val cookedCount: StateFlow<Int> =
+        mealPlanRepository.observeCookedCount(recipeId)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
     /** Target portions for the scaling stepper; null = show the recipe's own servings. */
     private val _targetServings = MutableStateFlow<Int?>(null)
     val targetServings: StateFlow<Int?> = _targetServings.asStateFlow()

@@ -91,12 +91,21 @@ object DatabaseModule {
         }
     }
 
+    /** v5 → v6: "the rolling planner has already handled this day". Defaults to 0, which is
+     *  the right answer for an existing install: every day currently in the window was put
+     *  there by hand or by the old suggest button, so the planner may offer itself once. */
+    private val MIGRATION_5_6 = object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE meal_days ADD COLUMN autoPlanned INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): OpenCookDatabase =
         // v1 is the released baseline schema (see OpenCookDatabase).
         Room.databaseBuilder(context, OpenCookDatabase::class.java, "opencook.db")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .build()
 
     @Provides

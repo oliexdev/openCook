@@ -89,6 +89,7 @@ fun MealPlanPickScreen(
     val query by recipesViewModel.query.collectAsStateWithLifecycle()
     val cookbooks by recipesViewModel.cookbooks.collectAsStateWithLifecycle()
     val filters by recipesViewModel.filters.collectAsStateWithLifecycle()
+    val likedIds by recipesViewModel.likedIds.collectAsStateWithLifecycle()
 
     // Seed the meal filter once per visit; afterwards it's the user's to change.
     LaunchedEffect(slot) { recipesViewModel.setMealTypeFilter(setOf(slot)) }
@@ -240,6 +241,7 @@ fun MealPlanPickScreen(
                                     subtitle = listOfNotNull(proposed.recipe.recipeYield, proposed.recipe.cookbook)
                                         .joinToString(" · ").ifBlank { null },
                                     imageModel = imageModelFor(proposed.images, baseUrl),
+                                    liked = proposed.recipe.id in likedIds,
                                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
                                     onClick = {
@@ -271,6 +273,7 @@ fun MealPlanPickScreen(
                             title = recipe.recipe.name ?: "—",
                             subtitle = listOfNotNull(recipe.recipe.recipeYield, recipe.recipe.cookbook).joinToString(" · ").ifBlank { null },
                             imageModel = imageModelFor(recipe.images, baseUrl),
+                            liked = recipe.recipe.id in likedIds,
                             onClick = {
                                 mealPlanViewModel.choose(date, slot, recipe.recipe.id)
                                 onBack()

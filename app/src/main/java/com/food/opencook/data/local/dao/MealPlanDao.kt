@@ -42,6 +42,30 @@ interface MealPlanDao {
     @Query("SELECT COUNT(*) FROM meal_plan WHERE recipeId = :recipeId AND date >= :from")
     suspend fun countForRecipeFrom(recipeId: String, from: String): Int
 
+    /**
+     * The household's cooking history from [from] on: every meal that was actually confirmed
+     * cooked, whether it was planned or not — cooking a dish that was never on the plan still
+     * writes an entry here (see `MealPlanRepository.addCookedEntry`). The table is never
+     * pruned, so this reaches back as far as the household does.
+     */
+    @Query("SELECT * FROM meal_plan WHERE cookedAt IS NOT NULL AND cookedAt >= :from ORDER BY cookedAt DESC")
+    fun observeCookedSince(from: String): Flow<List<MealPlanEntity>>
+
+    /** The whole cooking history, newest first — the retrospective lists it back to the very
+     *  first meal the household confirmed. */
+    @Query("SELECT * FROM meal_plan WHERE cookedAt IS NOT NULL ORDER BY cookedAt DESC")
+    fun observeAllCooked(): Flow<List<MealPlanEntity>>
+
+    /** How often this dish has been cooked, ever — distinct from `recipes.lastCookedAt`, which
+     *  only remembers the most recent day. */
+    @Query("SELECT COUNT(*) FROM meal_plan WHERE recipeId = :recipeId AND cookedAt IS NOT NULL")
+    fun observeCookedCount(recipeId: String): Flow<Int>
+
+    /** Has this household ever cooked anything? Decides whether the plan list offers a way
+     *  into the retrospective at all — an entry into an empty screen is worse than none. */
+    @Query("SELECT COUNT(*) FROM meal_plan WHERE cookedAt IS NOT NULL")
+    fun observeCookedTotal(): Flow<Int>
+
     @Query("SELECT * FROM meal_plan WHERE id = :id")
     suspend fun getById(id: String): MealPlanEntity?
 

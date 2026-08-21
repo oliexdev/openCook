@@ -390,4 +390,90 @@ class MealPlannerTest {
         val ids = plan.values.map { it.recipeId }.toSet()
         assertTrue("R1 and R2 reuse aubergine → both should be picked over R3", ids == setOf("R1", "R2"))
     }
+
+    // --- The rolling planner's repeat cool-down (auto-fill only) -------------
+
+    @Test
+    fun coolDownBarsADishPlannedInsideTheGap() {
+        val a = recipe("A", "Pasta")
+        val b = recipe("B", "Fleisch")
+        val result = MealPlanner.generateWeek(
+            dates = week(1), skipped = emptySet(), pinned = emptyMap(),
+            candidates = listOf(a, b),
+            recentlyPlanned = mapOf("A" to today.minusDays(9)),
+            pantry = emptySet(), householdSize = 2, today = today, seed = 1, weights = NO_JITTER,
+            minRepeatGapDays = 10L,
+        )
+        assertEquals("B", result[today]?.recipeId)
+    }
+
+    @Test
+    fun coolDownLetsADishThroughExactlyOnTheGap() {
+        val a = recipe("A", "Pasta")
+        val result = MealPlanner.generateWeek(
+            dates = week(1), skipped = emptySet(), pinned = emptyMap(),
+            candidates = listOf(a),
+            recentlyPlanned = mapOf("A" to today.minusDays(10)),
+            pantry = emptySet(), householdSize = 2, today = today, seed = 1, weights = NO_JITTER,
+            minRepeatGapDays = 10L,
+        )
+        assertEquals("A", result[today]?.recipeId)
+    }
+
+    @Test
+    fun coolDownAlsoCountsWhenTheDishWasCookedNotPlanned() {
+        val a = recipe("A", "Pasta")
+        val result = MealPlanner.generateWeek(
+            dates = week(1), skipped = emptySet(), pinned = emptyMap(),
+            candidates = listOf(a),
+            recentlyPlanned = emptyMap(),
+            lastCookedAt = mapOf("A" to today.minusDays(3)),
+            pantry = emptySet(), householdSize = 2, today = today, seed = 1, weights = NO_JITTER,
+            minRepeatGapDays = 10L,
+        )
+        assertTrue("cooked three days ago → still barred", result.isEmpty())
+    }
+
+    @Test
+    fun tooSmallALibraryLeavesDaysEmptyInsteadOfRepeating() {
+        // Three dishes, eight days, ten-day cool-down: days 4..8 have nothing left to offer.
+        val candidates = listOf(recipe("A", "Pasta"), recipe("B", "Fleisch"), recipe("C", "Fisch"))
+        val result = MealPlanner.generateWeek(
+            dates = week(8), skipped = emptySet(), pinned = emptyMap(),
+            candidates = candidates,
+            recentlyPlanned = emptyMap(), pantry = emptySet(),
+            householdSize = 2, today = today, seed = 1, weights = NO_JITTER,
+            minRepeatGapDays = 10L,
+        )
+        assertEquals(3, result.size)
+        assertEquals("no dish may appear twice", 3, result.values.map { it.recipeId }.toSet().size)
+    }
+
+    @Test
+    fun withoutTheGateTheRotationStillWrapsAsBefore() {
+        // Same setup, gate off: the old behaviour fills every day, wrapping the rotation.
+        val candidates = listOf(recipe("A", "Pasta"), recipe("B", "Fleisch"), recipe("C", "Fisch"))
+        val result = MealPlanner.generateWeek(
+            dates = week(8), skipped = emptySet(), pinned = emptyMap(),
+            candidates = candidates,
+            recentlyPlanned = emptyMap(), pantry = emptySet(),
+            householdSize = 2, today = today, seed = 1, weights = NO_JITTER,
+        )
+        assertEquals(8, result.size)
+    }
+
+    @Test
+    fun aBigBatchLeftoverMayStillFollowInsideTheGap() {
+        // The second helping of a big pot is intended, not a repetition — it bypasses the pool.
+        val big = recipe("BIG", "Pasta", servings = 8)
+        val result = MealPlanner.generateWeek(
+            dates = week(2), skipped = emptySet(), pinned = emptyMap(),
+            candidates = listOf(big),
+            recentlyPlanned = emptyMap(), pantry = emptySet(),
+            householdSize = 2, today = today, seed = 1, weights = NO_JITTER,
+            minRepeatGapDays = 10L,
+        )
+        assertEquals("BIG", result[today]?.recipeId)
+        assertEquals("BIG", result[today.plusDays(1)]?.recipeId)
+    }
 }

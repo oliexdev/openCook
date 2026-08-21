@@ -127,6 +127,7 @@ import com.food.opencook.data.export.ExportFormat
 import com.food.opencook.data.local.relation.RecipeWithDetails
 import com.food.opencook.ui.components.CookedCelebration
 import com.food.opencook.ui.components.HeartBurstFull
+import com.food.opencook.ui.components.LikedBadge
 import com.food.opencook.ui.theme.Spacing
 import com.food.opencook.util.DateLabels
 import com.food.opencook.util.DurationFormat
@@ -147,6 +148,7 @@ fun RecipeDetailScreen(
     val baseUrl by viewModel.serverBaseUrl.collectAsStateWithLifecycle()
     val liked by viewModel.liked.collectAsStateWithLifecycle()
     val cooked by viewModel.cooked.collectAsStateWithLifecycle()
+    val cookedCount by viewModel.cookedCount.collectAsStateWithLifecycle()
     val confirmsOtherDay by viewModel.confirmsOtherDay.collectAsStateWithLifecycle()
     val targetServings by viewModel.targetServings.collectAsStateWithLifecycle()
 
@@ -282,7 +284,7 @@ fun RecipeDetailScreen(
                     ) {
                         // Name lives in the top bar already, so the left pane starts with the image.
                         ImageHeader(model, liked, cooked)
-                        RecipeMeta(data)
+                        RecipeMeta(data, cookedCount)
                         IngredientsSection(data, targetServings, viewModel::setServings)
                         // Tags are secondary while cooking → bottom of the reference column.
                         TagChips(data.recipe.tags)
@@ -307,7 +309,7 @@ fun RecipeDetailScreen(
                 ) {
                     ImageHeader(model, liked, cooked)
                     Text(data.recipe.name ?: "—", style = MaterialTheme.typography.headlineSmall)
-                    RecipeMeta(data)
+                    RecipeMeta(data, cookedCount)
                     TagChips(data.recipe.tags)
                     ActionButtons(data, cooked, confirmsOtherDay, liked, onAddToShopping, onPlan, onToggleCooked, onToggleLiked)
                     IngredientsSection(data, targetServings, viewModel::setServings)
@@ -613,7 +615,7 @@ private fun TagChips(tags: String?) {
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun RecipeMeta(data: RecipeWithDetails) {
+private fun RecipeMeta(data: RecipeWithDetails, cookedCount: Int = 0) {
     val r = data.recipe
     val servings = r.recipeYield ?: r.servings?.let { stringResource(R.string.wizard_summary_servings, it.toString()) }
     val times = listOfNotNull(
@@ -629,8 +631,18 @@ private fun RecipeMeta(data: RecipeWithDetails) {
         servings?.let { MetaItem(Icons.Outlined.Group, it) }
         r.cookbook?.takeIf { it.isNotBlank() }?.let { MetaItem(Icons.AutoMirrored.Outlined.MenuBook, it) }
         times?.let { MetaItem(Icons.Outlined.Schedule, it) }
-        r.lastCookedAt?.let { lastCookedLabel(it) }?.let {
-            MetaItem(Icons.Outlined.Restaurant, "${stringResource(R.string.recipe_last_cooked_prefix)}: $it")
+        r.lastCookedAt?.let { lastCookedLabel(it) }?.let { recency ->
+            // With a history behind it the count leads and the date becomes the qualifier —
+            // "5× gekocht · zuletzt vor 3 Tagen". Without one the line is exactly as before.
+            MetaItem(
+                Icons.Outlined.Restaurant,
+                if (cookedCount > 0) {
+                    val times = pluralStringResource(R.plurals.recipe_cooked_times, cookedCount, cookedCount)
+                    "$times · ${stringResource(R.string.recipe_cooked_last_short, recency)}"
+                } else {
+                    "${stringResource(R.string.recipe_last_cooked_prefix)}: $recency"
+                },
+            )
         }
     }
 }
@@ -683,20 +695,4 @@ private fun CookedRibbon(modifier: Modifier = Modifier) {
     }
 }
 
-/** Small heart badge shown on the image (top-left) when the recipe is liked:
- *  a filled red heart on a light circle for contrast against the photo. */
-@Composable
-private fun LikedBadge(modifier: Modifier = Modifier) {
-    Surface(
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.background,
-        modifier = modifier.padding(10.dp),
-    ) {
-        Icon(
-            Icons.Filled.Favorite,
-            contentDescription = stringResource(R.string.recipe_liked_label),
-            tint = MaterialTheme.colorScheme.error,
-            modifier = Modifier.padding(7.dp).size(18.dp),
-        )
-    }
-}
+// LikedBadge now lives in ui/components — the recipe cards in the list wear the same mark.

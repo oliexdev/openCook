@@ -127,4 +127,37 @@ class PlanWindowTest {
         assertEquals(-1, sectionsOf(week, wednesday.toString()).second)
         assertEquals(-1, sectionsOf(emptyList(), wednesday.toString()).second)
     }
+
+    // --- What the rolling planner still owes an attempt --------------------
+
+    @Test
+    fun `nothing flagged yet means the whole forward window`() {
+        val dates = PlanWindow.autoFillDates(wednesday, emptySet())
+        assertEquals(PlanWindow.futureDays(wednesday), dates)
+        assertEquals(wednesday, dates.first())
+        assertTrue("never reaches into the past", dates.none { it < wednesday })
+    }
+
+    @Test
+    fun `used daily only the newly rolled-in day is left`() {
+        // Yesterday's run flagged today..today+6; the far end has since moved on by one.
+        val flagged = (0..6).map { wednesday.plusDays(it.toLong()).toString() }.toSet()
+        assertEquals(
+            listOf(wednesday.plusDays(PlanWindow.DAYS_FORWARD)),
+            PlanWindow.autoFillDates(wednesday, flagged),
+        )
+    }
+
+    @Test
+    fun `after a long absence the whole window comes back at once`() {
+        // Flags from three weeks ago are all behind us and match nothing in the window.
+        val stale = (0..7).map { wednesday.minusDays(21).plusDays(it.toLong()).toString() }.toSet()
+        assertEquals(PlanWindow.futureDays(wednesday), PlanWindow.autoFillDates(wednesday, stale))
+    }
+
+    @Test
+    fun `a fully flagged window owes nothing`() {
+        val flagged = PlanWindow.futureDays(wednesday).map(LocalDate::toString).toSet()
+        assertTrue(PlanWindow.autoFillDates(wednesday, flagged).isEmpty())
+    }
 }

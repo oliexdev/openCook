@@ -68,6 +68,19 @@ class MealPlanRepository @Inject constructor(
      *  shops for a meal that has already passed. */
     suspend fun isPlannedFrom(recipeId: String, from: String): Boolean =
         mealPlanDao.countForRecipeFrom(recipeId, from) > 0
+
+    /** Confirmed-cooked entries from [from] on — feeds the plan list's retrospective teaser. */
+    fun observeCookedSince(from: String): Flow<List<MealPlanEntity>> = mealPlanDao.observeCookedSince(from)
+
+    /** The household's complete cooking history, newest first. */
+    fun observeAllCooked(): Flow<List<MealPlanEntity>> = mealPlanDao.observeAllCooked()
+
+    /** How often this dish has been cooked, ever. */
+    fun observeCookedCount(recipeId: String): Flow<Int> = mealPlanDao.observeCookedCount(recipeId)
+
+    /** Total confirmed-cooked meals — "does this household have a history yet?". */
+    fun observeCookedTotal(): Flow<Int> = mealPlanDao.observeCookedTotal()
+
     suspend fun skippedDates(dates: List<String>): Set<String> = mealDayDao.skippedDates(dates).toSet()
 
     suspend fun addEntry(date: String, recipeId: String, slot: String) {
@@ -153,34 +166,55 @@ class MealPlanRepository @Inject constructor(
     }
 
     suspend fun setSkipped(date: String, skipped: Boolean) {
-        val now = System.currentTimeMillis()
-        val day = MealDayEntity(date, skipped, now, now)
-        mealDayDao.upsert(day)
-        messageRecorder.record(MealDayMessageEncoder.encode(day))
+        writeDay(date) { it.copy(skipped = skipped) }
         // Skipping a day clears its non-pinned meals so the plan reflects the opt-out.
         if (skipped) clearNonPinned(mealPlanDao.getForDates(listOf(date)))
     }
 
+    /** Days the rolling planner has already offered itself for; it never returns to them. */
+    suspend fun autoPlannedDates(dates: List<String>): Set<String> =
+        mealDayDao.autoPlannedDates(dates).toSet()
+
     /**
-     * Replace one meal of the week with [generated] (date -> recipeId). Pinned entries are
-     * left untouched; every other entry of *this slot* in the window is cleared and rebuilt —
-     * so regenerating lunches never touches a hand-placed breakfast or a one-off Sunday cake.
-     * [reasons] travel with each entry as `reasonsJson` so other devices can also explain
-     * "why this dish?". [planned] is needed to place entries that predate slots (null slot).
+     * Remember that the planner has handled [date] — whether or not a dish came out of it.
+     * That "whether or not" is the point: a day it declined (nothing outside the repeat
+     * cool-down) must not be retried tomorrow, or a small library would get a fresh attempt
+     * every single day until something slipped through.
      */
-    suspend fun generateAndSaveWeek(
+    suspend fun markAutoPlanned(date: String) {
+        writeDay(date) { it.copy(autoPlanned = true) }
+    }
+
+    /** Read-modify-write one day row, so setting one flag never clears the other. */
+    private suspend fun writeDay(date: String, edit: (MealDayEntity) -> MealDayEntity) {
+        val now = System.currentTimeMillis()
+        val existing = mealDayDao.getByDate(date)
+            ?: MealDayEntity(date = date, skipped = false, createdAt = now, updatedAt = now)
+        val day = edit(existing).copy(updatedAt = now)
+        mealDayDao.upsert(day)
+        messageRecorder.record(MealDayMessageEncoder.encode(day))
+    }
+
+    /**
+     * Put the planner's pick into one cell — **only if that cell is empty**. The rolling
+     * planner never overwrites: it offers itself for a day once, when the day enters the
+     * window, and whatever is there afterwards is the household's business.
+     *
+     * The entry id is derived from `(date, slot)` instead of being random, so two devices
+     * that fill the same cell while out of contact write the *same* row and per-field
+     * last-write-wins settles on one dish, rather than the day ending up with two dinners.
+     */
+    suspend fun autoFillCell(
+        date: String,
         slot: String,
-        generated: Map<String, String>,
-        dateKeys: List<String>,
+        recipeId: String,
         planned: List<String>,
-        reasons: Map<String, List<ReasonContribution>> = emptyMap(),
+        reasons: List<ReasonContribution> = emptyList(),
     ) {
-        val inSlot = mealPlanDao.getForDates(dateKeys).filter { MealPlanSlots.resolve(it.slot, planned) == slot }
-        val pinnedDates = inSlot.filter { it.pinned }.map { it.date }.toSet()
-        clearNonPinned(inSlot)
-        generated.forEach { (date, recipeId) ->
-            if (date !in pinnedDates) insertGenerated(date, slot, recipeId, encodeReasons(reasons[date].orEmpty()))
-        }
+        val occupied = mealPlanDao.getForDates(listOf(date))
+            .any { MealPlanSlots.resolve(it.slot, planned) == slot }
+        if (occupied) return
+        insertGenerated(date, slot, recipeId, encodeReasons(reasons), deterministicId = true)
     }
 
     /** Swap out a single (non-pinned) cell — used by "re-roll this meal". */
@@ -208,10 +242,14 @@ class MealPlanRepository @Inject constructor(
         slot: String,
         recipeId: String,
         reasonsJson: String? = null,
+        /** Auto-filled cells derive their id so concurrent devices converge (see [autoFillCell]).
+         *  Hand-placed ones keep a random id — there a second dish on the same day is a
+         *  legitimate thing to want. */
+        deterministicId: Boolean = false,
     ) {
         val now = System.currentTimeMillis()
         val entry = MealPlanEntity(
-            id = UUID.randomUUID().toString(),
+            id = if (deterministicId) autoEntryId(date, slot) else UUID.randomUUID().toString(),
             date = date,
             recipeId = recipeId,
             slot = slot,
@@ -222,5 +260,12 @@ class MealPlanRepository @Inject constructor(
         )
         mealPlanDao.upsert(entry)
         messageRecorder.record(MealPlanMessageEncoder.encode(entry))
+    }
+
+    companion object {
+        /** Stable id for an auto-filled cell: same day + same meal ⇒ same row on every device,
+         *  so two phones filling the window offline converge instead of doubling the dish. */
+        internal fun autoEntryId(date: String, slot: String): String =
+            UUID.nameUUIDFromBytes("auto|$date|$slot".toByteArray()).toString()
     }
 }

@@ -193,6 +193,27 @@ class MealPlanViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /**
+     * The retrospective teaser above the oldest day. Null while the household has never
+     * confirmed a meal — an entry into an empty screen is worse than no entry at all.
+     *
+     * [monthCooked] counts the current calendar month, which is what the card advertises; the
+     * screen behind it reaches back a year.
+     */
+    data class RetrospectTeaser(val monthCooked: Int)
+
+    val retrospect: StateFlow<RetrospectTeaser?> = _today
+        .flatMapLatest { anchor ->
+            combine(
+                mealPlanRepository.observeCookedTotal(),
+                mealPlanRepository.observeCookedSince(anchor.withDayOfMonth(1).toString()),
+            ) { total, thisMonth ->
+                if (total == 0) null
+                else RetrospectTeaser(thisMonth.count { it.cookedAt?.let { d -> d <= anchor.toString() } == true })
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
     /** True while a week is being generated / shopping list built — drives a loading UI. */
     private val _generating = MutableStateFlow(false)
     val generating: StateFlow<Boolean> = _generating.asStateFlow()
@@ -282,10 +303,6 @@ class MealPlanViewModel @Inject constructor(
             }
         }
 
-    fun togglePin(entry: PlannedRecipe) = viewModelScope.launch {
-        mealPlanRepository.setPinned(entry.entryId, !entry.pinned)
-    }
-
     /**
      * Self-healing carry-forward. A planned day that has passed without a "cooked"
      * confirmation rolls onto the next free day — but only if its ingredients were
@@ -336,46 +353,68 @@ class MealPlanViewModel @Inject constructor(
         all.filter { slot in MealTypes.fromStored(it.recipe.mealTypes) }
 
     /**
-     * Build a fresh plan for the next seven days, starting today. Runs the planner once per
-     * planned meal, each over its own candidate set and its own [MealPlanner.Weights.forSlot]
-     * tuning; pinned cells survive. Days behind us are never touched — what was cooked was
-     * cooked.
+     * The rolling planner. Fills every day of the forward window the planner has not yet been
+     * offered — which, opened daily, is the single day that just rolled in at the far end, and
+     * after a long absence is the whole window at once.
      *
-     * The recency map accumulates across meals, so a dish used for lunch is heavily
-     * penalised when dinner is planned (a future date yields 0 days' distance, i.e. the
-     * maximum penalty) — and an exact same-day collision is dropped outright. Only the
-     * *planned* meals are regenerated: a hand-placed one-off in a switched-off meal, like a
-     * Sunday cake, is never touched.
+     * Three properties make this safe to run unattended:
+     *  - it only ever fills an **empty** cell, and marks the day afterwards, so it never
+     *    returns to a day the household has since edited (deleting included);
+     *  - a dish planned or cooked within [AUTO_FILL_GAP_DAYS] is barred outright, and if that
+     *    leaves nothing the day stays empty rather than looping through a small library;
+     *  - an empty library marks nothing, so a household that adds recipes later still gets its
+     *    window filled instead of having burned it while it had none.
+     *
+     * Runs once per planned meal, each over its own candidate set and its own
+     * [MealPlanner.Weights.forSlot] tuning. The recency map accumulates across meals, so a
+     * dish used for lunch is heavily penalised when dinner is planned, and an exact same-day
+     * collision is dropped outright.
      */
-    fun generateUpcoming() = viewModelScope.launch {
-        _generating.value = true
-        try {
+    fun autoFillWindow() = viewModelScope.launch {
+        // Deliberately without the `generating` progress bar: this runs on every open, usually
+        // for a single day, and a spinner flashing each time would announce housekeeping the
+        // user never asked for. The rows simply appear.
+        run {
             val all = recipeRepository.getAllRecipesOnce()
+            // Nothing to plan from: leave the days unmarked so they get a real chance later.
             if (all.isEmpty()) return@launch
             val today = LocalDate.now()
-            val days = PlanWindow.actionDays(today)
+            val windowKeys = PlanWindow.futureDays(today).map(LocalDate::toString)
+            val flagged = mealPlanRepository.autoPlannedDates(windowKeys)
+            val days = PlanWindow.autoFillDates(today, flagged)
+            if (days.isEmpty()) return@launch
+
             val dateKeys = days.map(LocalDate::toString)
             val planned = settingsRepository.plannedMealsOnce()
-            val existing = mealPlanRepository.getForDates(dateKeys)
+            val inWindow = mealPlanRepository.getForDates(windowKeys)
             val pantry = pantryRepository.stockedNames()
             val householdSize = settingsRepository.householdSizeOnce()
             val liked = recipeRepository.likedRecipeIds()
             val cooked = cookedMap(all)
             val recently = recentlyPlanned(today).toMutableMap()
+            // Dishes already standing in the window count towards the cool-down as well.
+            // `recentlyPlanned` only looks *backwards*, and filling just the far edge leaves
+            // the days in between invisible to it — without this, tomorrow's dinner could be
+            // planned again for the last day of the window, six days later.
+            inWindow.forEach { entry ->
+                val date = runCatching { LocalDate.parse(entry.date) }.getOrNull() ?: return@forEach
+                val previous = recently[entry.recipeId]
+                if (previous == null || date.isAfter(previous)) recently[entry.recipeId] = date
+            }
             // date -> recipes already placed that day by an earlier meal.
             val placed = mutableMapOf<String, MutableSet<String>>()
-            existing.forEach { placed.getOrPut(it.date) { mutableSetOf() } += it.recipeId }
+            inWindow.filter { it.date in dateKeys }
+                .forEach { placed.getOrPut(it.date) { mutableSetOf() } += it.recipeId }
+            var anySlotPlannable = false
 
             planned.forEach { slot ->
                 val candidates = candidatesFor(slot, all)
                 if (candidates.isEmpty()) return@forEach
-                val pinned = existing
-                    .filter { it.pinned && MealPlanSlots.resolve(it.slot, planned) == slot }
-                    .associate { LocalDate.parse(it.date) to it.recipeId }
+                anySlotPlannable = true
                 val generated = MealPlanner.generateWeekBest(
                     dates = days,
                     skipped = emptySet(),
-                    pinned = pinned,
+                    pinned = emptyMap(),
                     candidates = candidates,
                     recentlyPlanned = recently,
                     pantry = pantry,
@@ -385,17 +424,23 @@ class MealPlanViewModel @Inject constructor(
                     liked = liked,
                     lastCookedAt = cooked,
                     weights = MealPlanner.Weights.forSlot(slot),
+                    minRepeatGapDays = AUTO_FILL_GAP_DAYS,
                 ).filterNot { (date, pick) -> pick.recipeId in placed[date.toString()].orEmpty() }
 
-                val ids = generated.mapKeys { it.key.toString() }.mapValues { it.value.recipeId }
-                val reasons = generated.mapKeys { it.key.toString() }.mapValues { it.value.reasons }
-                mealPlanRepository.generateAndSaveWeek(slot, ids, dateKeys, planned, reasons)
                 generated.forEach { (date, pick) ->
+                    mealPlanRepository.autoFillCell(
+                        date.toString(), slot, pick.recipeId, planned, pick.reasons,
+                    )
                     recently[pick.recipeId] = date
                     placed.getOrPut(date.toString()) { mutableSetOf() } += pick.recipeId
                 }
             }
-        } finally { _generating.value = false }
+
+            // Mark whether or not a dish came out of it — but only if at least one meal had a
+            // candidate list to work from. A day declined for lack of recipes must not be
+            // retried every single day until something slips through.
+            if (anySlotPlannable) dateKeys.forEach { mealPlanRepository.markAutoPlanned(it) }
+        }
     }
 
     /** What the planner would put in one cell, and why. Null when it has nothing to offer. */
@@ -520,6 +565,17 @@ class MealPlanViewModel @Inject constructor(
 
     private companion object {
         const val HISTORY_DAYS = 21L
+
+        /**
+         * How long a dish is barred from the rolling planner after it was last planned or
+         * cooked. Ten days is long enough that a household with a decent library never sees a
+         * pattern, and short enough that a fortnight's plan still fills up. Below that many
+         * candidates the days simply stay empty — which is the honest answer.
+         *
+         * Applies to the unattended fill only: the single-cell suggestion in the picker
+         * ignores it, because someone who deliberately asks for an alternative wants one.
+         */
+        const val AUTO_FILL_GAP_DAYS = 10L
         /** How far back an un-cooked, procured dish may still be rolled forward from. */
         const val LOOKBACK_DAYS = 3L
     }

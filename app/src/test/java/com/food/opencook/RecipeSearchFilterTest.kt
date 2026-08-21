@@ -23,9 +23,12 @@ import com.food.opencook.data.local.entity.RecipeEntity
 import com.food.opencook.data.local.relation.RecipeWithDetails
 import com.food.opencook.ui.recipes.RecipeFilters
 import com.food.opencook.ui.recipes.RecipeSearchFilter
+import com.food.opencook.util.CookedFilter
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.LocalDate
 
 /**
  * The recipe list's search/filter predicate: full text over name, tags, ingredients,
@@ -51,10 +54,12 @@ class RecipeSearchFilterTest {
         mealTypes: String? = null,
         cookbook: String? = "Omas Küche",
         ingredients: List<String> = listOf("Lauch", "Kartoffeln"),
+        lastCookedAt: String? = null,
     ) = RecipeWithDetails(
         recipe = RecipeEntity(
             id = id, name = name, tags = tags, category = category,
-            mealTypes = mealTypes, cookbook = cookbook, createdAt = 0, updatedAt = 0,
+            mealTypes = mealTypes, cookbook = cookbook, lastCookedAt = lastCookedAt,
+            createdAt = 0, updatedAt = 0,
         ),
         ingredients = ingredients.mapIndexed { i, n -> IngredientEntity("i$i", id, i, null, null, n) },
         instructions = emptyList(),
@@ -68,7 +73,48 @@ class RecipeSearchFilterTest {
         filters: RecipeFilters = RecipeFilters(),
         likedIds: Set<String> = emptySet(),
         pantry: Set<String> = emptySet(),
-    ) = RecipeSearchFilter.matches(item, query, filters, likedIds, pantry, label)
+        today: LocalDate = LocalDate.of(2026, 8, 17),
+    ) = RecipeSearchFilter.matches(item, query, filters, likedIds, pantry, today, label)
+
+    // --- cooking status (single-select group) ---
+
+    @Test
+    fun cookedFilterSplitsTheRotation() {
+        val today = LocalDate.of(2026, 8, 17)
+        val never = recipe(lastCookedAt = null)
+        val recent = recipe(lastCookedAt = today.minusDays(5).toString())
+        val forgotten = recipe(lastCookedAt = today.minusDays(200).toString())
+
+        val cooked = RecipeFilters(cooked = CookedFilter.COOKED)
+        assertTrue(matches(recent, filters = cooked, today = today))
+        assertTrue(matches(forgotten, filters = cooked, today = today))
+        assertFalse(matches(never, filters = cooked, today = today))
+
+        val nie = RecipeFilters(cooked = CookedFilter.NEVER)
+        assertTrue(matches(never, filters = nie, today = today))
+        assertFalse(matches(recent, filters = nie, today = today))
+
+        // "Forgotten" deliberately includes never-cooked — those are the most forgotten of all.
+        val stale = RecipeFilters(cooked = CookedFilter.STALE)
+        assertTrue(matches(forgotten, filters = stale, today = today))
+        assertTrue(matches(never, filters = stale, today = today))
+        assertFalse(matches(recent, filters = stale, today = today))
+    }
+
+    @Test
+    fun cookedFilterCountsAsOneActiveFilter() {
+        assertEquals(0, RecipeFilters().activeCount)
+        assertEquals(1, RecipeFilters(cooked = CookedFilter.STALE).activeCount)
+        assertEquals(2, RecipeFilters(cooked = CookedFilter.STALE, likedOnly = true).activeCount)
+    }
+
+    @Test
+    fun cookedFilterAndsWithTheOtherGroups() {
+        val today = LocalDate.of(2026, 8, 17)
+        val r = recipe(category = "soup", lastCookedAt = null)
+        val filters = RecipeFilters(cooked = CookedFilter.NEVER, categories = setOf("dessert"))
+        assertFalse(matches(r, filters = filters, today = today))
+    }
 
     // --- cookable now ---
 
