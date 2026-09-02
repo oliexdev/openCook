@@ -32,9 +32,11 @@ Facts database the first time you scan a new product.)
 ### Does it cost anything?
 No. openCook is free and open source (GPL v3).
 
-### Why isn't it on the Play Store / F-Droid?
-It's still in active development. For now you build it from source — see
-[Building from source](../developer/building.md).
+### Where do I get it?
+From [F-Droid](https://f-droid.org/packages/com.food.opencook/) — that's the recommended way, it
+keeps the app updated for you. Signed APKs are also attached to every
+[GitHub release](https://github.com/oliexdev/openCook/releases), and you can always
+[build it from source](../developer/building.md). It is not on the Play Store.
 
 ### The AI got something wrong. Can I fix it?
 Yes — every scanned recipe opens in a **Review** screen before it's saved, where you can correct

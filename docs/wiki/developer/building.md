@@ -45,7 +45,8 @@ Releases go out via GitHub releases and F-Droid — there is no in-app updater.
 3. **Tag and publish.** Tag the commit `v<versionName>` and attach the signed
    `openCook-<versionName>-release.apk` to the GitHub release. F-Droid picks up new tags
    automatically (`UpdateCheckMode: Tags`), builds the release variant reproducibly and ships your
-   signed APK — see the reference recipe at `fdroid/com.food.opencook.yml`.
+   signed APK — the recipe lives upstream at
+   [fdroiddata/metadata/com.food.opencook.yml](https://gitlab.com/fdroid/fdroiddata/-/blob/master/metadata/com.food.opencook.yml).
 
 (A CI workflow also publishes a rolling debug APK as the `dev-build` prerelease on every push to
 `main`; see `.github/workflows/ci.yml`.)

@@ -7,9 +7,10 @@ optional server you host at home adds photo scanning and browser import.
 
 ## Install the app
 
-There's no Play Store / F-Droid release yet, so you build the app from source — see
-[Building from source](../developer/building.md). The result is a normal `.apk` you install on your
-phone (Android 11 / API 30 or newer).
+Install it from [F-Droid](https://f-droid.org/packages/com.food.opencook/) — that's the recommended
+way, since it updates the app for you. Alternatively grab the signed `.apk` from a
+[GitHub release](https://github.com/oliexdev/openCook/releases) or
+[build it from source](../developer/building.md). Either way you need Android 11 (API 30) or newer.
 
 ## First launch
 
