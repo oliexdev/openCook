@@ -31,8 +31,14 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -42,6 +48,7 @@ import com.food.opencook.R
 import com.food.opencook.ui.AppBarViewModel
 import com.food.opencook.ui.components.AppTopBar
 import com.food.opencook.ui.theme.Spacing
+import kotlinx.coroutines.launch
 
 /**
  * Settings hub. Every entry opens a sub-page; the subtitles carry the current state, so

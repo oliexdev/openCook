@@ -39,6 +39,7 @@ import androidx.compose.material.icons.outlined.FileOpen
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -72,6 +73,7 @@ fun ScanScreen(
     onNavigateToCamera: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onCreateManually: () -> Unit = {},
+    onDiscover: () -> Unit = {},
     onBack: () -> Unit = {},
     viewModel: ScanViewModel = hiltViewModel(),
 ) {
@@ -197,6 +199,16 @@ fun ScanScreen(
         ) {
             Icon(Icons.Outlined.EditNote, contentDescription = null)
             Text(stringResource(R.string.scan_manual), modifier = Modifier.padding(start = 8.dp))
+        }
+
+        // Browse recipe sites in the in-app browser and import the page you open. Needs no
+        // server (the JSON-LD is parsed on the device), so it is always available.
+        OutlinedButton(
+            onClick = onDiscover,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(Icons.Outlined.Public, contentDescription = null)
+            Text(stringResource(R.string.scan_discover), modifier = Modifier.padding(start = 8.dp))
         }
 
         // Import from a JSON file or a .zip bundle (recipes.json + images/).

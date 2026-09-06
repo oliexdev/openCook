@@ -38,8 +38,8 @@
     <string name="settings_save">Speichern</string>
 
     <!-- Scan -->
-    <string name="scan_title">Rezept scannen</string>
-    <string name="scan_intro">Fotografiere eine Kochbuchseite oder wähle ein Bild aus der Galerie. Die KI erkennt die Rezepte für dich.</string>
+    <string name="scan_title">Rezept hinzufügen</string>
+    <string name="scan_intro">Fotografiere eine Kochbuchseite, hol dir eines aus dem Netz oder schreib es selbst auf.</string>
     <string name="scan_take_photo">Foto aufnehmen</string>
     <string name="scan_pick_gallery">Aus Galerie wählen</string>
     <string name="scan_no_server_title">Foto-Erkennung braucht einen Server</string>
@@ -404,6 +404,23 @@
     <string name="import_share_no_recipe">Kein Rezept auf dieser Seite gefunden</string>
     <string name="import_share_error_load">Seite konnte nicht geladen werden.</string>
     <string name="import_share_fallback_name">Rezept</string>
+
+    <string name="scan_discover">Im Netz entdecken</string>
+    <string name="discover_title">Rezepte entdecken</string>
+    <string name="discover_add">Hinzufügen</string>
+    <string name="discover_remove">%1$s entfernen</string>
+    <string name="discover_address_hint">chefkoch.de/rezepte</string>
+    <string name="discover_removed">„%1$s“ entfernt</string>
+    <string name="discover_clear">Cookies von %1$s löschen</string>
+    <string name="discover_clear_confirm_title">Cookies von %1$s löschen?</string>
+    <string name="discover_clear_confirm_text">%1$s vergisst dieses Handy: Cookies und was die Seite im Browser abgelegt hat werden entfernt, auch das dort akzeptierte Cookie-Banner — beim nächsten Besuch fragt es wieder. Rezepte, die du von %1$s importiert hast, bleiben in deiner Sammlung.</string>
+    <string name="discover_cleared">Cookies von %1$s gelöscht</string>
+    <string name="discover_import">Dieses Rezept importieren</string>
+    <string name="discover_import_short">Importieren</string>
+    <string name="discover_close">Seite schließen</string>
+    <string name="discover_disclaimer">Eine eingebaute Browser-Ansicht: fremde Seiten mit ihrer eigenen Werbung und ihren eigenen Cookies. openCook gehört nicht zu ihnen und speichert nur das Rezept, das du öffnest — für deinen privaten Gebrauch.</string>
+    <string name="discover_no_webview_title">Browser-Ansicht nicht verfügbar</string>
+    <string name="discover_no_webview_body">Auf diesem Gerät ist die Android System WebView nicht installiert oder abgeschaltet — Seiten lassen sich hier deshalb nicht anzeigen. Rezepte kannst du weiterhin per Foto, aus einer Datei, über einen geteilten Link oder von Hand anlegen.</string>
 
     <!-- Home (Heute) -->
 

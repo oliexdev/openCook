@@ -261,6 +261,34 @@ class SettingsRepository @Inject constructor(
         return generated
     }
 
+    /**
+     * The in-app browser's tiles, as the user has arranged them. **Device-local, not synced**:
+     * which sites someone likes to browse is a personal habit, not household data, and it
+     * carries no recipe content.
+     *
+     * Stored as two small lists rather than one materialised list, so a future app version that
+     * ships another default site still shows it: [discoverHiddenSites] are the built-in tiles
+     * that were removed, [discoverCustomSites] the addresses that were typed in.
+     */
+    val discoverHiddenSites: Flow<Set<String>> = pref { urls(it[DISCOVER_HIDDEN]).toSet() }
+    val discoverCustomSites: Flow<List<String>> = pref { urls(it[DISCOVER_CUSTOM]) }
+
+    suspend fun setDiscoverHiddenSites(urls: Collection<String>) {
+        store(DISCOVER_HIDDEN, urls)
+    }
+
+    suspend fun setDiscoverCustomSites(urls: Collection<String>) {
+        store(DISCOVER_CUSTOM, urls)
+    }
+
+    private fun urls(stored: String?): List<String> =
+        stored?.split("\n")?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty()
+
+    private suspend fun store(key: Preferences.Key<String>, urls: Collection<String>) {
+        val joined = urls.map { it.trim() }.filter { it.isNotEmpty() }.joinToString("\n")
+        dataStore.edit { if (joined.isEmpty()) it.remove(key) else it[key] = joined }
+    }
+
     /** Persisted last HLC (packed), so the clock stays monotonic across restarts. */
     suspend fun lastHlc(): String? = dataStore.data.first()[LAST_HLC]
     suspend fun setLastHlc(packed: String) {
@@ -287,6 +315,8 @@ class SettingsRepository @Inject constructor(
         val HOUSEHOLD_PIN = stringPreferencesKey("household_pin")
         val P2P_ENABLED = booleanPreferencesKey("p2p_enabled")
         val PLANNED_MEALS = stringPreferencesKey("planned_meals")
+        val DISCOVER_HIDDEN = stringPreferencesKey("discover_hidden")
+        val DISCOVER_CUSTOM = stringPreferencesKey("discover_custom")
     }
 }
 

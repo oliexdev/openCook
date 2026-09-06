@@ -43,7 +43,23 @@ object SourceCookbook {
         "kitchenstories" to "Kitchen Stories",
         "springlane" to "Springlane",
         "brigitte" to "Brigitte",
+        // English-language sites (the discover board's other default set).
+        "allrecipes" to "Allrecipes",
+        "bbcgoodfood" to "BBC Good Food",
+        "bbc" to "BBC Food",
+        "seriouseats" to "Serious Eats",
+        "simplyrecipes" to "Simply Recipes",
+        "foodnetwork" to "Food Network",
+        "epicurious" to "Epicurious",
+        "delish" to "Delish",
+        "jamieoliver" to "Jamie Oliver",
+        "budgetbytes" to "Budget Bytes",
+        "tasteofhome" to "Taste of Home",
+        "recipetineats" to "RecipeTin Eats",
     )
+
+    /** Second-level labels that are part of a country suffix, never the site's own name. */
+    private val SUFFIX_LABELS = setOf("co", "com", "org", "net", "gov", "edu", "ac")
 
     /** Friendly cookbook name from a page URL, or null if it has no usable host. */
     fun fromUrl(url: String?): String? {
@@ -55,11 +71,15 @@ object SourceCookbook {
     }
 
     /** The registrable site label (second-level domain), stripping a leading "www." —
-     *  "www.chefkoch.de" → "chefkoch", "m.ndr.de" → "ndr". Null for bare hosts / IPs. */
+     *  "www.chefkoch.de" → "chefkoch", "m.ndr.de" → "ndr". Steps one further left when the
+     *  second level belongs to the suffix, so "bbc.co.uk" is "bbc" and not "co". Null for bare
+     *  hosts / IPs. */
     private fun mainLabel(host: String): String? {
         val parts = host.removePrefix("www.").split(".").filter { it.isNotEmpty() }
         if (parts.size < 2) return null                          // needs at least name.tld
         if (parts.all { it.toIntOrNull() != null }) return null  // looks like an IP address
-        return parts[parts.size - 2].takeIf { it.isNotBlank() }
+        val second = parts[parts.size - 2]
+        val label = if (second in SUFFIX_LABELS && parts.size >= 3) parts[parts.size - 3] else second
+        return label.takeIf { it.isNotBlank() }
     }
 }

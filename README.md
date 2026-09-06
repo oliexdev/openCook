@@ -115,8 +115,7 @@ Full guides live in [`docs/wiki/`](docs/wiki/README.md) — a **user** track (ho
 
 openCook has no ads, no tracking, and asks for no unnecessary permissions. There's no account and
 nothing in the cloud. Any AI runs on **your own** server, the family sync stays on your home
-network, and family members join with a simple invite code. Without a server, the app never goes
-online at all.
+network, and family members join with a simple invite code.
 
 # Donations :heart:
 

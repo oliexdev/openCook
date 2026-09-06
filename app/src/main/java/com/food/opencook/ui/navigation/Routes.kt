@@ -18,6 +18,8 @@
 
 package com.food.opencook.ui.navigation
 
+import android.net.Uri
+
 /**
  * Non-top-level routes layered into the same NavHost as the bottom-nav
  * [TopLevelDestination]s. The bottom bar is hidden while these are shown.
@@ -41,6 +43,14 @@ object Routes {
 
     /** The household's cooking history, opened from the top of the plan list. */
     const val RETROSPECT = "retrospect"
+
+    /** Curated starting points for browsing recipe sites, opened from the add-recipe screen. */
+    const val DISCOVER = "discover"
+
+    /** The in-app browser itself; [ARG_URL] is the page it starts on. */
+    const val ARG_URL = "url"
+    const val DISCOVER_WEB = "discover/web?$ARG_URL={$ARG_URL}"
+    fun discoverWeb(url: String) = "discover/web?$ARG_URL=${Uri.encode(url)}"
 
     /** Pick a recipe for one cell of the meal plan — a day *and* a meal (full list + search). */
     const val ARG_DATE = "date"
@@ -84,7 +94,7 @@ object Routes {
     /** Routes that should hide the bottom navigation bar (focused full-screen flow). */
     val fullScreenRoutes = setOf(
         SCAN, CAMERA, REVIEW_CAMERA, REVIEW, RECIPE_DETAIL, EDIT, BARCODE_SCAN, PLAN_PICK,
-        BACKUP, RETROSPECT,
+        BACKUP, RETROSPECT, DISCOVER, DISCOVER_WEB,
         SETTINGS_HOUSEHOLD, SETTINGS_SYNC, SETTINGS_APPEARANCE, SETTINGS_ABOUT,
     )
 }

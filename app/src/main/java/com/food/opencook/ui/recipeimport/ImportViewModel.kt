@@ -23,6 +23,7 @@ import android.net.Uri
 import com.food.opencook.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.food.opencook.data.image.ImageSniff
 import com.food.opencook.data.image.ImageStore
 import com.food.opencook.data.local.entity.ImageEntity
 import com.food.opencook.data.recipeimport.ImportedRecipe
@@ -98,39 +99,67 @@ class ImportViewModel @Inject constructor(
     fun resetShare() { _shareState.value = ShareImportState.Idle }
 
     /**
-     * Import a single recipe from a shared web page URL: fetch the HTML, pull the
-     * schema.org/Recipe out of its JSON-LD, and save it through the same path as the
-     * file import. Mirrors the browser extension, but native. Clears the share bus up
-     * front so the same URL isn't reprocessed.
+     * Import a single recipe from a web page URL: fetch the HTML, pull the schema.org/Recipe
+     * out of its JSON-LD, and save it through the same path as the file import. Mirrors the
+     * browser extension, but native. Clears the share bus up front so the same URL isn't
+     * reprocessed.
      */
     fun importFromUrl(pageUrl: String) {
         if (_shareState.value is ShareImportState.Fetching) return
         shareImportBus.clear()
         viewModelScope.launch {
             _shareState.value = ShareImportState.Fetching
-            _shareState.value = runCatching {
-                val html = fetchHtml(pageUrl)
-                    ?: return@runCatching ShareImportState.Error(
-                        context.getString(R.string.import_share_error_load),
-                    )
-                val parsed = withContext(Dispatchers.Default) {
-                    JsonLdExtractor.extractFirstRecipe(html, json)
-                } ?: return@runCatching ShareImportState.NoRecipe
-                // Group under the source site (Chefkoch/NDR/…) unless the page already names a
-                // real cookbook via schema.org isPartOf — that always wins.
-                val cookbook = parsed.dto.cookbook?.takeIf { it.isNotBlank() }
-                    ?: SourceCookbook.fromUrl(pageUrl)
-                val imp = parsed.copy(dto = parsed.dto.copy(cookbook = cookbook))
-                val info = saveOne(imp, System.currentTimeMillis())
-                when (info.result) {
-                    SaveResult.Saved -> ShareImportState.Saved(info.name, info.recipeId)
-                    is SaveResult.Duplicate -> ShareImportState.Duplicate(info.name)
-                }
-            }.getOrElse {
-                ShareImportState.Error(it.message ?: context.getString(R.string.import_generic_failed))
-            }
+            _shareState.value = runCatching { importUrl(pageUrl) }.getOrElse(::failed)
         }
     }
+
+    /**
+     * Import the page the user has open in the in-app browser. [html] is not the whole
+     * document but the JSON-LD blocks of the *rendered* page, wrapped back into script tags by
+     * [com.food.opencook.ui.discover.PageHtml] — which is why this sits next to [importFromUrl]:
+     * a plain re-fetch would miss sites that inject their JSON-LD with JavaScript, and some
+     * sites answer a bare HTTP client differently than a browser.
+     *
+     * Falls back to fetching [pageUrl] when the rendered DOM carries no recipe, since a few
+     * sites ship the JSON-LD only in the raw HTML.
+     */
+    fun importFromPage(html: String, pageUrl: String) {
+        if (_shareState.value is ShareImportState.Fetching) return
+        viewModelScope.launch {
+            _shareState.value = ShareImportState.Fetching
+            _shareState.value = runCatching {
+                val fromPage = importHtml(html, pageUrl)
+                if (fromPage is ShareImportState.NoRecipe) importUrl(pageUrl) else fromPage
+            }.getOrElse(::failed)
+        }
+    }
+
+    /** Fetch [pageUrl] and import whatever recipe its HTML carries. */
+    private suspend fun importUrl(pageUrl: String): ShareImportState {
+        val html = fetchHtml(pageUrl)
+            ?: return ShareImportState.Error(context.getString(R.string.import_share_error_load))
+        return importHtml(html, pageUrl)
+    }
+
+    /** The shared tail of both entry points: JSON-LD → recipe → saved (or duplicate). */
+    private suspend fun importHtml(html: String, pageUrl: String): ShareImportState {
+        val parsed = withContext(Dispatchers.Default) {
+            JsonLdExtractor.extractFirstRecipe(html, json)
+        } ?: return ShareImportState.NoRecipe
+        // Group under the source site (Chefkoch/NDR/…) unless the page already names a
+        // real cookbook via schema.org isPartOf — that always wins.
+        val cookbook = parsed.dto.cookbook?.takeIf { it.isNotBlank() }
+            ?: SourceCookbook.fromUrl(pageUrl)
+        val imp = parsed.copy(dto = parsed.dto.copy(cookbook = cookbook))
+        val info = saveOne(imp, System.currentTimeMillis())
+        return when (info.result) {
+            SaveResult.Saved -> ShareImportState.Saved(info.name, info.recipeId)
+            is SaveResult.Duplicate -> ShareImportState.Duplicate(info.name)
+        }
+    }
+
+    private fun failed(t: Throwable) =
+        ShareImportState.Error(t.message ?: context.getString(R.string.import_generic_failed))
 
     private fun launchImport(limit: Int?, read: suspend () -> ByteArray) {
         if (_state.value is ImportState.Running) return
@@ -198,8 +227,14 @@ class ImportViewModel @Inject constructor(
                 instanceFollowRedirects = true
             }
             try {
-                if (conn.responseCode !in 200..299) null
-                else conn.inputStream.use { it.readBytes().takeIf { b -> b.size in 1..(10 * 1024 * 1024) } }
+                if (conn.responseCode !in 200..299) {
+                    null
+                } else {
+                    conn.inputStream.use { it.readBytes() }
+                        .takeIf { b -> b.size in 1..(10 * 1024 * 1024) }
+                        // A page that answers 200 with HTML must never end up as the dish photo.
+                        ?.takeIf(ImageSniff::looksLikeImage)
+                }
             } finally {
                 conn.disconnect()
             }

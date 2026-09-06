@@ -52,7 +52,35 @@ object RecipeImportParser {
     /** Parse [jsonText]; returns the valid recipes found (invalid/foreign entries dropped). */
     fun parse(jsonText: String, json: Json): List<RecipeDto> {
         val root = json.parseToJsonElement(jsonText)
-        return collectRecipeObjects(root).mapNotNull { toRecipeDto(it) }
+        val byId = indexById(root)
+        return collectRecipeObjects(root).mapNotNull { toRecipeDto(it, byId) }
+    }
+
+    /**
+     * Addresses in the document, keyed by `@id`, so a reference can be followed. JSON-LD graphs
+     * routinely split a recipe from its photo: the recipe holds
+     * `"image": {"@id": "…#primaryimage"}` and a sibling `ImageObject` node holds the real URL.
+     *
+     * Only nodes that actually carry a `url`/`contentUrl` are indexed — the pointer
+     * `{"@id": "…"}` inside the recipe wears the *same* id, and indexing it too would resolve
+     * the reference to itself.
+     */
+    private fun indexById(element: JsonElement): Map<String, String> {
+        val out = LinkedHashMap<String, String>()
+        fun walk(e: JsonElement) {
+            when (e) {
+                is JsonArray -> e.forEach(::walk)
+                is JsonObject -> {
+                    val id = e.firstString("@id")
+                    val url = e.firstString("url", "contentUrl")
+                    if (id != null && url != null) out.putIfAbsent(id, url)
+                    e.values.forEach(::walk)
+                }
+                else -> Unit
+            }
+        }
+        walk(element)
+        return out
     }
 
     private fun collectRecipeObjects(element: JsonElement): List<JsonObject> = when (element) {
@@ -67,7 +95,7 @@ object RecipeImportParser {
         else -> emptyList()
     }
 
-    private fun toRecipeDto(obj: JsonObject): RecipeDto? {
+    private fun toRecipeDto(obj: JsonObject, byId: Map<String, String>): RecipeDto? {
         val name = obj.firstString("name", "Name", "headline", "title")?.trim()
         val instructions = extractInstructions(obj)
         // Our own backups carry the structured list verbatim (lossless, with row ids);
@@ -88,7 +116,7 @@ object RecipeImportParser {
             openCookCategory = obj.firstString("openCookCategory"),
             openCookIngredients = structured,
             recipeInstructions = instructions,
-            image = extractImages(obj), // refs resolved by the import flow (data-URI / zip path / http)
+            image = extractImages(obj, byId), // refs resolved by the import flow (data-URI / zip path / http)
             openCookNotes = extractStringList(obj, "openCookNotes"),
             openCookTags = extractTags(obj),
             openCookMealTypes = extractStringList(obj, "openCookMealTypes"),
@@ -219,11 +247,28 @@ object RecipeImportParser {
     /** Image reference(s): schema.org `image` as a string, an array, or an ImageObject
      *  ({url}/{contentUrl}). Returned verbatim (data-URI / relative path / http URL); the
      *  import flow decides how to resolve each. */
-    private fun extractImages(obj: JsonObject): List<String> {
+    private fun extractImages(obj: JsonObject, byId: Map<String, String>): List<String> {
+        /**
+         * Follows a reference into the document's own graph. Without this, Chefkoch's
+         * `{"@id": "https://…/rezept.html#primaryimage"}` would be taken for an image address
+         * and the import would happily download the **HTML page** and store it as the photo —
+         * the fragment is dropped by the request, so it even answers 200.
+         */
+        fun resolve(ref: String): String? {
+            val target = byId[ref] ?: ref.takeIf { !it.contains('#') }
+            // A dangling same-document reference points at nothing we can fetch.
+                ?: return null
+            // "//cdn.example/bild.png" inherits the page's scheme in a browser, but the importer
+            // asks for it on its own and would just throw. Give it the scheme it means.
+            return if (target.startsWith("//")) "https:$target" else target
+        }
         fun refs(e: JsonElement): List<String> = when (e) {
             is JsonArray -> e.flatMap { refs(it) }
-            is JsonObject -> listOfNotNull(e.firstString("url", "contentUrl", "@id"))
-            is JsonPrimitive -> listOfNotNull(e.str()?.trim()?.takeIf { it.isNotEmpty() })
+            is JsonObject -> listOfNotNull(
+                e.firstString("url", "contentUrl") ?: e.firstString("@id")?.let(::resolve),
+            )
+            is JsonPrimitive ->
+                listOfNotNull(e.str()?.trim()?.takeIf { it.isNotEmpty() }?.let(::resolve))
             else -> emptyList()
         }
         return (obj.first("image", "images", "photo") ?: return emptyList()).let(::refs)

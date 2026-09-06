@@ -68,6 +68,8 @@ import com.food.opencook.data.notification.JobNotifier
 import com.food.opencook.ui.capture.CameraCaptureScreen
 import com.food.opencook.ui.mealplan.MealPlanPickScreen
 import com.food.opencook.ui.mealplan.MealPlanScreen
+import com.food.opencook.ui.discover.DiscoverScreen
+import com.food.opencook.ui.discover.WebImportScreen
 import com.food.opencook.ui.navigation.Routes
 import com.food.opencook.ui.navigation.TopLevelDestination
 import com.food.opencook.ui.recipeimport.ImportViewModel
@@ -238,7 +240,7 @@ private fun MainScaffold() {
             Column(Modifier.fillMaxSize().statusBarsPadding()) {
                 InstanceBanner()
                 Box(Modifier.weight(1f)) {
-                    AppNavHost(navController, navigateToTab)
+                    AppNavHost(navController, navigateToTab, importViewModel)
                 }
                 if (showShell) {
                     StatusStrip(
@@ -256,7 +258,11 @@ private fun MainScaffold() {
 }
 
 @Composable
-private fun AppNavHost(navController: NavHostController, navigateToTab: (String) -> Unit) {
+private fun AppNavHost(
+    navController: NavHostController,
+    navigateToTab: (String) -> Unit,
+    importViewModel: ImportViewModel,
+) {
     NavHost(
         navController = navController,
         startDestination = TopLevelDestination.RECIPES.route,
@@ -331,6 +337,26 @@ private fun AppNavHost(navController: NavHostController, navigateToTab: (String)
                 onNavigateToCamera = { navController.navigate(Routes.CAMERA) },
                 onNavigateToSettings = { navigateToTab(TopLevelDestination.SETTINGS.route) },
                 onCreateManually = { navController.navigate(Routes.reviewNew()) },
+                onDiscover = { navController.navigate(Routes.DISCOVER) },
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(Routes.DISCOVER) {
+            DiscoverScreen(
+                onOpen = { url -> navController.navigate(Routes.discoverWeb(url)) },
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(
+            Routes.DISCOVER_WEB,
+            arguments = listOf(navArgument(Routes.ARG_URL) { type = NavType.StringType }),
+        ) { entry ->
+            // Shares the shell's ImportViewModel, so an import here lands in the same
+            // snackbars (saved / already there / no recipe) as a link shared from a browser.
+            WebImportScreen(
+                startUrl = entry.arguments?.getString(Routes.ARG_URL).orEmpty(),
+                importViewModel = importViewModel,
                 onBack = { navController.popBackStack() },
             )
         }

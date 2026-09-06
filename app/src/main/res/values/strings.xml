@@ -39,8 +39,8 @@
     <string name="settings_save">Save</string>
 
     <!-- Scan -->
-    <string name="scan_title">Scan recipe</string>
-    <string name="scan_intro">Photograph a cookbook page or pick an image from the gallery. The AI recognizes the recipes for you.</string>
+    <string name="scan_title">Add recipe</string>
+    <string name="scan_intro">Photograph a cookbook page, fetch one from the web, or write it down yourself.</string>
     <string name="scan_take_photo">Take photo</string>
     <string name="scan_pick_gallery">Choose from gallery</string>
     <string name="scan_no_server_title">Photo recognition needs a server</string>
@@ -402,6 +402,23 @@
     <string name="import_share_no_recipe">No recipe found on this page</string>
     <string name="import_share_error_load">Could not load the page.</string>
     <string name="import_share_fallback_name">Recipe</string>
+
+    <string name="scan_discover">Discover online</string>
+    <string name="discover_title">Discover recipes</string>
+    <string name="discover_add">Add</string>
+    <string name="discover_remove">Remove %1$s</string>
+    <string name="discover_address_hint">chefkoch.de/rezepte</string>
+    <string name="discover_removed">“%1$s” removed</string>
+    <string name="discover_clear">Delete cookies of %1$s</string>
+    <string name="discover_clear_confirm_title">Delete cookies of %1$s?</string>
+    <string name="discover_clear_confirm_text">%1$s forgets this phone: cookies and what the site stored in the browser are removed, including the cookie banner you accepted there — it will ask again on your next visit. Recipes you imported from %1$s stay in your collection.</string>
+    <string name="discover_cleared">Cookies of %1$s deleted</string>
+    <string name="discover_import">Import this recipe</string>
+    <string name="discover_import_short">Import</string>
+    <string name="discover_close">Close site</string>
+    <string name="discover_disclaimer">A built-in browser view: sites that belong to other people, with their own ads and their own cookies. openCook is not affiliated with them and saves only the recipe you open, for your personal use.</string>
+    <string name="discover_no_webview_title">Browser view unavailable</string>
+    <string name="discover_no_webview_body">This device has no Android System WebView installed, or it is switched off — so pages cannot be shown here. Recipes can still be added by photo, from a file, from a shared link, or by hand.</string>
 
     <!-- Home (Today) -->
 
