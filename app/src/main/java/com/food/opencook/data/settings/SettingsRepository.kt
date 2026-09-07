@@ -328,7 +328,7 @@ class SettingsRepository @Inject constructor(
  * `server/app/i18n/<code>.json`.
  */
 object ContentLanguages {
-    val CODES = listOf("en", "de")
+    val CODES = listOf("en", "de", "fr")
 }
 
 /**
