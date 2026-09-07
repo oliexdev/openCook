@@ -168,6 +168,7 @@ fun RecipeDetailScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val addedMessage = stringResource(R.string.shopping_added)
+    val alreadyOnListMessage = stringResource(R.string.shopping_already_on_list)
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showPlanSheet by remember { mutableStateOf(false) }
     var showExportSheet by remember { mutableStateOf(false) }
@@ -269,7 +270,11 @@ fun RecipeDetailScreen(
         }
         val model = imageModelFor(data.images, baseUrl)
         val onAddToShopping: () -> Unit = {
-            viewModel.addToShoppingList { scope.launch { snackbarHostState.showSnackbar(addedMessage) } }
+            viewModel.addToShoppingList { added ->
+                scope.launch {
+                    snackbarHostState.showSnackbar(if (added) addedMessage else alreadyOnListMessage)
+                }
+            }
         }
         val onPlan: () -> Unit = { showPlanSheet = true }
         BoxWithConstraints(Modifier.fillMaxSize().padding(innerPadding)) {

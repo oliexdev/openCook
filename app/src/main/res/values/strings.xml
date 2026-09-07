@@ -141,24 +141,10 @@
         <item quantity="one">%1$s: %2$d meal</item>
         <item quantity="other">%1$s: %2$d meals</item>
     </plurals>
-    <string name="retrospect_month_headline">In %1$s</string>
     <plurals name="retrospect_month_meals">
         <item quantity="one">%1$d meal cooked</item>
         <item quantity="other">%1$d meals cooked</item>
     </plurals>
-    <string name="retrospect_month_days">on %1$d of %2$d days</string>
-    <string name="retrospect_month_none">Nothing cooked this month yet</string>
-    <string name="retrospect_section_most_cooked">Cooked most often</string>
-    <string name="retrospect_section_favourites">Everyone likes</string>
-    <string name="retrospect_section_stale">Not cooked in a long time</string>
-    <string name="retrospect_times">%1$d×</string>
-    <string name="retrospect_likes_label">Likes</string>
-    <string name="retrospect_never_cooked">never</string>
-    <plurals name="retrospect_months_ago">
-        <item quantity="one">%1$d month ago</item>
-        <item quantity="other">%1$d months ago</item>
-    </plurals>
-    <string name="retrospect_show_all">Show all</string>
     <string name="retrospect_empty_title">Nothing to look back on yet</string>
     <string name="retrospect_empty_message">Once you mark meals as cooked, they collect here.</string>
 
@@ -583,7 +569,7 @@
     <!-- Week planner: slots -->
     <string name="mealplan_slot_add">Plan</string>
     <string name="mealplan_slot_add_named">Plan %1$s</string>
-    <string name="mealplan_already_on_list">Already on the shopping list — nothing added</string>
+    <string name="shopping_already_on_list">Already on the shopping list — nothing added</string>
     <string name="mealplan_add_missing">Add missing items to the shopping list</string>
     <string name="mealplan_slot_no_recipes">No %1$s recipes yet</string>
 

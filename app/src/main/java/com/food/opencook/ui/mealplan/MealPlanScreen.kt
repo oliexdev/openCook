@@ -158,7 +158,7 @@ fun MealPlanScreen(
     val deletedMsg = stringResource(R.string.deleted)
     val undoMsg = stringResource(R.string.undo)
     val addedMsg = stringResource(R.string.shopping_added)
-    val alreadyOnListMsg = stringResource(R.string.mealplan_already_on_list)
+    val alreadyOnListMsg = stringResource(R.string.shopping_already_on_list)
 
     // Self-heal on open: roll un-cooked but procured past dishes onto the next free day.
     // Idempotent, so running once per screen entry is enough — no daily confirmation.

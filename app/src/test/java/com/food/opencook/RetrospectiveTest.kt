@@ -18,7 +18,6 @@
 
 package com.food.opencook
 
-import com.food.opencook.data.local.dao.RecipeLikeCount
 import com.food.opencook.data.local.entity.MealPlanEntity
 import com.food.opencook.data.local.entity.RecipeEntity
 import com.food.opencook.ui.retrospect.Retrospective
@@ -29,170 +28,133 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
+import java.time.YearMonth
 
 /**
- * The retrospective's counting rules, and the cooking-status predicate it shares with the
+ * The retrospective's grouping rules, and the cooking-status predicate it shares with the
  * recipe list's filter sheet.
  */
 class RetrospectiveTest {
 
     private val today: LocalDate = LocalDate.of(2026, 8, 17)
 
-    private fun recipe(id: String, name: String, lastCookedAt: String? = null) =
-        RecipeEntity(id = id, name = name, lastCookedAt = lastCookedAt, createdAt = 0L, updatedAt = 0L)
+    private fun recipe(id: String, name: String?) =
+        RecipeEntity(id = id, name = name, createdAt = 0L, updatedAt = 0L)
 
-    private fun cooked(recipeId: String, date: String) = MealPlanEntity(
-        id = "$recipeId@$date",
-        date = date,
-        recipeId = recipeId,
-        cookedAt = date,
-        createdAt = 0L,
-        updatedAt = 0L,
-    )
-
-    // --- The month figures ------------------------------------------------
-
-    @Test
-    fun `month counts only the current month`() {
-        val data = Retrospective.build(
-            cooked = listOf(cooked("a", "2026-08-02"), cooked("a", "2026-08-16"), cooked("a", "2026-07-30")),
-            recipes = listOf(recipe("a", "Chili")),
-            likes = emptyList(),
-            votingDevices = 0,
-            today = today,
+    /** A plan entry confirmed as cooked. [planned] differs from [cookedAt] for an off-plan meal. */
+    private fun cooked(recipeId: String, cookedAt: String?, planned: String = cookedAt.orEmpty()) =
+        MealPlanEntity(
+            id = "$recipeId@$planned",
+            date = planned,
+            recipeId = recipeId,
+            cookedAt = cookedAt,
+            createdAt = 0L,
+            updatedAt = 0L,
         )
-        assertEquals(2, data.monthCooked)
-        assertEquals(17, data.monthDaysElapsed)
-    }
+
+    private fun month(y: Int, m: Int) = YearMonth.of(y, m)
+
+    // --- Grouping and order -----------------------------------------------
 
     @Test
-    fun `two meals on one day are two meals but one day`() {
-        val data = Retrospective.build(
-            cooked = listOf(cooked("a", "2026-08-05"), cooked("b", "2026-08-05")),
+    fun `months run newest first, and days within a month too`() {
+        val groups = Retrospective.byMonth(
+            cooked = listOf(
+                cooked("a", "2026-06-30"),
+                cooked("a", "2026-08-02"),
+                cooked("b", "2026-08-16"),
+                cooked("a", "2026-07-14"),
+            ),
             recipes = listOf(recipe("a", "Chili"), recipe("b", "Suppe")),
-            likes = emptyList(),
-            votingDevices = 0,
-            today = today,
         )
-        assertEquals(2, data.monthCooked)
-        assertEquals(1, data.monthDaysCooked)
+
+        assertEquals(listOf(month(2026, 8), month(2026, 7), month(2026, 6)), groups.map { it.month })
+        assertEquals(
+            listOf(LocalDate.of(2026, 8, 16), LocalDate.of(2026, 8, 2)),
+            groups.first().meals.map { it.date },
+        )
     }
 
     @Test
-    fun `a meal dated after today does not count towards this month`() {
-        // Plan rows exist for the future; only a confirmed cook in the past should count.
-        val data = Retrospective.build(
-            cooked = listOf(cooked("a", "2026-08-25")),
+    fun `two meals on one day keep a stable order by name`() {
+        // Nothing in the data orders lunch against dinner — the plan's slot is not carried
+        // here — so the tie is broken by name, or the list would reshuffle between two reads.
+        val groups = Retrospective.byMonth(
+            cooked = listOf(cooked("b", "2026-08-05"), cooked("a", "2026-08-05")),
+            recipes = listOf(recipe("a", "Zwiebelsuppe"), recipe("b", "Auflauf")),
+        )
+
+        val meals = groups.single().meals
+        assertEquals(listOf("Auflauf", "Zwiebelsuppe"), meals.map { it.name })
+        assertEquals(2, groups.single().count)
+    }
+
+    @Test
+    fun `a meal is grouped by the day it was cooked, not the day it was planned`() {
+        // Cooking a dish a day late (or off-plan entirely) must move it in the history.
+        val groups = Retrospective.byMonth(
+            cooked = listOf(cooked("a", cookedAt = "2026-08-01", planned = "2026-07-31")),
             recipes = listOf(recipe("a", "Chili")),
-            likes = emptyList(),
-            votingDevices = 0,
-            today = today,
         )
-        assertEquals(0, data.monthCooked)
-    }
 
-    // --- Most cooked ------------------------------------------------------
+        assertEquals(month(2026, 8), groups.single().month)
+        assertEquals(LocalDate.of(2026, 8, 1), groups.single().meals.single().date)
+    }
 
     @Test
-    fun `most cooked ranks by count and caps the block`() {
-        val recipes = (1..7).map { recipe("r$it", "Gericht $it") }
-        val entries = recipes.flatMapIndexed { index, r ->
-            List(7 - index) { n -> cooked(r.id, "2026-08-%02d".format(n + 1)) }
-        }
-        val data = Retrospective.build(entries, recipes, emptyList(), 0, today)
+    fun `a meal carries the recipe id and its current name`() {
+        val meal = Retrospective.byMonth(
+            cooked = listOf(cooked("a", "2026-08-05")),
+            recipes = listOf(recipe("a", "Chili")),
+        ).single().meals.single()
 
-        assertEquals(Retrospective.BLOCK_SIZE, data.mostCooked.size)
-        assertEquals("r1", data.mostCooked.first().recipeId)
-        assertEquals(7, data.mostCooked.first().times)
-        assertTrue(data.mostCooked.zipWithNext().all { (a, b) -> a.times >= b.times })
+        assertEquals("a", meal.recipeId)
+        assertEquals("Chili", meal.name)
     }
+
+    // --- What gets skipped ------------------------------------------------
 
     @Test
     fun `entries for a deleted recipe are skipped, not shown nameless`() {
         // Deleting a recipe tombstones the row but leaves its plan entries behind.
-        val data = Retrospective.build(
+        val groups = Retrospective.byMonth(
             cooked = listOf(cooked("gone", "2026-08-04"), cooked("a", "2026-08-05")),
             recipes = listOf(recipe("a", "Chili")),
-            likes = emptyList(),
-            votingDevices = 0,
-            today = today,
         )
-        assertEquals(1, data.monthCooked)
-        assertEquals(listOf("a"), data.mostCooked.map { it.recipeId })
-    }
 
-    // --- Household favourites ---------------------------------------------
-
-    @Test
-    fun `favourites stay empty while only one device has ever voted`() {
-        val data = Retrospective.build(
-            cooked = emptyList(),
-            recipes = listOf(recipe("a", "Lasagne")),
-            likes = listOf(RecipeLikeCount("a", 2)),
-            votingDevices = 1,
-            today = today,
-        )
-        assertTrue(data.favourites.isEmpty())
+        assertEquals(listOf("a"), groups.single().meals.map { it.recipeId })
+        assertEquals(1, groups.single().count)
     }
 
     @Test
-    fun `favourites need at least two likes`() {
-        val data = Retrospective.build(
-            cooked = emptyList(),
-            recipes = listOf(recipe("a", "Lasagne"), recipe("b", "Suppe")),
-            likes = listOf(RecipeLikeCount("a", 3), RecipeLikeCount("b", 1)),
-            votingDevices = 3,
-            today = today,
+    fun `a nameless recipe is skipped rather than listed blank`() {
+        val groups = Retrospective.byMonth(
+            cooked = listOf(cooked("blank", "2026-08-04"), cooked("nul", "2026-08-04")),
+            recipes = listOf(recipe("blank", "   "), recipe("nul", null)),
         )
-        assertEquals(listOf("a"), data.favourites.map { it.recipeId })
-        assertEquals(3, data.favourites.first().likes)
+
+        assertTrue(groups.isEmpty())
     }
 
-    // --- Long uncooked ----------------------------------------------------
-
     @Test
-    fun `long uncooked puts never-cooked first, then oldest`() {
-        val data = Retrospective.build(
-            cooked = emptyList(),
-            recipes = listOf(
-                recipe("fresh", "Frisch", today.minusDays(3).toString()),
-                recipe("old", "Alt", today.minusDays(200).toString()),
-                recipe("older", "Älter", today.minusDays(400).toString()),
-                recipe("never", "Nie"),
+    fun `an entry with an unusable cooked date is skipped`() {
+        val groups = Retrospective.byMonth(
+            cooked = listOf(
+                cooked("a", null),
+                cooked("a", ""),
+                cooked("a", "not-a-date"),
+                cooked("a", "2026-08-05"),
             ),
-            likes = emptyList(),
-            votingDevices = 0,
-            today = today,
+            recipes = listOf(recipe("a", "Chili")),
         )
-        assertEquals(listOf("never", "older", "old"), data.longUncooked.map { it.recipeId })
-        assertEquals(null, data.longUncooked.first().daysSince)
+
+        assertEquals(1, groups.single().count)
     }
 
     @Test
-    fun `a dish cooked just inside the window is not stale`() {
-        val justInside = today.minusDays(CookedStatus.STALE_DAYS - 1).toString()
-        val data = Retrospective.build(
-            cooked = emptyList(),
-            recipes = listOf(recipe("a", "Chili", justInside)),
-            likes = emptyList(),
-            votingDevices = 0,
-            today = today,
-        )
-        assertTrue(data.longUncooked.isEmpty())
-    }
-
-    // --- Empty household --------------------------------------------------
-
-    @Test
-    fun `an empty household reports empty rather than zeroes`() {
-        val data = Retrospective.build(emptyList(), emptyList(), emptyList(), 0, today)
-        assertTrue(data.isEmpty)
-    }
-
-    @Test
-    fun `a household with only forgotten recipes is not empty`() {
-        val data = Retrospective.build(emptyList(), listOf(recipe("a", "Nie")), emptyList(), 0, today)
-        assertFalse(data.isEmpty)
+    fun `a household that has never cooked gets no months at all`() {
+        assertTrue(Retrospective.byMonth(emptyList(), emptyList()).isEmpty())
+        assertTrue(Retrospective.byMonth(emptyList(), listOf(recipe("a", "Nie gekocht"))).isEmpty())
     }
 
     // --- The shared predicate ---------------------------------------------
@@ -216,6 +178,12 @@ class RetrospectiveTest {
         // Group off — everything passes.
         assertTrue(CookedStatus.matches(null, never, today))
         assertTrue(CookedStatus.matches(null, recent, today))
+    }
+
+    @Test
+    fun `a dish cooked just inside the window is not stale`() {
+        assertFalse(CookedStatus.isStale(today.minusDays(CookedStatus.STALE_DAYS - 1).toString(), today))
+        assertTrue(CookedStatus.isStale(today.minusDays(CookedStatus.STALE_DAYS).toString(), today))
     }
 
     @Test

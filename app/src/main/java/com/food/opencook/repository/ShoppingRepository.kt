@@ -21,6 +21,8 @@ package com.food.opencook.repository
 import com.food.opencook.data.local.dao.ShoppingDao
 import com.food.opencook.data.local.entity.ShoppingItemEntity
 import com.food.opencook.data.local.relation.RecipeWithDetails
+import com.food.opencook.util.IngredientMatch
+import com.food.opencook.util.IngredientStaples
 import com.food.opencook.util.Numbers
 import com.food.opencook.sync.MessageRecorder
 import com.food.opencook.sync.ShoppingMessageEncoder
@@ -52,6 +54,10 @@ class ShoppingRepository @Inject constructor(
      * "Were this dish's ingredients procured?" for the self-healing roll-forward:
      * a shopping list was generated for (recipe, day) and nothing is left unchecked.
      * False when no list was ever generated — we can't assume the food is on hand.
+     *
+     * A dish made of nothing but staples writes no rows at all (see [addFromRecipe]) and so
+     * never counts as procured. Correct: there was nothing to buy, but there is also nothing
+     * on record saying anyone shopped for that day.
      */
     suspend fun isProcured(recipeId: String, date: String): Boolean =
         shoppingDao.countBySource(recipeId, date) > 0 && shoppingDao.countOpenBySource(recipeId, date) == 0
@@ -225,42 +231,78 @@ class ShoppingRepository @Inject constructor(
     }
 
     /**
+     * Does the list actually show this line? Mirrors the filter in `ShoppingListViewModel.items`:
+     * a hand-added line always shows, a recipe line only for as long as the pantry does not
+     * cover it. Staples are not tested here — [addFromRecipe] never writes one.
+     */
+    private fun isVisible(item: ShoppingItemEntity, pantryNames: Set<String>): Boolean =
+        item.manual || !IngredientMatch.containsLike(pantryNames, item.text)
+
+    /**
+     * Drop whatever is left of a dish once nothing of it is visible any more, so a re-add
+     * starts from a clean slate instead of piling its quantities onto a row nobody can see.
+     *
+     * Only lines that are **solely** this dish's doing go. A line another dish also needs
+     * belongs to that one too (same reasoning as [removeContributionOf], which cannot unpick
+     * who contributed how much) and is left alone — being invisible, it blocks nothing either.
+     */
+    private suspend fun clearHiddenRemainderOf(recipeId: String, rows: List<ShoppingItemEntity>) {
+        val own = rows.filter {
+            it.sourceRecipeIds?.split(',')?.filter { id -> id.isNotBlank() } == listOf(recipeId)
+        }
+        if (own.isEmpty()) return
+        own.forEach { shoppingDao.deleteById(it.id) }
+        messageRecorder.record(own.flatMap { ShoppingMessageEncoder.tombstone(it.id) })
+    }
+
+    /**
      * Add a recipe's ingredients to the list (amount → quantity). [sourceDate] tags the
      * items with their planned day so the "not found" flow can find the dish to replace.
      *
-     * All ingredients become rows — pantry-covered and staple items are **not** dropped
-     * here. Hiding them is the view layer's job (`ShoppingListViewModel`), which keeps the
-     * rows in the DB so they stay syncable and can resurface via the "brauch ich doch" chip
-     * or when the pantry item is removed.
+     * Pantry-covered ingredients still become rows: hiding those is the view layer's job
+     * (`ShoppingListViewModel`), and keeping the row means it stays syncable and resurfaces
+     * via the "brauch ich doch" chip or once the pantry item is gone. **Staples are dropped
+     * here**, because their exclusion is permanent and non-recoverable: no screen ever shows
+     * them, not even the skip chip, so a staple row would be a line the user can never see,
+     * tick or delete — and one that silently blocks every later add of this dish (issue #9).
      */
     suspend fun addFromRecipe(
         recipe: RecipeWithDetails,
         sourceDate: String? = null,
         scale: Double = 1.0,
     ): ShoppingAddUndo? {
-        // Idempotent per dish: if this recipe already put its ingredients on the list,
-        // don't add them again (a second tap must not double the quantities). Scoped to
-        // the planned day when there is one; otherwise (recipe-screen add) to the recipe
-        // across all days. The replace-the-dish flow deletes the old lines first, so the
-        // incoming dish is never blocked.
+        // Idempotent per dish: while this recipe's ingredients are still on the list, don't add
+        // them again (a second tap must not double the quantities). Scoped to the planned day
+        // when there is one — there a ticked line still counts, since "already bought for that
+        // day" is precisely what should block a re-add — otherwise (recipe-screen add) to the
+        // recipe's open lines across all days. The replace-the-dish flow deletes the old lines
+        // first, so the incoming dish is never blocked.
+        //
+        // "Still on the list" has to mean *visible*. A line the pantry covers is invisible and
+        // out of the user's reach, so it must not veto the add: letting it do so is what left a
+        // dish permanently un-addable once its visible lines were gone (issue #9).
         val rid = recipe.recipe.id
-        val alreadyOnList =
-            if (sourceDate != null) shoppingDao.countBySource(rid, sourceDate) > 0
-            else shoppingDao.getOpenByRecipe(rid).isNotEmpty()
-        if (alreadyOnList) return null
+        val pantryNames = pantryRepository.stockedNames()
+        val existing =
+            if (sourceDate != null) shoppingDao.getAllBySource(rid, sourceDate)
+            else shoppingDao.getOpenByRecipe(rid)
+        if (existing.any { isVisible(it, pantryNames) }) return null
+        clearHiddenRemainderOf(rid, existing)
 
         val created = mutableListOf<String>()
         val modified = mutableListOf<ShoppingItemEntity>()
-        recipe.ingredients.sortedBy { it.position }.forEach { ingredient ->
-            val (id, before) = addItemTracked(
-                text = ingredient.name,
-                quantity = Numbers.scaleQuantity(ingredient.quantity, scale),
-                unit = ingredient.unit,
-                sourceRecipeId = recipe.recipe.id,
-                sourceDate = sourceDate,
-            ) ?: return@forEach
-            if (before == null) created += id else modified += before
-        }
+        recipe.ingredients.sortedBy { it.position }
+            .filterNot { IngredientStaples.isStaple(it.name) }
+            .forEach { ingredient ->
+                val (id, before) = addItemTracked(
+                    text = ingredient.name,
+                    quantity = Numbers.scaleQuantity(ingredient.quantity, scale),
+                    unit = ingredient.unit,
+                    sourceRecipeId = recipe.recipe.id,
+                    sourceDate = sourceDate,
+                ) ?: return@forEach
+                if (before == null) created += id else modified += before
+            }
         return ShoppingAddUndo(created, modified).takeIf { created.isNotEmpty() || modified.isNotEmpty() }
     }
 

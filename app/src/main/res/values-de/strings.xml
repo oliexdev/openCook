@@ -140,24 +140,10 @@
         <item quantity="one">%1$s: %2$d Gericht</item>
         <item quantity="other">%1$s: %2$d Gerichte</item>
     </plurals>
-    <string name="retrospect_month_headline">Im %1$s</string>
     <plurals name="retrospect_month_meals">
         <item quantity="one">%1$d Gericht gekocht</item>
         <item quantity="other">%1$d Gerichte gekocht</item>
     </plurals>
-    <string name="retrospect_month_days">an %1$d von %2$d Tagen</string>
-    <string name="retrospect_month_none">Diesen Monat noch nichts gekocht</string>
-    <string name="retrospect_section_most_cooked">Am häufigsten</string>
-    <string name="retrospect_section_favourites">Mögen alle</string>
-    <string name="retrospect_section_stale">Lange nicht gekocht</string>
-    <string name="retrospect_times">%1$d×</string>
-    <string name="retrospect_likes_label">Mögen</string>
-    <string name="retrospect_never_cooked">noch nie</string>
-    <plurals name="retrospect_months_ago">
-        <item quantity="one">vor %1$d Monat</item>
-        <item quantity="other">vor %1$d Monaten</item>
-    </plurals>
-    <string name="retrospect_show_all">Alle ansehen</string>
     <string name="retrospect_empty_title">Noch nichts zum Zurückblicken</string>
     <string name="retrospect_empty_message">Sobald du Gerichte als gekocht markierst, sammeln sie sich hier.</string>
 
@@ -585,7 +571,7 @@
     <!-- Week planner: slots -->
     <string name="mealplan_slot_add">planen</string>
     <string name="mealplan_slot_add_named">%1$s planen</string>
-    <string name="mealplan_already_on_list">Steht schon auf der Einkaufsliste – nichts hinzugefügt</string>
+    <string name="shopping_already_on_list">Steht schon auf der Einkaufsliste – nichts hinzugefügt</string>
     <string name="mealplan_add_missing">Fehlendes auf die Einkaufsliste</string>
     <string name="mealplan_slot_no_recipes">Noch keine %1$s-Rezepte</string>
 

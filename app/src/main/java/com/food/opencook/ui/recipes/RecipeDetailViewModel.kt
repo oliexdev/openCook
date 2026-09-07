@@ -84,10 +84,16 @@ class RecipeDetailViewModel @Inject constructor(
         onResult(ok)
     }
 
-    /** Copy this recipe's ingredients onto the shopping list, skipping pantry staples. */
-    fun addToShoppingList(onAdded: () -> Unit) = viewModelScope.launch {
-        recipe.value?.let { shoppingRepository.addFromRecipe(it) }
-        onAdded()
+    /**
+     * Copy this recipe's ingredients onto the shopping list, skipping staples.
+     *
+     * Reports whether anything actually landed there: the add is a no-op while the dish's
+     * ingredients are still on the list, and saying "added" regardless left the user staring
+     * at a success message and an unchanged list (issue #9).
+     */
+    fun addToShoppingList(onDone: (added: Boolean) -> Unit) = viewModelScope.launch {
+        val added = recipe.value?.let { shoppingRepository.addFromRecipe(it) } != null
+        onDone(added)
     }
 
     val recipe: StateFlow<RecipeWithDetails?> =

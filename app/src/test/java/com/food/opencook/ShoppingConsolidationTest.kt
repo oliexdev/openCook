@@ -31,10 +31,13 @@ import com.food.opencook.sync.Hlc
 import com.food.opencook.sync.MessageRecorder
 import com.food.opencook.sync.Stamper
 import com.food.opencook.sync.SyncTrigger
+import com.food.opencook.util.IngredientStaples
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -59,6 +62,22 @@ private class InMemoryShoppingDao : ShoppingDao {
         items.filter { it.sourceRecipeId == recipeId && !it.checked }
     override suspend fun distinctTexts(): List<String> = items.map { it.text }.distinct()
     override suspend fun upsert(item: ShoppingItemEntity) {
+        items.removeAll { it.id == item.id }
+        items += item
+    }
+    override suspend fun deleteById(id: String) { items.removeAll { it.id == id } }
+}
+
+/** Pantry store with real contents, so the "pantry covers this line" paths can be exercised. */
+private class InMemoryPantryDao(vararg stocked: String) : PantryDao {
+    val items = stocked.map { PantryItemEntity(it, it, 0, 0) }.toMutableList()
+    override fun observeAll(): Flow<List<PantryItemEntity>> = throw NotImplementedError()
+    override suspend fun getById(id: String): PantryItemEntity? = items.find { it.id == id }
+    override suspend fun findByName(name: String): PantryItemEntity? =
+        items.find { it.name.equals(name, ignoreCase = true) }
+    override suspend fun allNames(): List<String> = items.map { it.name }
+    override suspend fun getAll(): List<PantryItemEntity> = items.toList()
+    override suspend fun upsert(item: PantryItemEntity) {
         items.removeAll { it.id == item.id }
         items += item
     }
@@ -95,11 +114,11 @@ private class SeqStamper : Stamper {
 
 class ShoppingConsolidationTest {
 
-    private fun repo(dao: ShoppingDao): ShoppingRepository {
+    private fun repo(dao: ShoppingDao, pantryDao: PantryDao = NoopPantryDao()): ShoppingRepository {
         val recorder = MessageRecorder(NoopMessageDao(), SeqStamper(), object : SyncTrigger {
             override fun requestSync() {}
         })
-        return ShoppingRepository(dao, recorder, PantryRepository(NoopPantryDao(), recorder))
+        return ShoppingRepository(dao, recorder, PantryRepository(pantryDao, recorder))
     }
 
     @Test
@@ -130,6 +149,11 @@ class ShoppingConsolidationTest {
         assertEquals(500.0, item.quantity!!, 0.0001)
     }
 
+    /**
+     * A dish for the add paths. Keep the ingredients **off** [IngredientStaples.ALL] unless a
+     * test is about staples: `addFromRecipe` drops those, so a fixture built from "Mehl" or
+     * "Zucker" would silently produce an empty list.
+     */
     private fun recipe(id: String, vararg ingredients: Pair<String, Double>): RecipeWithDetails =
         RecipeWithDetails(
             recipe = RecipeEntity(id = id, name = "R-$id", createdAt = 0, updatedAt = 0),
@@ -145,7 +169,7 @@ class ShoppingConsolidationTest {
     fun `addFromRecipe is idempotent per planned day`() = runTest {
         val dao = InMemoryShoppingDao()
         val r = repo(dao)
-        val rec = recipe("r1", "Mehl" to 500.0)
+        val rec = recipe("r1", "Zwiebeln" to 500.0)
         r.addFromRecipe(rec, sourceDate = "2026-06-15")
         r.addFromRecipe(rec, sourceDate = "2026-06-15") // second tap → no-op
         assertEquals(1, dao.items.size)
@@ -156,10 +180,71 @@ class ShoppingConsolidationTest {
     fun `addFromRecipe is idempotent for the recipe-screen add`() = runTest {
         val dao = InMemoryShoppingDao()
         val r = repo(dao)
-        val rec = recipe("r1", "Mehl" to 500.0)
+        val rec = recipe("r1", "Zwiebeln" to 500.0)
         r.addFromRecipe(rec) // no date (recipe screen)
         r.addFromRecipe(rec)
         assertEquals(1, dao.items.size)
+    }
+
+    @Test
+    fun `addFromRecipe does not persist staple ingredients`() = runTest {
+        val dao = InMemoryShoppingDao()
+        // Salt is hidden by every screen including the skip chip, so a row for it could never
+        // be seen, ticked or deleted — it must not exist in the first place.
+        repo(dao).addFromRecipe(recipe("r1", "Zwiebeln" to 500.0, "Salz" to 5.0))
+        assertEquals(listOf("Zwiebeln"), dao.items.map { it.text })
+    }
+
+    /** Issue #9: clearing the list must not leave a dish permanently un-addable. */
+    @Test
+    fun `a recipe can be added again once its visible lines are gone`() = runTest {
+        val dao = InMemoryShoppingDao()
+        val r = repo(dao)
+        val rec = recipe("r1", "Zwiebeln" to 500.0, "Salz" to 5.0)
+        r.addFromRecipe(rec)
+        dao.items.map { it.id }.forEach { r.deleteItem(it) } // user wipes the list
+        assertTrue(dao.items.isEmpty())
+
+        r.addFromRecipe(rec)
+        assertEquals(listOf("Zwiebeln"), dao.items.map { it.text })
+    }
+
+    @Test
+    fun `a pantry-covered leftover neither blocks nor inflates a re-add`() = runTest {
+        val dao = InMemoryShoppingDao()
+        // Onions are in stock, so the line this add writes is invisible from the start.
+        val r = repo(dao, InMemoryPantryDao("Zwiebeln"))
+        val rec = recipe("r1", "Zwiebeln" to 500.0)
+        r.addFromRecipe(rec)
+        assertEquals(1, dao.items.size)
+
+        assertNotNull(r.addFromRecipe(rec)) // not vetoed by the row nobody can see
+        assertEquals(1, dao.items.size)
+        assertEquals(500.0, dao.items.single().quantity!!, 0.0001) // replaced, not summed to 1000
+    }
+
+    @Test
+    fun `the cleanup leaves a line another dish also needs`() = runTest {
+        val dao = InMemoryShoppingDao()
+        val r = repo(dao, InMemoryPantryDao("Zwiebeln"))
+        r.addFromRecipe(recipe("r1", "Zwiebeln" to 500.0))
+        r.addFromRecipe(recipe("r2", "Zwiebeln" to 200.0))
+        assertEquals("r1,r2", dao.items.single().sourceRecipeIds)
+
+        r.addFromRecipe(recipe("r1", "Zwiebeln" to 500.0))
+        // r2 still needs it, so the shared line survives instead of being cleared away.
+        assertEquals(1, dao.items.size)
+        assertEquals("r1,r2", dao.items.single().sourceRecipeIds)
+    }
+
+    @Test
+    fun `a visible line still blocks a second add`() = runTest {
+        val dao = InMemoryShoppingDao()
+        val r = repo(dao)
+        val rec = recipe("r1", "Zwiebeln" to 500.0)
+        r.addFromRecipe(rec)
+        assertNull(r.addFromRecipe(rec))
+        assertEquals(500.0, dao.items.single().quantity!!, 0.0001)
     }
 
     @Test
@@ -180,7 +265,7 @@ class ShoppingConsolidationTest {
     fun `undo removes the rows the add created`() = runTest {
         val dao = InMemoryShoppingDao()
         val r = repo(dao)
-        val undo = r.addFromRecipe(recipe("r1", "Mehl" to 500.0, "Zucker" to 100.0), sourceDate = "2026-08-15")
+        val undo = r.addFromRecipe(recipe("r1", "Zwiebeln" to 500.0, "Karotten" to 100.0), sourceDate = "2026-08-15")
         assertEquals(2, dao.items.size)
         r.undoAddFromRecipe(undo!!)
         assertTrue(dao.items.isEmpty())
@@ -242,7 +327,7 @@ class ShoppingConsolidationTest {
     fun `a checked line survives`() = runTest {
         val dao = InMemoryShoppingDao()
         val r = repo(dao)
-        r.addFromRecipe(recipe("r1", "Mehl" to 500.0), sourceDate = "2026-08-15")
+        r.addFromRecipe(recipe("r1", "Zwiebeln" to 500.0), sourceDate = "2026-08-15")
         r.setChecked(dao.items.single().id, true)
 
         assertTrue(r.removeContributionOf("r1").isEmpty())
@@ -254,7 +339,7 @@ class ShoppingConsolidationTest {
     fun `removed lines can be restored`() = runTest {
         val dao = InMemoryShoppingDao()
         val r = repo(dao)
-        r.addFromRecipe(recipe("r1", "Mehl" to 500.0, "Hefe" to 1.0), sourceDate = "2026-08-15")
+        r.addFromRecipe(recipe("r1", "Zwiebeln" to 500.0, "Hefe" to 1.0), sourceDate = "2026-08-15")
         val before = dao.items.sortedBy { it.text }.toList()
 
         val removed = r.removeContributionOf("r1")
@@ -270,8 +355,8 @@ class ShoppingConsolidationTest {
     fun `removal finds the row whichever day tagged it`() = runTest {
         val dao = InMemoryShoppingDao()
         val r = repo(dao)
-        r.addFromRecipe(recipe("r1", "Mehl" to 500.0), sourceDate = "2026-08-18")
-        r.addFromRecipe(recipe("r1", "Mehl" to 500.0), sourceDate = "2026-08-21")
+        r.addFromRecipe(recipe("r1", "Zwiebeln" to 500.0), sourceDate = "2026-08-18")
+        r.addFromRecipe(recipe("r1", "Zwiebeln" to 500.0), sourceDate = "2026-08-21")
         assertEquals("2026-08-18", dao.items.single().sourceDate)
         assertEquals(1000.0, dao.items.single().quantity!!, 0.0001)
 
@@ -283,7 +368,7 @@ class ShoppingConsolidationTest {
     fun `a repeat add reports nothing to undo`() = runTest {
         val dao = InMemoryShoppingDao()
         val r = repo(dao)
-        val rec = recipe("r1", "Mehl" to 500.0)
+        val rec = recipe("r1", "Zwiebeln" to 500.0)
         assertTrue(r.addFromRecipe(rec, sourceDate = "2026-08-15") != null)
         assertEquals(null, r.addFromRecipe(rec, sourceDate = "2026-08-15"))
         assertEquals(1, dao.items.size)
