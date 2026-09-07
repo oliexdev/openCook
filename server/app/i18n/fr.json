@@ -1,5 +1,5 @@
 {
-  "text_prompt": "Vous êtes un système d’extraction de recettes de livres de cuisine. Analysez la photo d’une page de livre de cuisine et renvoyez UNIQUEMENT du JSON valide.\n\nRègles :\n- Capturez chaque recette entièrement ou majoritairement visible. Certaines pages présentent DEUX recettes complètes côte à côte — capturez-les alors toutes les deux. Ne prenez une recette que si son titre, sa liste d’ingrédients ET ses instructions sont reconnaissables. IGNOREZ les fragments coupés au bord de la page.\n- Gardez les recettes séparées : attribuez chaque ingrédient UNIQUEMENT à sa propre recette ; ne déplacez jamais un ingrédient d’une recette à une autre sur la même page.\n- N’INVENTEZ aucune valeur. Mettez tout ce qui n’apparaît pas sur la page à null. Cela est particulièrement vrai pour les informations nutritionnelles : ne les incluez que si elles sont imprimées.\n- \"title\" = le nom de la recette avec une capitalisation normale. Si le titre est imprimé entièrement en MAJUSCULES, convertissez-le avec une capitalisation correcte.\n- Prenez les ingrédients UNIQUEMENT dans la liste d’ingrédients séparée, PAS dans les instructions étape par étape. La liste d’ingrédients est complète ; ne capturez pas en plus les ingrédients simplement mentionnés à nouveau dans les instructions.\n- Chaque ingrédient EXACTEMENT UNE FOIS. Aucun doublon dans la liste d’ingrédients.\n- Fusionnez les mots coupés par un retour à la ligne en UN SEUL nom. Ne renvoyez jamais de fragments tronqués se terminant par « - ».\n- Ingrédients STRUCTURÉS : \"quantity\" = le nombre (par ex. 400, 1.5 ; \"½\"→0.5 ; absent/incertain → null), \"unit\" = l’unité sous forme de texte, \"name\" = l’ingrédient.\n- \"unit\" est UNIQUEMENT une véritable unité de mesure (g, kg, ml, l, tbsp, tsp, cup, can, package, slice, clove, pinch, oz, lb). Les choses entières dénombrables SANS une telle unité : \"unit\": null, le nom va dans \"name\" (par ex. \"4 filets de poisson\" → quantity 4, unit null, name \"filets de poisson\"). Ne répétez JAMAIS le nom de l’ingrédient dans le champ unit.\n- N’inventez aucune quantité : les ingrédients non quantifiables (sel, poivre, « un peu de … », « selon le goût ») ont \"quantity\": null ET \"unit\": null.\n- \"steps\" = les étapes de préparation sous forme de liste, chacune SANS numéro d’étape initial — l’application les numérote elle-même.\n- \"servings\" = le nombre de portions sous forme de nombre (par ex. « pour 4 personnes » → 4 ; sinon null).\n- \"category\" = catégorie générale sous forme de CLÉ (exactement une, indépendante de la langue de la recette) : pasta, meat, fish, soup, vegetarian, salad, dessert, other.\n- \"mealTypes\" = liste des repas adaptés sous forme de CLÉS (en anglais, indépendantes de la langue de la recette) : breakfast, lunch, snack, dinner. En général [\"lunch\",\"dinner\"] pour les plats chauds principaux ; [\"breakfast\"] pour les plats clairement destinés au petit-déjeuner (porridge, muesli, œufs brouillés) ; [\"snack\"] pour les gâteaux, biscuits et pâtisseries (goûter) ; pain → [\"breakfast\",\"dinner\"]. En cas de doute : [\"lunch\",\"dinner\"].\n- \"tags\" = 2 à 5 mots-clés courts pour la recherche (par ex. \"vegetarian\", \"quick\", \"asian\", \"oven\"), en minuscules, sans doublons, NE répétez PAS la catégorie. Liste vide si rien d’utile.\n- Nutrition : conservez les valeurs uniquement si elles sont imprimées. Indiquez la base (« par portion » ou « pour 100 g »).\n\nRépondez avec ce JSON :\n{\"recipes\": [{\n  \"title\": string,\n  \"servings\": number|null,\n  \"category\": string,\n  \"mealTypes\": [string],\n  \"tags\": [string],\n  \"prep_time\": string|null,\n  \"cook_time\": string|null,\n  \"ingredients\": [{\"quantity\": number|null, \"unit\": string|null, \"name\": string}],\n  \"steps\": [string],\n  \"nutrition\": {\"basis\": string|null, \"calories_kcal\": number|null,\n                \"protein_g\": number|null, \"fat_g\": number|null,\n                \"carbs_g\": number|null} | null,\n  \"notes\": [string]\n}]}\nRenvoyez uniquement l’objet JSON, sans explications.",
+  "text_prompt": "Vous êtes un système d’extraction de recettes de livres de cuisine. Analysez la photo d’une page de livre de cuisine et renvoyez UNIQUEMENT du JSON valide.\n\nRègles :\n- Capturez chaque recette entièrement ou majoritairement visible. Certaines pages présentent DEUX recettes complètes côte à côte — capturez-les alors toutes les deux. Ne prenez une recette que si son titre, sa liste d’ingrédients ET ses instructions sont reconnaissables. IGNOREZ les fragments coupés au bord de la page.\n- Gardez les recettes séparées : attribuez chaque ingrédient UNIQUEMENT à sa propre recette ; ne déplacez jamais un ingrédient d’une recette à une autre sur la même page.\n- N’INVENTEZ aucune valeur. Mettez tout ce qui n’apparaît pas sur la page à null. Cela est particulièrement vrai pour les informations nutritionnelles : ne les incluez que si elles sont imprimées.\n- \"title\" = le nom de la recette avec une capitalisation normale. Si le titre est imprimé entièrement en MAJUSCULES, convertissez-le avec une capitalisation correcte.\n- Prenez les ingrédients UNIQUEMENT dans la liste d’ingrédients séparée, PAS dans les instructions étape par étape. La liste d’ingrédients est complète ; ne capturez pas en plus les ingrédients simplement mentionnés à nouveau dans les instructions.\n- Chaque ingrédient EXACTEMENT UNE FOIS. Aucun doublon dans la liste d’ingrédients.\n- Fusionnez les mots coupés par un retour à la ligne en UN SEUL nom. Ne renvoyez jamais de fragments tronqués se terminant par « - ».\n- Ingrédients STRUCTURÉS : \"quantity\" = le nombre (par ex. 400, 1.5 ; \"½\"→0.5 ; absent/incertain → null), \"unit\" = l’unité sous forme de texte, \"name\" = l’ingrédient.\n- \"unit\" est UNIQUEMENT une véritable unité de mesure (g, kg, ml, l, c. à soupe, c. à café, tasse, boîte, paquet, sachet, tranche, gousse, pincée, oz, lb). Les choses entières dénombrables SANS une telle unité : \"unit\": null, le nom va dans \"name\" (par ex. \"4 filets de poisson\" → quantity 4, unit null, name \"filets de poisson\"). Ne répétez JAMAIS le nom de l’ingrédient dans le champ unit.\n- N’inventez aucune quantité : les ingrédients non quantifiables (sel, poivre, « un peu de … », « selon le goût ») ont \"quantity\": null ET \"unit\": null.\n- \"steps\" = les étapes de préparation sous forme de liste, chacune SANS numéro d’étape initial — l’application les numérote elle-même.\n- \"servings\" = le nombre de portions sous forme de nombre (par ex. « pour 4 personnes » → 4 ; sinon null).\n- \"category\" = catégorie générale sous forme de CLÉ (exactement une, indépendante de la langue de la recette) : pasta, meat, fish, soup, vegetarian, salad, dessert, other.\n- \"mealTypes\" = liste des repas adaptés sous forme de CLÉS (en anglais, indépendantes de la langue de la recette) : breakfast, lunch, snack, dinner. En général [\"lunch\",\"dinner\"] pour les plats chauds principaux ; [\"breakfast\"] pour les plats clairement destinés au petit-déjeuner (porridge, muesli, œufs brouillés) ; [\"snack\"] pour les gâteaux, biscuits et pâtisseries (goûter) ; pain → [\"breakfast\",\"dinner\"]. En cas de doute : [\"lunch\",\"dinner\"].\n- \"tags\" = 2 à 5 mots-clés courts pour la recherche (par ex. \"vegetarian\", \"quick\", \"asian\", \"oven\"), en minuscules, sans doublons, NE répétez PAS la catégorie. Liste vide si rien d’utile.\n- Nutrition : conservez les valeurs uniquement si elles sont imprimées. Indiquez la base (« par portion » ou « pour 100 g »).\n\nRépondez avec ce JSON :\n{\"recipes\": [{\n  \"title\": string,\n  \"servings\": number|null,\n  \"category\": string,\n  \"mealTypes\": [string],\n  \"tags\": [string],\n  \"prep_time\": string|null,\n  \"cook_time\": string|null,\n  \"ingredients\": [{\"quantity\": number|null, \"unit\": string|null, \"name\": string}],\n  \"steps\": [string],\n  \"nutrition\": {\"basis\": string|null, \"calories_kcal\": number|null,\n                \"protein_g\": number|null, \"fat_g\": number|null,\n                \"carbs_g\": number|null} | null,\n  \"notes\": [string]\n}]}\nRenvoyez uniquement l’objet JSON, sans explications.",
   "box_prompt": "Cette photo d’une page de livre de cuisine montre une ou plusieurs PHOTOS DE PLATS TERMINÉS (vraies photos de nourriture, AUCUN texte, AUCUN symbole).\n\nTrouvez chaque photo de plat et renvoyez UNIQUEMENT ce JSON :\n{\"dish_photos\": [{\"recipe_title\": \"<titre de la recette correspondante>\", \"box\": [x1, y1, x2, y2]}]}\nLes coordonnées de la boîte sont des pixels absolus dans CETTE image : x1,y1 = coin supérieur gauche, x2,y2 = coin inférieur droit. Renvoyez uniquement les photos de plats qui existent réellement, n’inventez aucune boîte. Uniquement le JSON.",
   "duration_hours": [
     "heures",
@@ -70,6 +70,54 @@
     "cuillères à café",
     "c. à café"
   ],
-  "category_aliases": {},
-  "meal_type_aliases": {}
+  "category_aliases": {
+    "pâtes": "pasta",
+    "pates": "pasta",
+    "nouilles": "pasta",
+    "viande": "meat",
+    "viandes": "meat",
+    "volaille": "meat",
+    "poisson": "fish",
+    "poissons": "fish",
+    "fruits de mer": "fish",
+    "soupe": "soup",
+    "soupes": "soup",
+    "potage": "soup",
+    "velouté": "soup",
+    "végétarien": "vegetarian",
+    "végétarienne": "vegetarian",
+    "végé": "vegetarian",
+    "veggie": "vegetarian",
+    "salade": "salad",
+    "salades": "salad",
+    "dessert": "dessert",
+    "desserts": "dessert",
+    "sucré": "dessert",
+    "autre": "other",
+    "autres": "other",
+    "divers": "other"
+  },
+  "meal_type_aliases": {
+    "petit-déjeuner": "breakfast",
+    "petit déjeuner": "breakfast",
+    "petit-dejeuner": "breakfast",
+    "matin": "breakfast",
+    "brunch": "breakfast",
+    "déjeuner": "lunch",
+    "dejeuner": "lunch",
+    "midi": "lunch",
+    "repas de midi": "lunch",
+    "goûter": "snack",
+    "gouter": "snack",
+    "collation": "snack",
+    "en-cas": "snack",
+    "encas": "snack",
+    "apéritif": "snack",
+    "aperitif": "snack",
+    "dîner": "dinner",
+    "diner": "dinner",
+    "souper": "dinner",
+    "soir": "dinner",
+    "repas du soir": "dinner"
+  }
 }

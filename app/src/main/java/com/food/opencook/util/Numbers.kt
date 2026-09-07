@@ -74,27 +74,47 @@ object RecipeCategories {
         else -> R.string.cat_other
     }
 
+    /** German+English fallback aliases, so unit tests and a not-yet-initialized process still
+     *  map legacy values. The real list per language lives in `arrays.xml` (`cat_alias_*`) and
+     *  is pushed in by `LocalizedLists` as the union over every bundled content language. */
+    private val DEFAULT_ALIASES_DE_EN: Map<String, String> = mapOf(
+        "nudeln" to "pasta", "noodles" to "pasta",
+        "fleisch" to "meat", "geflügel" to "meat",
+        "fisch" to "fish",
+        "suppe" to "soup", "eintopf" to "soup",
+        "vegetarisch" to "vegetarian", "veggie" to "vegetarian", "vegan" to "vegetarian",
+        "salat" to "salad",
+        "nachtisch" to "dessert", "nachspeise" to "dessert",
+        "sonstiges" to "other", "misc" to "other",
+    )
+
+    /** Active alias map (word → key). Swapped at runtime by `LocalizedLists`. */
+    @Volatile
+    private var aliases: Map<String, String> = DEFAULT_ALIASES_DE_EN
+
+    /** Replace the legacy/import alias words for the bundled content languages. */
+    fun setAliases(newAliases: Map<String, String>) {
+        if (newAliases.isNotEmpty()) aliases = newAliases
+    }
+
+    /** Active aliases — exposed so tests can snapshot and restore around [setAliases]. */
+    val activeAliases: Map<String, String> get() = aliases
+
     /** Map a stored/legacy/AI category (any language) to a stable key; unknown → [DEFAULT]. */
     fun normalizeKey(raw: String?): String {
         val t = raw?.trim()?.lowercase() ?: return DEFAULT
-        return when (t) {
-            "pasta", "nudeln" -> "pasta"
-            "meat", "fleisch" -> "meat"
-            "fish", "fisch" -> "fish"
-            "soup", "suppe" -> "soup"
-            "vegetarian", "vegetarisch", "veggie" -> "vegetarian"
-            "salad", "salat" -> "salad"
-            "dessert", "nachtisch" -> "dessert"
-            "other", "sonstiges" -> "other"
-            else -> if (t in KEYS) t else DEFAULT
-        }
+        if (t in KEYS) return t
+        return aliases[t] ?: DEFAULT
     }
 
     /** Display label: localized for known/legacy values; a custom free-text value is kept verbatim. */
     fun displayLabel(context: Context, raw: String?): String {
         if (raw.isNullOrBlank()) return context.getString(R.string.cat_other)
+        val t = raw.trim().lowercase()
         val key = normalizeKey(raw)
-        val isKnown = key != DEFAULT || raw.trim().lowercase() in listOf("other", "sonstiges")
+        // "Other" is a real answer, not a miss — tell the two apart before falling back to the
+        // user's own free text (normalizeKey maps both to DEFAULT).
+        val isKnown = key != DEFAULT || t in KEYS || t in aliases
         return if (isKnown) context.getString(labelRes(key)) else raw.trim()
     }
 }
@@ -125,16 +145,32 @@ object MealTypes {
         else -> R.string.mealtype_dinner
     }
 
+    /** German+English fallback aliases; the per-language list lives in `arrays.xml`
+     *  (`mealtype_alias_*`) and is pushed in by `LocalizedLists`. */
+    private val DEFAULT_ALIASES_DE_EN: Map<String, String> = mapOf(
+        "frühstück" to "breakfast", "fruehstueck" to "breakfast", "morgens" to "breakfast",
+        "mittag" to "lunch", "mittagessen" to "lunch",
+        "kaffee" to "snack", "kuchen" to "snack", "zwischenmahlzeit" to "snack",
+        "abend" to "dinner", "abendessen" to "dinner", "abendbrot" to "dinner",
+    )
+
+    /** Active alias map (word → key). Swapped at runtime by `LocalizedLists`. */
+    @Volatile
+    private var aliases: Map<String, String> = DEFAULT_ALIASES_DE_EN
+
+    /** Replace the AI/import alias words for the bundled content languages. */
+    fun setAliases(newAliases: Map<String, String>) {
+        if (newAliases.isNotEmpty()) aliases = newAliases
+    }
+
+    /** Active aliases — exposed so tests can snapshot and restore around [setAliases]. */
+    val activeAliases: Map<String, String> get() = aliases
+
     /** Map an AI/import value (any language) to a stable key; unknown → null (drop, don't guess). */
     fun normalizeKey(raw: String?): String? {
         val t = raw?.trim()?.lowercase() ?: return null
-        return when (t) {
-            "breakfast", "frühstück", "fruehstueck", "morgens" -> "breakfast"
-            "lunch", "mittag", "mittagessen" -> "lunch"
-            "snack", "kaffee", "kuchen", "zwischenmahlzeit" -> "snack"
-            "dinner", "abend", "abendessen", "abendbrot" -> "dinner"
-            else -> if (t in KEYS) t else null
-        }
+        if (t in KEYS) return t
+        return aliases[t]
     }
 
     /** Stored column → key list in [KEYS] order; null/blank → [DEFAULT]. */

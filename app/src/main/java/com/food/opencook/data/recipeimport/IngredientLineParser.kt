@@ -106,13 +106,24 @@ object IngredientLineParser {
         return nn / dd
     }
 
-    /** Split "<unit> <name>"; unit only when the first token is a known one. */
+    /** Longest unit spelling we try to match, in whitespace-separated words ("c. à soupe"). */
+    private const val MAX_UNIT_WORDS = 3
+
+    /**
+     * Split "<unit> <name>"; unit only when the leading token(s) form a known one.
+     * Longest match first: French measures are usually several words ("c. à soupe",
+     * "cuillère à café"), so a single-token test would leave them in the name.
+     * A unit is only taken when something is left over to be the ingredient name.
+     */
     private fun splitUnit(rest: String): Pair<String?, String> {
         if (rest.isBlank()) return null to rest
-        val parts = rest.split(Regex("\\s+"), limit = 2)
-        val candidate = parts[0]
-        val norm = candidate.lowercase()
-            .removeSuffix(".").removeSuffix("/n").removeSuffix("(n)").removeSuffix("(en)").removeSuffix(".")
-        return if (parts.size == 2 && norm in UNITS) candidate to parts[1].trim() else null to rest
+        val parts = rest.trim().split(Regex("\\s+"))
+        for (n in minOf(MAX_UNIT_WORDS, parts.size - 1) downTo 1) {
+            val candidate = parts.take(n).joinToString(" ")
+            val norm = candidate.lowercase()
+                .removeSuffix(".").removeSuffix("/n").removeSuffix("(n)").removeSuffix("(en)").removeSuffix(".")
+            if (norm in UNITS) return candidate to parts.drop(n).joinToString(" ")
+        }
+        return null to rest
     }
 }

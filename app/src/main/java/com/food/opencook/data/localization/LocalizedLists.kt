@@ -27,8 +27,12 @@ import com.food.opencook.data.settings.ContentLanguages
 import com.food.opencook.data.settings.SettingsRepository
 import com.food.opencook.util.GroceryCategories
 import com.food.opencook.util.GroceryCategory
+import com.food.opencook.util.IngredientLexicon
+import com.food.opencook.util.IngredientMatch
 import com.food.opencook.util.IngredientStaples
+import com.food.opencook.util.MealTypes
 import com.food.opencook.util.ProteinGroups
+import com.food.opencook.util.RecipeCategories
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.Locale
 import javax.inject.Inject
@@ -91,6 +95,54 @@ class LocalizedLists @Inject constructor(
                 "tofu" to unionLower(R.array.protein_kw_plant),
             ),
         )
+        // Legacy/import category + meal words → the stable keys. Unioned like everything else:
+        // a French recipe restored from a backup must classify on a German phone too.
+        RecipeCategories.setAliases(
+            aliasMap(
+                "pasta" to R.array.cat_alias_pasta,
+                "meat" to R.array.cat_alias_meat,
+                "fish" to R.array.cat_alias_fish,
+                "soup" to R.array.cat_alias_soup,
+                "vegetarian" to R.array.cat_alias_vegetarian,
+                "salad" to R.array.cat_alias_salad,
+                "dessert" to R.array.cat_alias_dessert,
+                "other" to R.array.cat_alias_other,
+            ),
+        )
+        MealTypes.setAliases(
+            aliasMap(
+                "breakfast" to R.array.mealtype_alias_breakfast,
+                "lunch" to R.array.mealtype_alias_lunch,
+                "snack" to R.array.mealtype_alias_snack,
+                "dinner" to R.array.mealtype_alias_dinner,
+            ),
+        )
+        // Ingredient-matching mechanics, then the curated lexicon — in that order: the lexicon
+        // normalizes its entries at build time and must see the final vocabulary.
+        IngredientMatch.setVocabulary(
+            IngredientMatch.Vocabulary(
+                leadingNoise = unionLower(R.array.ingredient_leading_noise),
+                usePhrases = unionLower(R.array.ingredient_use_phrases),
+                pluralSuffixes = unionLower(R.array.ingredient_plural_suffixes),
+                headConnectors = unionLower(R.array.ingredient_head_connectors),
+            ),
+        )
+        IngredientLexicon.setData(
+            synonyms = unionLower(R.array.ingredient_synonyms).map { it.split(SEP).toSet() },
+            distinct = unionLower(R.array.ingredient_distinctions)
+                .map { it.split(SEP) }
+                .filter { it.size == 2 }
+                .map { (a, b) -> a to b },
+        )
+    }
+
+    /** Flatten "<key> → word-list array" pairs into the word → key lookup the domain objects use. */
+    private fun aliasMap(vararg groups: Pair<String, Int>): Map<String, String> =
+        groups.flatMap { (key, id) -> unionLower(id).map { it to key } }.toMap()
+
+    private companion object {
+        /** Separator inside a synonym group / distinction pair item. */
+        const val SEP = '|'
     }
 
     private fun resourcesFor(lang: String): Resources {

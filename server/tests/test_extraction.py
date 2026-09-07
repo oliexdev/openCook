@@ -4,12 +4,16 @@ from io import BytesIO
 from PIL import Image
 
 from app.extraction import (
+    _CATEGORY_KEYS,
+    _I18N_DIR,
+    _MEAL_TYPE_KEYS,
     RecipeExtractor,
     _assign_boxes,
     _Box,
     _clean_step,
     _fix_title_case,
     _iso_duration,
+    _normalize_category,
     _normalize_meal_types,
     load_i18n,
     parse_json_lenient,
@@ -69,6 +73,42 @@ def test_load_i18n_unknown_language_falls_back_to_english():
     de = load_i18n("de")
     assert de.text_prompt != en.text_prompt
     assert en.units <= de.units
+
+
+def test_every_catalog_carries_its_category_and_meal_aliases():
+    """A language catalog is only useful if it can map the words the model answers with.
+
+    English is the source (its own words *are* the keys), so it is exempt; every other
+    catalog must translate both alias tables, or French recipes silently land on "other"
+    with no meal type.
+    """
+    en = load_i18n("en")
+    for path in sorted(_I18N_DIR.glob("*.json")):
+        lang = path.stem
+        if lang == "en":
+            continue
+        i18n = load_i18n(lang)
+        extra_cats = set(i18n.category_aliases) - set(en.category_aliases)
+        extra_meals = set(i18n.meal_type_aliases) - set(en.meal_type_aliases)
+        assert extra_cats, f"{lang}.json has no category_aliases of its own"
+        assert extra_meals, f"{lang}.json has no meal_type_aliases of its own"
+        # Aliases may only point at the stable keys.
+        assert set(i18n.category_aliases.values()) <= set(_CATEGORY_KEYS)
+        assert set(i18n.meal_type_aliases.values()) <= set(_MEAL_TYPE_KEYS)
+
+
+def test_french_catalog_maps_french_words():
+    fr = load_i18n("fr")
+    assert _normalize_category("Viande", fr.category_aliases) == "meat"
+    assert _normalize_category("poisson", fr.category_aliases) == "fish"
+    assert _normalize_meal_types(["Petit-déjeuner", "goûter"], fr.meal_type_aliases) == [
+        "breakfast",
+        "snack",
+    ]
+    assert _iso_duration("1 heure 10 minutes", fr) == "PT70M"
+    # French measures stay in the unit vocabulary, English ones still merge in.
+    assert "c. à soupe" in fr.units
+    assert "tbsp" in fr.units
 
 
 def test_to_schema_org_coerces_non_numeric_quantity():

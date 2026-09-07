@@ -59,5 +59,6 @@ server, or a family phone that has the app open). See
 Android 11 (API 30) or newer.
 
 ### What languages does it support?
-The app and the recipe AI are tuned for German cookbooks, but the recipe format itself is
-language-neutral.
+The interface, the recipe AI and the shopping-list grouping ship in English, German and French.
+The recipe format itself is language-neutral, and anything a translation leaves out falls back to
+English — see [Adding a language](../developer/translating.md) if you want to add yours.
