@@ -1,40 +1,73 @@
+<!--
+  ~  openCook
+  ~  Copyright (C) 2026 olie.xdev <olie.xdeveloper@googlemail.com>
+  ~
+  ~  This program is free software: you can redistribute it and/or modify
+  ~  it under the terms of the GNU General Public License as published by
+  ~  the Free Software Foundation, either version 3 of the License, or
+  ~  (at your option) any later version.
+  ~
+  ~  This program is distributed in the hope that it will be useful,
+  ~  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  ~  GNU General Public License for more details.
+  ~
+  ~  You should have received a copy of the GNU General Public License
+  ~  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+  -->
+
 <resources>
+    <!-- Default (English) resources; German lives in values-de/. app_name is generated per
+         build type in build.gradle.kts (resValue) so the second test identity (debug2) can
+         show a distinct launcher label. -->
     <string name="back">Retour</string>
+
+    <!-- Bottom navigation -->
     <string name="nav_recipes">Recettes</string>
     <string name="nav_scan">Scanner</string>
     <string name="nav_shopping">Liste de courses</string>
     <string name="nav_settings">Paramètres</string>
+
+    <!-- Settings -->
     <string name="settings_title">Paramètres</string>
     <string name="settings_server_url_label">Adresse du serveur</string>
     <string name="settings_server_url_placeholder">http://192.168.1.10:8000</string>
-    <string name="settings_household_hint">Votre foyer partage les recettes, la liste de courses et la planification sur tous les appareils.</string>
+    <string name="settings_household_hint">Your household shares recipes, shopping list and planning across all devices.</string>
     <string name="settings_household_code_label">Code du foyer</string>
     <string name="settings_household_code_copied">Code copié</string>
     <string name="settings_sync_now">Synchroniser maintenant</string>
     <string name="settings_save">Enregistrer</string>
+
+    <!-- Scan -->
     <string name="scan_title">Ajouter une recette</string>
-    <string name="scan_intro">Photographiez une page de livre de cuisine, récupérez-en une sur le web ou saisissez-la vous-même.</string>
+    <string name="scan_intro">Photograph a cookbook page, fetch one from the web, or write it down yourself.</string>
     <string name="scan_take_photo">Prendre une photo</string>
     <string name="scan_pick_gallery">Choisir dans la galerie</string>
-    <string name="scan_no_server_title">La reconnaissance de photos nécessite un serveur</string>
-    <string name="scan_no_server">L’IA fonctionne sur votre serveur openCook. Sans serveur, vous pouvez toujours ajouter des recettes à la main ou les importer depuis un fichier.</string>
+    <string name="scan_no_server_title">Photo recognition needs a server</string>
+    <string name="scan_no_server">The AI runs on your openCook server. Without one you can still add recipes by hand or import them from a file.</string>
     <string name="scan_go_to_settings">Aller aux paramètres</string>
-    <string name="scan_server_offline_title">Serveur inaccessible pour le moment</string>
-    <string name="scan_server_offline">Vous pouvez toujours prendre des photos — elles restent sur le téléphone et seront reconnues automatiquement dès que le serveur répondra de nouveau.</string>
+    <string name="scan_server_offline_title">Server not reachable right now</string>
+    <string name="scan_server_offline">You can still take photos — they stay on the phone and are recognized automatically as soon as the server answers again.</string>
     <plurals name="scan_server_offline_queued">
         <item quantity="one">%d analyse est en attente.</item>
         <item quantity="other">%d analyses sont en attente.</item>
     </plurals>
     <string name="scan_server_retry">Vérifier à nouveau</string>
+
+    <!-- Camera -->
     <string name="camera_capture">Prendre la photo</string>
-    <string name="camera_permission_rationale">L’accès à l’appareil photo est nécessaire pour prendre une photo. Vous pouvez aussi choisir une image dans la galerie.</string>
+    <string name="camera_permission_rationale">Camera access is needed to take a photo. You can also pick an image from the gallery instead.</string>
+
+    <!-- Processing -->
     <string name="processing_title">Traitement…</string>
-    <string name="processing_hint">La recette est en cours de reconnaissance sur le serveur. Cela peut prendre un moment.</string>
-    <string name="processing_offline">Serveur inaccessible — l’analyse est mise en attente et sera traitée dès que le serveur sera de nouveau disponible.</string>
+    <string name="processing_hint">The recipe is being recognized on the server. This may take a moment.</string>
+    <string name="processing_offline">Server unreachable — the scan is queued and will be processed as soon as the server is back.</string>
     <string name="processing_cancel">Annuler</string>
     <string name="processing_error">Échec de la reconnaissance</string>
+
+    <!-- Review -->
     <string name="review_title">Vérifier la recette</string>
-    <string name="review_recipe_index">Recette %1$d sur %2$d</string>
+    <string name="review_recipe_index">Recipe %1$d of %2$d</string>
     <string name="review_name">Titre</string>
     <string name="review_servings">Portions</string>
     <string name="review_cookbook">Livre de recettes / collection</string>
@@ -55,9 +88,11 @@
     <string name="review_image_crop">Recadrer</string>
     <string name="crop_apply">Appliquer</string>
     <string name="crop_cancel">Annuler</string>
+
+    <!-- Recipes -->
     <string name="recipes_title">Recettes</string>
-    <string name="recipes_title_count">Recettes (%1$d)</string>
-    <string name="recipes_empty">Aucune recette pour le moment. Touchez « Scanner » pour capturer votre première recette.</string>
+    <string name="recipes_title_count">Recipes (%1$d)</string>
+    <string name="recipes_empty">No recipes yet. Tap “Scan” to capture your first recipe.</string>
     <string name="recipes_search_hint">Rechercher des recettes…</string>
     <string name="recipes_filter_all">Toutes</string>
     <string name="recipes_filter">Filtrer</string>
@@ -65,7 +100,7 @@
     <string name="recipes_filter_reset">Réinitialiser</string>
     <string name="recipes_filter_liked">Favoris uniquement</string>
     <string name="recipes_filter_cookable">Peut être cuisinée maintenant</string>
-    <string name="recipes_filter_remove">Supprimer le filtre %1$s</string>
+    <string name="recipes_filter_remove">Remove filter %1$s</string>
     <string name="recipes_filter_status">Statut</string>
     <string name="recipes_filter_cooked_group">Cuisinées</string>
     <string name="recipes_filter_cooked">Déjà cuisinées</string>
@@ -91,15 +126,17 @@
         <item quantity="other">il y a %1$d semaines</item>
     </plurals>
     <string name="recipe_liked_label">♥ Aimée</string>
-    <string name="recipe_cook_moved">« %1$s » déplacé vers %2$s</string>
-    <string name="recipe_cook_removed">« %1$s » retiré d’aujourd’hui</string>
+    <string name="recipe_cook_moved">Moved “%1$s” to %2$s</string>
+    <string name="recipe_cook_removed">Removed “%1$s” from today</string>
     <plurals name="recipe_cooked_times">
         <item quantity="one">cuisinée %1$d fois</item>
         <item quantity="other">cuisinée %1$d fois</item>
     </plurals>
-    <string name="recipe_cooked_last_short">dernière %1$s</string>
+    <string name="recipe_cooked_last_short">last %1$s</string>
+
+    <!-- Retrospective ("what we've cooked"), reached from the top of the plan list -->
     <string name="retrospect_title">Rétrospective</string>
-    <string name="retrospect_entry_title">Ce que nous avons cuisiné</string>
+    <string name="retrospect_entry_title">What we\'ve cooked</string>
     <plurals name="retrospect_entry_subtitle">
         <item quantity="one">%1$s : %2$d repas</item>
         <item quantity="other">%1$s : %2$d repas</item>
@@ -109,32 +146,38 @@
         <item quantity="other">%1$d repas cuisinés</item>
     </plurals>
     <string name="retrospect_empty_title">Encore rien à consulter</string>
-    <string name="retrospect_empty_message">Une fois les repas marqués comme cuisinés, ils apparaissent ici.</string>
+    <string name="retrospect_empty_message">Once you mark meals as cooked, they collect here.</string>
+
+    <!-- Barcode scanning -->
     <string name="barcode_scan_cd">Scanner un code-barres</string>
-    <string name="barcode_hint">Placez le code-barres dans le cadre</string>
+    <string name="barcode_hint">Hold the barcode within the frame</string>
     <string name="barcode_found">Produit trouvé</string>
-    <string name="barcode_not_found">Introuvable — saisissez un nom</string>
+    <string name="barcode_not_found">Not found — enter a name</string>
     <string name="barcode_name_label">Nom du produit</string>
-    <string name="barcode_code_label">Code-barres : %1$s</string>
+    <string name="barcode_code_label">Barcode: %1$s</string>
     <string name="barcode_add">Ajouter</string>
     <string name="barcode_rescan">Scanner à nouveau</string>
+
+    <!-- Status strip (running scans) -->
     <string name="status_queued">En attente…</string>
     <string name="stage_reading_text">Lecture du texte de la recette…</string>
     <string name="stage_detecting_photos">Détection des photos de plats…</string>
     <string name="status_processing_generic">Traitement…</string>
-    <string name="status_processing_many">Traitement de %1$d analyses…</string>
+    <string name="status_processing_many">Processing %1$d scans…</string>
     <string name="status_review_action">Vérifier</string>
     <string name="status_dismiss">Fermer</string>
     <string name="status_cancel">Annuler</string>
     <string name="status_retry">Réessayer</string>
-    <string name="status_stage_with_queue">%1$s · %2$d en attente</string>
-    <string name="status_queued_only">%1$d en attente…</string>
+    <string name="status_stage_with_queue">%1$s · %2$d queued</string>
+    <string name="status_queued_only">%1$d queued…</string>
     <plurals name="status_failed">
         <item quantity="one">%1$d analyse a échoué</item>
         <item quantity="other">%1$d analyses ont échoué</item>
     </plurals>
-    <string name="status_added_one">« %1$s » ajouté</string>
-    <string name="status_added_many">« %1$s » + %2$d autres</string>
+    <string name="status_added_one">Added “%1$s”</string>
+    <string name="status_added_many">“%1$s” + %2$d more</string>
+
+    <!-- Shopping list -->
     <string name="shopping_title">Liste de courses</string>
     <string name="segment_shopping">Liste de courses</string>
     <string name="segment_pantry">Garde-manger</string>
@@ -145,53 +188,53 @@
     <string name="search_no_results">Aucun résultat</string>
     <string name="shopping_add_hint">Ajouter un élément…</string>
     <string name="shopping_add">Ajouter</string>
-    <string name="shopping_empty">Votre liste de courses est vide. Ajoutez des articles ou importez les ingrédients d’une recette.</string>
+    <string name="shopping_empty">Your shopping list is empty. Add items or pull in a recipe\'s ingredients.</string>
     <string name="shopping_delete">Retirer</string>
-    <string name="shopping_clear_checked">Coché → garde-manger</string>
-    <string name="shopping_all_bought_title">Tout est acheté 🎉</string>
-    <string name="shopping_all_bought_action">Déplacer vers le garde-manger</string>
-    <string name="shopping_clear_all">Tout effacer</string>
-    <string name="shopping_clear_all_title">Effacer la liste de courses ?</string>
-    <string name="shopping_clear_all_text">Les %1$d articles seront supprimés. Cette action est irréversible.</string>
-    <string name="shopping_clear_all_confirm">Effacer</string>
-    <string name="shopping_more_actions">Plus d’actions</string>
-    <string name="shopping_add_from_recipe">Ajouter à la liste de courses</string>
-    <string name="shopping_already_home">Déjà à la maison (→ garde-manger)</string>
-    <string name="shopping_moved_to_pantry">Déplacé vers le garde-manger</string>
-    <string name="shopping_skipped_chip">%1$d dans le garde-manger — ignoré</string>
-    <string name="shopping_need_anyway">En avoir besoin quand même</string>
-    <string name="shopping_needed_for">Pour : %1$s</string>
+    <string name="shopping_clear_checked">Checked → pantry</string>
+    <string name="shopping_all_bought_title">All bought 🎉</string>
+    <string name="shopping_all_bought_action">Move to pantry</string>
+    <string name="shopping_clear_all">Clear all</string>
+    <string name="shopping_clear_all_title">Clear shopping list?</string>
+    <string name="shopping_clear_all_text">All %1$d items will be removed. This cannot be undone.</string>
+    <string name="shopping_clear_all_confirm">Clear</string>
+    <string name="shopping_more_actions">More actions</string>
+    <string name="shopping_add_from_recipe">Add to shopping list</string>
+    <string name="shopping_already_home">Already at home (→ pantry)</string>
+    <string name="shopping_moved_to_pantry">Moved to pantry</string>
+    <string name="shopping_skipped_chip">%1$d in pantry — skipped</string>
+    <string name="shopping_need_anyway">Need it anyway</string>
+    <string name="shopping_needed_for">For: %1$s</string>
     <string name="shopping_done_section">Terminé</string>
     <string name="shopping_actions">Actions</string>
     <string name="swipe_to_pantry">Garde-manger</string>
     <string name="swipe_to_shopping">Liste de courses</string>
-    <string name="shopping_nf_adapt">Marquer comme terminé</string>
-    <string name="shopping_adapted">Marqué comme terminé</string>
+    <string name="shopping_nf_adapt">Mark as done</string>
+    <string name="shopping_adapted">Marked as done</string>
     <string name="scan_manual">Créer manuellement</string>
-    <string name="recipe_add_to_plan">Ajouter au planning de la semaine</string>
+    <string name="recipe_add_to_plan">Add to week plan</string>
     <string name="recipe_plan_sheet_title">Choisir un jour</string>
-    <string name="recipe_plan_added">Ajouté pour %1$s</string>
-    <string name="recipe_plan_replace_title">Journée déjà planifiée</string>
-    <string name="recipe_plan_replace_text">« %2$s » est déjà prévu pour %1$s. Le remplacer par cette recette ?</string>
+    <string name="recipe_plan_added">Added for %1$s</string>
+    <string name="recipe_plan_replace_title">Day already planned</string>
+    <string name="recipe_plan_replace_text">“%2$s” is already planned for %1$s. Replace it with this recipe?</string>
     <string name="recipe_plan_replace_confirm">Remplacer</string>
     <string name="recipe_plan_day_free">Libre</string>
-    <string name="wizard_step_of">Étape %1$d sur %2$d</string>
+    <string name="wizard_step_of">Step %1$d of %2$d</string>
     <string name="wizard_back">Retour</string>
     <string name="wizard_next">Suivant</string>
-    <string name="wizard_step_basics">Image et informations de base</string>
+    <string name="wizard_step_basics">Image &amp; basics</string>
     <string name="wizard_step_ingredients">Ingrédients</string>
-    <string name="wizard_step_steps">Étapes</string>
+    <string name="wizard_step_steps">Steps</string>
     <string name="wizard_step_details">Facultatif</string>
     <string name="wizard_step_summary">Résumé</string>
-    <string name="wizard_name_required">Veuillez d’abord saisir un titre.</string>
-    <string name="wizard_no_ingredients">Aucun ingrédient pour le moment. Touchez « Ajouter un ingrédient ».</string>
-    <string name="wizard_no_steps">Aucune étape pour le moment. Touchez « Ajouter une étape ».</string>
-    <string name="wizard_summary_servings">%1$s portions</string>
-    <string name="wizard_summary_no_image">Aucune image sélectionnée.</string>
+    <string name="wizard_name_required">Please enter a title first.</string>
+    <string name="wizard_no_ingredients">No ingredients yet. Tap “Add ingredient”.</string>
+    <string name="wizard_no_steps">No steps yet. Tap “Add step”.</string>
+    <string name="wizard_summary_servings">%1$s servings</string>
+    <string name="wizard_summary_no_image">No image selected.</string>
     <string name="wizard_ingredient_qty">Quantité</string>
     <string name="wizard_ingredient_unit">Unité</string>
     <string name="wizard_ingredient_name">Ingrédient</string>
-    <string name="wizard_step_number">Étape %1$d</string>
+    <string name="wizard_step_number">Step %1$d</string>
     <string name="wizard_step_move_up">Monter</string>
     <string name="wizard_step_move_down">Descendre</string>
     <string name="wizard_time_none">Non indiqué</string>
@@ -199,19 +242,23 @@
     <string name="wizard_time_hour">%1$d h</string>
     <string name="wizard_time_hour_minutes">%1$d h %2$d min</string>
     <string name="wizard_nutrition_toggle">Ajouter les informations nutritionnelles</string>
-    <string name="wizard_correction_suggest">Vouliez-vous dire « %1$s » ?</string>
-    <string name="wizard_correction_auto">corrigé automatiquement</string>
-    <string name="pantry_add_hint">Ajouter un article au garde-manger…</string>
+    <string name="wizard_correction_suggest">Did you mean “%1$s”?</string>
+    <string name="wizard_correction_auto">auto-corrected</string>
+
+    <!-- Pantry -->
+    <string name="pantry_add_hint">Add pantry item…</string>
     <string name="pantry_empty">Aucun élément dans le garde-manger.</string>
     <string name="shopping_added">Ajouté à la liste de courses</string>
+
+    <!-- Meal plan -->
     <string name="mealplan_title">Planning des repas</string>
     <string name="mealplan_to_shopping">Générer la liste de courses</string>
     <string name="mealplan_pick_recipe">Choisir une recette</string>
     <string name="mealplan_suggestion">Suggestion</string>
     <string name="mealplan_swap_dish">Changer de plat</string>
-    <string name="mealplan_pick_clear_filter">Supprimez le filtre ci-dessus pour choisir parmi toutes les recettes.</string>
-    <string name="mealplan_no_recipes">Aucune recette à planifier pour le moment.</string>
-    <string name="mealplan_generated">Ingrédients ajoutés à la liste de courses</string>
+    <string name="mealplan_pick_clear_filter">Remove the filter above to choose from all recipes.</string>
+    <string name="mealplan_no_recipes">No recipes to plan yet.</string>
+    <string name="mealplan_generated">Ingredients added to the shopping list</string>
     <string name="mealplan_remove_dish">Retirer le plat</string>
     <string name="mealplan_day_not_planned">Non planifié</string>
     <string name="mealplan_day_yesterday">Hier</string>
@@ -225,19 +272,22 @@
     <string name="mealplan_skip">Ignorer</string>
     <string name="mealplan_unskip">Planifier</string>
     <string name="mealplan_skipped_label">ignoré</string>
-    <string name="mealplan_pin">Épingler (conservé lors du décalage)</string>
+    <string name="mealplan_pin">Pin (kept when rolling)</string>
     <string name="mealplan_unpin">Désépingler</string>
-    <string name="mealplan_reason_week_reuse">Utilise %1$s</string>
-    <string name="mealplan_reason_pantry_reuse">Depuis le garde-manger : %1$s</string>
+
+    <!-- Meal-planner reasons (why a dish was picked) -->
+    <string name="mealplan_reason_week_reuse">Uses up %1$s</string>
+    <string name="mealplan_reason_pantry_reuse">From the pantry: %1$s</string>
     <string name="mealplan_reason_liked">Aimée</string>
-    <string name="mealplan_reason_quick_weekday">Rapide (%1$s)</string>
-    <string name="mealplan_reason_big_batch_leftover">Assez pour deux jours</string>
-    <string name="mealplan_reason_new_ingredients">Il vous faut encore : %1$s</string>
-    <string name="mealplan_reason_recently_planned">Planifié récemment (%1$s)</string>
-    <string name="mealplan_reason_recently_cooked">Cuisiné récemment (%1$s)</string>
-    <string name="mealplan_reason_same_category">Similaire au jour voisin (%1$s)</string>
-    <string name="mealplan_reason_monotony">Déjà fréquent cette semaine : %1$s</string>
-    <string name="mealplan_reason_same_protein">Même ingrédient principal qu’un autre jour : %1$s</string>
+    <string name="mealplan_reason_quick_weekday">Quick (%1$s)</string>
+    <string name="mealplan_reason_big_batch_leftover">Enough for two days</string>
+    <string name="mealplan_reason_new_ingredients">You still need: %1$s</string>
+    <string name="mealplan_reason_recently_planned">Recently planned (%1$s)</string>
+    <string name="mealplan_reason_recently_cooked">Recently cooked (%1$s)</string>
+    <string name="mealplan_reason_same_category">Similar to the adjacent day (%1$s)</string>
+    <string name="mealplan_reason_monotony">Already frequent this week: %1$s</string>
+    <string name="mealplan_reason_same_protein">Same main ingredient as another day: %1$s</string>
+    <!-- Display labels for the meal-planner main-protein groups (keys are fixed in code). -->
     <string name="protein_label_poultry">Volaille</string>
     <string name="protein_label_fish">Poisson</string>
     <string name="protein_label_mince">Viande hachée</string>
@@ -250,35 +300,39 @@
     <string name="mealplan_reasons_close">Fermer</string>
     <string name="mealplan_reasons_section_for">Pour</string>
     <string name="mealplan_reasons_section_against">Contre</string>
-    <string name="mealplan_reasons_none">Ajouté manuellement — aucune explication.</string>
-    <string name="settings_household_size_hint">Pour combien de personnes planifier. Pour de grandes quantités, le planificateur suggère des restes le lendemain.</string>
+    <string name="mealplan_reasons_none">Added manually — no reasoning.</string>
+
+    <!-- Settings: household size -->
+    <string name="settings_household_size_hint">How many people to plan for. For large amounts the planner suggests leftovers the next day.</string>
     <string name="settings_household_size_label">Personnes</string>
+
+    <!-- Onboarding -->
     <string name="onboarding_title">Bienvenue dans openCook</string>
-    <string name="onboarding_subtitle">Collectez, planifiez et cuisinez des recettes – hors ligne et sans compte.</string>
-    <string name="onboarding_mode_step_title">Comment souhaitez-vous utiliser openCook ?</string>
+    <string name="onboarding_subtitle">Collect, plan and cook recipes – offline and without an account.</string>
+    <string name="onboarding_mode_step_title">How do you want to use openCook?</string>
     <string name="onboarding_mode_local_title">Uniquement sur ce téléphone</string>
-    <string name="onboarding_mode_local_subtitle">Les recettes, les plans et la liste de courses restent hors ligne sur cet appareil.</string>
+    <string name="onboarding_mode_local_subtitle">Recipes, plans and shopping list stay offline on this device.</string>
     <string name="onboarding_mode_server_title">Se connecter à un serveur domestique</string>
-    <string name="onboarding_mode_server_subtitle">Débloquez l’analyse de photos et la synchronisation familiale (un serveur de foyer est nécessaire).</string>
+    <string name="onboarding_mode_server_subtitle">Unlock photo scanning and family sync (a household server is required).</string>
     <string name="onboarding_mode_serverless_title">Foyer sans serveur</string>
-    <string name="onboarding_mode_serverless_subtitle">Les téléphones se synchronisent directement entre eux via votre Wi-Fi. Un serveur peut être ajouté plus tard.</string>
+    <string name="onboarding_mode_serverless_subtitle">Phones sync directly with each other over your Wi-Fi. A server can be added later.</string>
     <string name="onboarding_peer_subtitle">Téléphone sur ce Wi-Fi</string>
     <string name="onboarding_server_step_title">Choisir un serveur</string>
     <string name="onboarding_searching">Recherche sur le réseau…</string>
-    <string name="onboarding_peers_step_title">Rejoignez via un téléphone qui possède déjà le foyer — ou créez-en un nouveau</string>
-    <string name="onboarding_peers_searching">Recherche de téléphones sur ce Wi-Fi… openCook doit être ouvert sur l’autre téléphone.</string>
-    <string name="onboarding_peers_create_subtitle">Commencez sur ce téléphone — les autres rejoindront ensuite.</string>
-    <string name="onboarding_manual_hint">Introuvable ? Saisissez l’adresse du serveur manuellement :</string>
+    <string name="onboarding_peers_step_title">Join through a phone that already has the household — or start a new one</string>
+    <string name="onboarding_peers_searching">Looking for phones on this Wi-Fi… openCook must be open on the other phone.</string>
+    <string name="onboarding_peers_create_subtitle">Start on this phone — the others join afterwards.</string>
+    <string name="onboarding_manual_hint">Not found? Enter the server address manually:</string>
     <string name="onboarding_manual_toggle">Saisir le serveur manuellement</string>
     <string name="onboarding_manual_address_label">Adresse du serveur</string>
     <string name="onboarding_manual_address_placeholder">192.168.0.10:8000</string>
     <string name="onboarding_connect">Se connecter</string>
     <string name="onboarding_household_step_title">Choisir un foyer</string>
-    <string name="onboarding_no_households">Aucun foyer pour le moment — créez-en un.</string>
+    <string name="onboarding_no_households">No household yet — create one.</string>
     <string name="onboarding_create_household">Créer un nouveau foyer</string>
-    <string name="onboarding_persons">%1$d personnes</string>
+    <string name="onboarding_persons">%1$d people</string>
     <string name="onboarding_protected">Protégé par PIN</string>
-    <string name="onboarding_pin_prompt_title">PIN pour « %1$s »</string>
+    <string name="onboarding_pin_prompt_title">PIN for “%1$s”</string>
     <string name="onboarding_pin_label">PIN</string>
     <string name="onboarding_join">Rejoindre</string>
     <string name="onboarding_cancel">Annuler</string>
@@ -287,27 +341,37 @@
     <string name="onboarding_pin_optional_label">PIN (facultatif)</string>
     <string name="onboarding_create">Créer</string>
     <string name="onboarding_back">Retour</string>
+
+    <!-- Settings: household membership -->
     <string name="settings_household_leave">Quitter / changer de foyer</string>
     <string name="settings_connect_server">Se connecter à un serveur</string>
-    <string name="settings_connect_server_hint">Débloquez l’analyse de photos et la synchronisation familiale — vos données sont conservées.</string>
+    <string name="settings_connect_server_hint">Unlock photo scanning and family sync — your data is kept.</string>
     <string name="settings_appearance_section">Apparence</string>
-    <string name="settings_dynamic_color">Material You (couleurs du système)</string>
+    <string name="settings_dynamic_color">Material You (system colors)</string>
+
+    <!-- Settings: grouped sections + admin -->
     <string name="settings_household_section_label">Foyer</string>
     <string name="settings_server_label">Serveur et connexion</string>
     <string name="settings_p2p_title">Synchronisation de téléphone à téléphone</string>
-    <string name="settings_p2p_subtitle">Synchronisation directe via Wi-Fi, même lorsque l’application est fermée</string>
+    <string name="settings_p2p_subtitle">Sync directly over Wi-Fi, even with the app closed</string>
     <string name="standby_channel_name">Synchronisation familiale en veille</string>
     <string name="standby_notification_title">Accessible pour votre famille</string>
-    <string name="standby_notification_text">Les appareils du foyer peuvent se synchroniser avec ce téléphone (Wi-Fi uniquement).</string>
+    <string name="standby_notification_text">Household devices can sync with this phone (Wi-Fi only).</string>
     <string name="settings_attach_server">Ajouter un serveur</string>
-    <string name="settings_attach_server_hint">Facultatif : l’analyse de photos, les sauvegardes et l’importation depuis le navigateur nécessitent un serveur domestique.</string>
-    <string name="settings_attach_server_action">Ajouter un serveur</string>
+    <string name="settings_attach_server_hint">Optional: photo scanning, backups and browser import need a home server.</string>
+    <string name="settings_attach_server_action">Add server</string>
+
+    <!-- Admin area (server backup/restore) -->
+
+    <!-- Recipe JSON import (button on the add-recipe screen) -->
     <string name="import_from_file">Importer depuis un fichier JSON</string>
-    <string name="import_running">Importation… %1$d / %2$d</string>
-    <string name="import_done">%1$d importées, %2$d ignorées</string>
-    <string name="import_error">Échec de l’importation : %1$s</string>
-    <string name="import_read_failed">Impossible de lire le fichier</string>
+    <string name="import_running">Importing… %1$d / %2$d</string>
+    <string name="import_done">%1$d imported, %2$d skipped</string>
+    <string name="import_error">Import failed: %1$s</string>
+    <string name="import_read_failed">Could not read the file</string>
     <string name="import_generic_failed">Échec de l’importation</string>
+
+    <!-- Browser-inbox import (recipes pushed by the extension, drained during sync) -->
     <plurals name="import_browser_imported">
         <item quantity="one">%1$d recette importée depuis le navigateur</item>
         <item quantity="other">%1$d recettes importées depuis le navigateur</item>
@@ -316,90 +380,116 @@
         <item quantity="one">%1$d doublon ignoré</item>
         <item quantity="other">%1$d doublons ignorés</item>
     </plurals>
-    <string name="import_share_saved">Recette importée : %1$s</string>
+
+    <!-- Share import (Share → openCook): a recipe page URL shared from a browser -->
+    <string name="import_share_saved">Recipe imported: %1$s</string>
     <string name="import_share_view">Voir</string>
-    <string name="import_share_duplicate">« %1$s » existe déjà</string>
-    <string name="import_share_no_recipe">Aucune recette trouvée sur cette page</string>
-    <string name="import_share_error_load">Impossible de charger la page.</string>
+    <string name="import_share_duplicate">“%1$s” already exists</string>
+    <string name="import_share_no_recipe">No recipe found on this page</string>
+    <string name="import_share_error_load">Could not load the page.</string>
     <string name="import_share_fallback_name">Recette</string>
+
     <string name="scan_discover">Découvrir en ligne</string>
     <string name="discover_title">Découvrir des recettes</string>
     <string name="discover_add">Ajouter</string>
-    <string name="discover_remove">Supprimer %1$s</string>
+    <string name="discover_remove">Remove %1$s</string>
     <string name="discover_address_hint">chefkoch.de/rezepte</string>
-    <string name="discover_removed">« %1$s » supprimé</string>
-    <string name="discover_clear">Supprimer les cookies de %1$s</string>
-    <string name="discover_clear_confirm_title">Supprimer les cookies de %1$s ?</string>
-    <string name="discover_clear_confirm_text">%1$s oublie ce téléphone : les cookies et les données stockées par le site dans le navigateur sont supprimés, y compris la bannière de cookies que vous y avez acceptée — elle sera à nouveau affichée lors de votre prochaine visite. Les recettes importées depuis %1$s restent dans votre collection.</string>
-    <string name="discover_cleared">Cookies de %1$s supprimés</string>
+    <string name="discover_removed">“%1$s” removed</string>
+    <string name="discover_clear">Delete cookies of %1$s</string>
+    <string name="discover_clear_confirm_title">Delete cookies of %1$s?</string>
+    <string name="discover_clear_confirm_text">%1$s forgets this phone: cookies and what the site stored in the browser are removed, including the cookie banner you accepted there — it will ask again on your next visit. Recipes you imported from %1$s stay in your collection.</string>
+    <string name="discover_cleared">Cookies of %1$s deleted</string>
     <string name="discover_import">Importer cette recette</string>
     <string name="discover_import_short">Importer</string>
     <string name="discover_close">Fermer le site</string>
-    <string name="discover_disclaimer">Une vue navigateur intégrée : des sites appartenant à d’autres personnes, avec leurs propres publicités et leurs propres cookies. openCook n’y est pas affilié et n’enregistre que la recette que vous ouvrez, pour votre usage personnel.</string>
-    <string name="discover_no_webview_title">Vue navigateur indisponible</string>
-    <string name="discover_no_webview_body">Cet appareil n’a pas Android System WebView installé, ou celui-ci est désactivé — les pages ne peuvent donc pas être affichées ici. Les recettes peuvent toujours être ajoutées par photo, depuis un fichier, via un lien partagé ou à la main.</string>
+    <string name="discover_disclaimer">A built-in browser view: sites that belong to other people, with their own ads and their own cookies. openCook is not affiliated with them and saves only the recipe you open, for your personal use.</string>
+    <string name="discover_no_webview_title">Browser view unavailable</string>
+    <string name="discover_no_webview_body">This device has no Android System WebView installed, or it is switched off — so pages cannot be shown here. Recipes can still be added by photo, from a file, from a shared link, or by hand.</string>
+
+    <!-- Home (Today) -->
+
+    <!-- Recipes list -->
     <string name="recipes_add">Ajouter une recette</string>
     <string name="recipes_empty_title">Aucune recette pour le moment</string>
-    <string name="recipes_empty_msg">Ajouter une recette ou en créer une.</string>
+    <string name="recipes_empty_msg">Add a recipe or create one.</string>
     <string name="recipes_search_empty_title">Aucun résultat</string>
-    <string name="recipes_search_empty_msg">Essayez un autre terme de recherche.</string>
+    <string name="recipes_search_empty_msg">Try a different search term.</string>
     <string name="review_remove">Retirer</string>
+
+    <!-- Confirmations -->
     <string name="action_delete">Supprimer</string>
-    <string name="recipe_delete_confirm_title">Supprimer la recette ?</string>
-    <string name="recipe_delete_confirm_text">Cette recette sera définitivement supprimée.</string>
-    <string name="settings_leave_confirm_title">Quitter le foyer ?</string>
-    <string name="settings_leave_confirm_text">Cet appareil quitte le foyer et revient à la configuration initiale. Les données partagées restent sur le serveur.</string>
+    <string name="recipe_delete_confirm_title">Delete recipe?</string>
+    <string name="recipe_delete_confirm_text">This recipe will be permanently deleted.</string>
+    <string name="settings_leave_confirm_title">Leave household?</string>
+    <string name="settings_leave_confirm_text">This device leaves the household and returns to first-time setup. The shared data stays on the server.</string>
     <string name="undo">Annuler</string>
     <string name="deleted">Supprimé</string>
+
+    <!-- Sync status (shared top bar) -->
     <string name="sync_status_ok">Synchronisé</string>
-    <string name="sync_status_ok_peer">Synchronisé (via %1$s)</string>
-    <string name="sync_status_not_configured">Aucun serveur – touchez pour accéder aux paramètres</string>
+    <string name="sync_status_ok_peer">Synced (via %1$s)</string>
+    <string name="sync_status_not_configured">No server – tap for settings</string>
     <string name="sync_status_syncing">Synchronisation…</string>
-    <string name="sync_status_failed">Non connecté – touchez pour synchroniser</string>
-    <string name="sync_status_household_missing">Foyer introuvable sur le serveur – il a peut-être été reconfiguré. Rejoignez-le à nouveau dans les paramètres.</string>
-    <string name="sync_error_offline">Serveur inaccessible – nouvelle tentative automatique dès qu’il sera disponible.</string>
-    <string name="sync_status_last_success">Dernière synchronisation : %1$s</string>
-    <string name="sync_progress_recipes">Synchronisation des recettes … %1$d</string>
-    <string name="sync_progress_images">Chargement des images … %1$d / %2$d</string>
+    <string name="sync_status_failed">Not connected – tap to sync</string>
+    <string name="sync_status_household_missing">Household not found on the server – it may have been re-set up. Re-join in settings.</string>
+    <string name="sync_error_offline">Server unreachable – will retry automatically once it\'s available.</string>
+    <string name="sync_status_last_success">Last synced: %1$s</string>
+    <string name="sync_progress_recipes">Syncing recipes … %1$d</string>
+    <string name="sync_progress_images">Loading images … %1$d / %2$d</string>
     <string name="sync_progress_percent">%1$d %%</string>
+
+    <!-- Notifications -->
     <string name="notif_channel_jobs_name">Reconnaissance des recettes</string>
-    <string name="notif_channel_jobs_desc">Notifie lorsqu’une recette analysée a été reconnue.</string>
+    <string name="notif_channel_jobs_desc">Notifies when a scanned recipe has been recognized.</string>
     <string name="notif_recipe_ready_title">Recette reconnue</string>
-    <string name="notif_recipe_ready_body">Touchez pour vérifier la recette reconnue.</string>
+    <string name="notif_recipe_ready_body">Tap to review the recognized recipe.</string>
+
+    <!-- Top-level navigation tabs -->
     <string name="nav_plan">Planifier</string>
     <string name="nav_shopping_short">Courses</string>
     <string name="nav_more">Plus</string>
+
+    <!-- Nutrition labels -->
     <string name="nutrition_protein">Protéines</string>
     <string name="nutrition_fat">Matières grasses</string>
     <string name="nutrition_carbs">Glucides</string>
     <string name="nutrition_calories_value">kcal: %1$s</string>
-    <string name="nutrition_protein_value">Protéines : %1$s</string>
-    <string name="nutrition_fat_value">Lipides : %1$s</string>
-    <string name="nutrition_carbs_value">Glucides : %1$s</string>
-    <string name="recipe_meta_prep">Préparation %1$s</string>
-    <string name="recipe_meta_cook">Cuisson %1$s</string>
+    <string name="nutrition_protein_value">Protein: %1$s</string>
+    <string name="nutrition_fat_value">Fat: %1$s</string>
+    <string name="nutrition_carbs_value">Carbs: %1$s</string>
+
+    <!-- Recipe meta line (servings · prep · cook) -->
+    <string name="recipe_meta_prep">Prep %1$s</string>
+    <string name="recipe_meta_cook">Cook %1$s</string>
+
+    <!-- Single-recipe export (detail screen share sheet) -->
     <string name="recipe_export">Exporter</string>
     <string name="recipe_export_title">Exporter la recette</string>
     <string name="recipe_export_markdown_title">Markdown (.md)</string>
-    <string name="recipe_export_markdown_desc">Fichier texte lisible avec photo intégrée — pour des applications de notes comme Obsidian.</string>
+    <string name="recipe_export_markdown_desc">Readable text file with embedded photo — for notes apps like Obsidian.</string>
     <string name="recipe_export_json_title">Fichier de recette (.json)</string>
-    <string name="recipe_export_json_desc">Format schema.org — lisible par openCook et d’autres applications de recettes.</string>
+    <string name="recipe_export_json_desc">schema.org format — readable by openCook and other recipe apps.</string>
     <string name="recipe_export_done">Recette exportée.</string>
     <string name="recipe_export_failed">Échec de l’exportation.</string>
+    <!-- Labels inside the exported Markdown document -->
     <string name="recipe_export_md_servings">Portions</string>
     <string name="recipe_export_md_category">Catégorie</string>
-    <string name="recipe_export_md_prep">Préparation</string>
-    <string name="recipe_export_md_cook">Cuisson</string>
+    <string name="recipe_export_md_prep">Prep</string>
+    <string name="recipe_export_md_cook">Cooking</string>
     <string name="recipe_export_md_total">Total</string>
-    <string name="recipe_export_md_ingredients_for">Ingrédients (pour %1$s)</string>
-    <string name="recipe_export_md_nutrient">Nutriment</string>
-    <string name="recipe_export_md_value">Valeur</string>
+    <string name="recipe_export_md_ingredients_for">Ingredients (for %1$s)</string>
+    <string name="recipe_export_md_nutrient">Nutrient</string>
+    <string name="recipe_export_md_value">Value</string>
     <string name="recipe_export_md_calories">Calories</string>
-    <string name="recipe_export_md_fiber">Fibres</string>
-    <string name="recipe_export_md_sugar">Sucres</string>
-    <string name="recipe_export_md_from_cookbook">Depuis « %1$s »</string>
-    <string name="recipe_export_md_footer">Exporté depuis openCook le %1$s</string>
-    <string name="shopping_category_learned">%1$s → %2$s — enregistré pour le foyer</string>
+    <string name="recipe_export_md_fiber">Fiber</string>
+    <string name="recipe_export_md_sugar">Sugar</string>
+    <string name="recipe_export_md_from_cookbook">From “%1$s”</string>
+    <string name="recipe_export_md_footer">Exported from openCook on %1$s</string>
+
+    <!-- Drag-to-recategorize (shopping list + pantry) -->
+    <string name="shopping_category_learned">%1$s → %2$s — noted for the household</string>
+
+    <!-- Grocery aisles (shopping list grouping) -->
     <string name="grocery_cat_produce">Fruits et légumes</string>
     <string name="grocery_cat_meat_fish">Viande et poisson</string>
     <string name="grocery_cat_dairy">Produits laitiers et œufs</string>
@@ -409,32 +499,44 @@
     <string name="grocery_cat_spices">Épices, huiles et sauces</string>
     <string name="grocery_cat_pantry">Garde-manger et produits secs</string>
     <string name="grocery_cat_other">Autre</string>
+
+    <!-- Onboarding validation / connection errors -->
     <string name="onboarding_error_invalid_address">Adresse invalide</string>
-    <string name="onboarding_error_name_required">Veuillez saisir un nom</string>
+    <string name="onboarding_error_name_required">Please enter a name</string>
     <string name="onboarding_error_pin_wrong">PIN incorrect.</string>
     <string name="onboarding_error_no_server">Aucun serveur sélectionné.</string>
     <string name="onboarding_error_unreachable">Serveur inaccessible.</string>
-    <string name="settings_msg_size_update_failed">Impossible de mettre à jour le serveur — nouvelle tentative lors de la prochaine synchronisation.</string>
-    <string name="settings_msg_synced">Synchronisé (%1$d reçus)</string>
-    <string name="settings_msg_server_attached">Serveur ajouté — synchronisation de ce foyer en cours</string>
-    <string name="settings_msg_attach_failed">Impossible de joindre ce serveur</string>
-    <string name="settings_msg_no_household">Aucun foyer — rejoignez-en un d’abord.</string>
-    <string name="settings_msg_household_missing">Foyer introuvable sur le serveur — il a peut-être été reconfiguré. Veuillez le rejoindre à nouveau.</string>
-    <string name="settings_msg_sync_failed">Échec de la synchronisation : %1$s</string>
-    <string name="settings_msg_sync_failed_generic">Échec de la synchronisation</string>
-    <string name="review_conflict_title">« %1$s » existe déjà</string>
-    <string name="review_conflict_body_scan">Une autre recette parmi vos analyses ouvertes porte ce nom — vous avez probablement photographié la même page deux fois.</string>
-    <string name="review_conflict_body">Une autre recette porte déjà ce nom.</string>
-    <string name="review_conflict_replace">Remplacer la recette existante</string>
-    <string name="review_conflict_discard">Abandonner ce brouillon</string>
-    <string name="review_conflict_rename">Renommer</string>
-    <string name="review_conflict_replaced">« %1$s » a été fusionné avec la recette existante.</string>
-    <string name="review_conflict_discarded">Brouillon abandonné.</string>
+
+    <!-- Settings sync messages -->
+    <string name="settings_msg_size_update_failed">Couldn\'t update the server — will retry on the next sync.</string>
+    <string name="settings_msg_synced">Synced (%1$d received)</string>
+    <string name="settings_msg_server_attached">Server added — syncing this household to it now</string>
+    <string name="settings_msg_attach_failed">Could not reach that server</string>
+    <string name="settings_msg_no_household">No household — join one first.</string>
+    <string name="settings_msg_household_missing">Household not found on the server — it may have been re-set up. Please re-join.</string>
+    <string name="settings_msg_sync_failed">Sync failed: %1$s</string>
+    <string name="settings_msg_sync_failed_generic">Sync failed</string>
+
+    <!-- Admin error messages -->
+
+    <!-- Review save: duplicate-name feedback -->
+    <string name="review_conflict_title">“%1$s” already exists</string>
+    <string name="review_conflict_body_scan">Another recipe from your open scans has this name — most likely you photographed the same page twice.</string>
+    <string name="review_conflict_body">Another recipe already has this name.</string>
+    <string name="review_conflict_replace">Replace the existing one</string>
+    <string name="review_conflict_discard">Discard this draft</string>
+    <string name="review_conflict_rename">Rename</string>
+    <string name="review_conflict_replaced">“%1$s” was merged into the existing recipe.</string>
+    <string name="review_conflict_discarded">Draft discarded.</string>
+
+    <!-- Recipe content language (AI extraction, categories, grocery keywords) -->
     <string name="settings_content_language">Langue des recettes</string>
-    <string name="settings_content_language_hint">Langue utilisée pour l’analyse de photos, les catégories et le regroupement de la liste de courses.</string>
+    <string name="settings_content_language_hint">Language for photo scanning, categories and shopping-list grouping.</string>
     <string name="settings_content_language_system">Suivre le système</string>
     <string name="lang_german">Allemand</string>
     <string name="lang_english">Anglais</string>
+
+    <!-- Recipe categories (stored as keys, shown localized) -->
     <string name="cat_pasta">Pâtes</string>
     <string name="cat_meat">Viande</string>
     <string name="cat_fish">Poisson</string>
@@ -443,80 +545,96 @@
     <string name="cat_salad">Salade</string>
     <string name="cat_dessert">Dessert</string>
     <string name="cat_other">Autre</string>
+
+    <!-- Tag editor (details step) -->
     <string name="review_tags">Étiquettes</string>
-    <string name="review_tags_add_hint">Ajouter une étiquette (séparez plusieurs étiquettes par des virgules)</string>
+    <string name="review_tags_add_hint">Add tag (comma separates several)</string>
     <string name="review_tags_add">Ajouter une étiquette</string>
-    <string name="review_tag_remove">Supprimer l’étiquette %1$s</string>
+    <string name="review_tag_remove">Remove tag %1$s</string>
+
+    <!-- Meal types ("suitable for", stored as keys, shown localized) -->
     <string name="recipe_mealtypes_label">Convient pour</string>
     <string name="mealtype_breakfast">Petit-déjeuner</string>
     <string name="mealtype_lunch">Déjeuner</string>
     <string name="mealtype_snack">Collation</string>
     <string name="mealtype_dinner">Dîner</string>
+    <!-- Short forms for the meal-plan slot column (44dp) — the long labels don't fit there. -->
     <string name="mealtype_short_breakfast">Petit-déjeuner</string>
     <string name="mealtype_short_lunch">Déjeuner</string>
     <string name="mealtype_short_snack">Collation</string>
     <string name="mealtype_short_dinner">Dîner</string>
+    <!-- Household setting: which meals are planned at all -->
     <string name="household_planned_meals">Repas planifiés</string>
-    <string name="household_planned_meals_hint">Au moins un repas doit rester actif. Vous pouvez toujours ajouter n’importe quel autre repas pour une seule journée depuis le planificateur de semaine.</string>
+    <string name="household_planned_meals_hint">At least one meal must stay active. You can still add any other meal for a single day from the week planner.</string>
+    <!-- Week planner: slots -->
     <string name="mealplan_slot_add">Planifier</string>
-    <string name="mealplan_slot_add_named">Planifier %1$s</string>
-    <string name="shopping_already_on_list">Déjà dans la liste de courses — rien n’a été ajouté</string>
-    <string name="mealplan_add_missing">Ajouter les articles manquants à la liste de courses</string>
-    <string name="mealplan_slot_no_recipes">Aucune recette %1$s pour le moment</string>
+    <string name="mealplan_slot_add_named">Plan %1$s</string>
+    <string name="shopping_already_on_list">Already on the shopping list — nothing added</string>
+    <string name="mealplan_add_missing">Add missing items to the shopping list</string>
+    <string name="mealplan_slot_no_recipes">No %1$s recipes yet</string>
+
+    <!-- Generic -->
     <string name="action_ok">OK</string>
+
+    <!-- Ingredient availability badge -->
     <string name="availability_ready">Tout est prêt</string>
     <string name="availability_ready_desc">Tous les ingrédients sont disponibles</string>
-    <string name="availability_missing_desc">%1$d ingrédients manquants</string>
+    <string name="availability_missing_desc">%1$d ingredients missing</string>
     <string name="availability_missing_title">Ingrédients manquants</string>
+
+    <!-- Meal-plan recipe search -->
     <string name="mealplan_search_empty_title">Aucun résultat</string>
-    <string name="mealplan_search_empty_message">Essayez un autre terme de recherche.</string>
+    <string name="mealplan_search_empty_message">Try a different search term.</string>
+
+    <!-- Backup & restore (local, on-device) -->
     <string name="settings_backup">Sauvegarde et restauration</string>
     <string name="settings_backup_subtitle">Enregistrer vos recettes dans un fichier</string>
-    <string name="settings_backup_last">Dernière sauvegarde : %1$s</string>
+    <string name="settings_backup_last">Last backup: %1$s</string>
     <string name="backup_title">Sauvegarde et restauration</string>
-    <string name="backup_intro">Une sauvegarde contient vos recettes, photos, liste de courses, garde-manger et planning de repas dans un fichier ZIP lisible. Elle ne contient ni code de foyer ni PIN, vous pouvez donc la stocker où vous voulez et la restaurer dans n’importe quel foyer.</string>
+    <string name="backup_intro">A backup holds your recipes, photos, shopping list, pantry and meal plan as a readable ZIP file. It contains no household code and no PIN, so you can store it anywhere and restore it into any household.</string>
     <string name="backup_create">Créer une sauvegarde</string>
-    <string name="backup_create_hint">Écrire un fichier ZIP à l’emplacement de votre choix</string>
+    <string name="backup_create_hint">Write a ZIP file to a location you choose</string>
     <string name="backup_restore">Restaurer une sauvegarde</string>
-    <string name="backup_restore_hint">Réajouter le contenu d’un fichier de sauvegarde</string>
+    <string name="backup_restore_hint">Add the contents of a backup file back in</string>
     <string name="backup_restore_action">Restaurer</string>
-    <string name="backup_restore_confirm_title">Restaurer cette sauvegarde ?</string>
-    <string name="backup_restore_confirm_summary">Sauvegarde du %1$s\n%2$d recettes · %3$d photos</string>
-    <string name="backup_restore_confirm_household">Depuis le foyer : %1$s</string>
-    <string name="backup_restore_confirm_hint">Rien n’est supprimé. Les éléments manquants sont réajoutés et tout ce que vous avez créé depuis la sauvegarde est conservé.</string>
-    <string name="backup_export_done">Sauvegarde créée : %1$d recettes, %2$d photos.</string>
-    <string name="backup_restore_done">Restauré : %1$d recettes, %2$d photos.</string>
-    <string name="backup_not_readable_title">Ce n’est pas une sauvegarde</string>
-    <string name="backup_not_readable_text">Ce fichier n’est pas une sauvegarde openCook ou il est endommagé.</string>
-    <string name="backup_error_too_new">Cette sauvegarde a été créée par une version plus récente d’openCook. Veuillez d’abord mettre l’application à jour.</string>
-    <string name="backup_error_unsafe">Ce fichier semble dangereux et n’a pas été ouvert.</string>
-    <string name="backup_error_generic">Échec : %1$s</string>
+    <string name="backup_restore_confirm_title">Restore this backup?</string>
+    <string name="backup_restore_confirm_summary">Backup from %1$s\n%2$d recipes · %3$d photos</string>
+    <string name="backup_restore_confirm_household">From household: %1$s</string>
+    <string name="backup_restore_confirm_hint">Nothing is deleted. Missing items are added back, and anything you created since the backup stays.</string>
+    <string name="backup_export_done">Backup written: %1$d recipes, %2$d photos.</string>
+    <string name="backup_restore_done">Restored: %1$d recipes, %2$d photos.</string>
+    <string name="backup_not_readable_title">Not a backup</string>
+    <string name="backup_not_readable_text">This file isn\'t an openCook backup, or it is damaged.</string>
+    <string name="backup_error_too_new">This backup was written by a newer version of openCook. Please update the app first.</string>
+    <string name="backup_error_unsafe">This file looks unsafe and was not opened.</string>
+    <string name="backup_error_generic">Failed: %1$s</string>
     <string name="backup_ok">OK</string>
-    <string name="backup_phase_recipes">Enregistrement des recettes…</string>
-    <string name="backup_phase_images">Enregistrement des photos…</string>
-    <string name="backup_phase_lists">Enregistrement des listes…</string>
-    <string name="backup_phase_restore_images">Restauration des photos…</string>
-    <string name="backup_phase_restore_recipes">Restauration des recettes…</string>
+    <string name="backup_phase_recipes">Saving recipes…</string>
+    <string name="backup_phase_images">Saving photos…</string>
+    <string name="backup_phase_lists">Saving lists…</string>
+    <string name="backup_phase_restore_images">Restoring photos…</string>
+    <string name="backup_phase_restore_recipes">Restoring recipes…</string>
     <string name="backup_auto_section">Sauvegarde automatique</string>
     <string name="backup_auto_title">Sauvegarder automatiquement</string>
-    <string name="backup_auto_hint">Chaque jour pendant la charge, dans le dossier de votre choix</string>
+    <string name="backup_auto_hint">Daily while charging, into a folder you pick</string>
     <string name="backup_auto_folder_unknown">Dossier sélectionné</string>
-    <string name="backup_auto_folder_hint">Conserve les %1$d sauvegardes les plus récentes</string>
-    <string name="backup_auto_last_error">La dernière sauvegarde automatique a échoué : %1$s</string>
-    <string name="settings_hub_household_summary">%1$s · %2$d personnes · %3$s</string>
-    <string name="settings_hub_household_local_only">Cet appareil uniquement — connectez un serveur ou des téléphones</string>
+    <string name="backup_auto_folder_hint">Keeps the newest %1$d backups</string>
+    <string name="backup_auto_last_error">Last automatic backup failed: %1$s</string>
+    <!-- Settings hub & sub-pages -->
+    <string name="settings_hub_household_summary">%1$s · %2$d people · %3$s</string>
+    <string name="settings_hub_household_local_only">This device only — connect a server or phones</string>
     <string name="settings_hub_appearance_summary">%1$s · %2$s</string>
     <string name="settings_hub_about_summary">Version %1$s · GPLv3</string>
-    <string name="settings_hub_sync_server_and_peers">Serveur et téléphones en Wi-Fi</string>
-    <string name="settings_hub_sync_server_only">Via votre serveur</string>
-    <string name="settings_hub_sync_peers_only">De téléphone à téléphone en Wi-Fi</string>
-    <string name="settings_hub_sync_off">Pas de synchronisation — cet appareil uniquement</string>
+    <string name="settings_hub_sync_server_and_peers">Server and phones on Wi-Fi</string>
+    <string name="settings_hub_sync_server_only">Via your server</string>
+    <string name="settings_hub_sync_peers_only">Phone to phone on Wi-Fi</string>
+    <string name="settings_hub_sync_off">Not syncing — this device only</string>
     <string name="settings_sync_section">Synchronisation</string>
-    <string name="settings_sync_intro">Destination des recettes, listes et planning de ce téléphone. La synchronisation via serveur et de téléphone à téléphone fonctionnent ensemble — celle qui est accessible est utilisée.</string>
-    <string name="settings_household_leave_hint">Supprime toutes les données du foyer de cet appareil</string>
-    <string name="settings_dynamic_color_hint">Utiliser les couleurs de votre fond d’écran</string>
+    <string name="settings_sync_intro">Where this phone\'s recipes, lists and plan travel to. A server and phone-to-phone sync work together — whichever is reachable is used.</string>
+    <string name="settings_household_leave_hint">Removes all household data from this device</string>
+    <string name="settings_dynamic_color_hint">Take colours from your wallpaper</string>
     <string name="settings_dynamic_color_on">Material You</string>
-    <string name="settings_dynamic_color_off">Couleurs openCook</string>
+    <string name="settings_dynamic_color_off">openCook colours</string>
     <string name="settings_font_size">Taille du texte</string>
     <string name="settings_font_size_small">Petit</string>
     <string name="settings_font_size_default">Par défaut</string>
@@ -524,14 +642,14 @@
     <string name="settings_font_size_larger">Plus grand</string>
     <string name="settings_font_size_largest">Très grand</string>
     <string name="settings_about">À propos d’openCook</string>
-    <string name="about_intro">openCook est un logiciel libre. Il fonctionne sans compte, sans cloud et sans suivi — vos recettes restent sur vos appareils.</string>
+    <string name="about_intro">openCook is free software. It works without an account, without the cloud and without tracking — your recipes stay on your devices.</string>
     <string name="about_version">Version</string>
     <string name="about_license">Licence</string>
     <string name="about_license_subtitle">GNU General Public License v3.0</string>
     <string name="about_source">Code source</string>
     <string name="about_source_subtitle">github.com/oliexdev/openCook</string>
     <string name="about_privacy">Confidentialité</string>
-    <string name="about_privacy_subtitle">Pas de compte, pas de cloud, pas de suivi. La synchronisation reste sur votre propre réseau.</string>
+    <string name="about_privacy_subtitle">No account, no cloud, no tracking. Sync stays on your own network.</string>
     <string name="about_support">Soutenir le projet</string>
     <string name="about_support_subtitle">Devenir sponsor GitHub</string>
 </resources>

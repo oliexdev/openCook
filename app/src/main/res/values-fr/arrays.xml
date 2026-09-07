@@ -1,305 +1,127 @@
+<!--
+  ~  openCook
+  ~  Copyright (C) 2026 olie.xdev <olie.xdeveloper@googlemail.com>
+  ~
+  ~  This program is free software: you can redistribute it and/or modify
+  ~  it under the terms of the GNU General Public License as published by
+  ~  the Free Software Foundation, either version 3 of the License, or
+  ~  (at your option) any later version.
+  ~
+  ~  This program is distributed in the hope that it will be useful,
+  ~  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  ~  GNU General Public License for more details.
+  ~
+  ~  You should have received a copy of the GNU General Public License
+  ~  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+  -->
+
 <resources>
+    <!-- Default (English) grocery-aisle keyword lists. Substring match, lower-case; aisle order
+         is fixed in code (first match wins). Items with spaces are quoted to keep them. -->
     <string-array name="grocery_kw_frozen">
-        <item>surgelé</item>
-        <item>"glace"</item>
-        <item>glace</item>
+        <item>surgelé</item><item>"ice cream"</item><item>glace</item>
     </string-array>
     <string-array name="grocery_kw_meat_fish">
-        <item>poulet</item>
-        <item>dinde</item>
-        <item>bœuf</item>
-        <item>porc</item>
-        <item>bacon</item>
-        <item>jambon</item>
-        <item>saucisse</item>
-        <item>salami</item>
-        <item>haché</item>
-        <item>"haché "</item>
-        <item>steak</item>
-        <item>agneau</item>
-        <item>viande</item>
-        <item>saumon</item>
-        <item>thon</item>
-        <item>crevette</item>
-        <item>crevette</item>
-        <item>poisson</item>
-        <item>filet</item>
-        <item>filet</item>
-        <item>cabillaud</item>
-        <item>truite</item>
+        <item>poulet</item><item>dinde</item><item>bœuf</item><item>porc</item><item>bacon</item>
+        <item>jambon</item><item>saucisse</item><item>salami</item><item>haché</item><item>"ground "</item>
+        <item>steak</item><item>agneau</item><item>viande</item><item>saumon</item><item>thon</item>
+        <item>crevette</item><item>crevette</item><item>poisson</item><item>filet</item><item>filet</item>
+        <item>cabillaud</item><item>truite</item>
     </string-array>
     <string-array name="grocery_kw_produce">
-        <item>tomate</item>
-        <item>"poivron"</item>
-        <item>oignon</item>
-        <item>ail</item>
-        <item>carotte</item>
-        <item>pomme de terre</item>
-        <item>laitue</item>
-        <item>salade</item>
-        <item>concombre</item>
-        <item>courgette</item>
-        <item>courgette</item>
-        <item>brocoli</item>
-        <item>chou-fleur</item>
-        <item>épinard</item>
-        <item>poireau</item>
-        <item>champignon</item>
-        <item>pomme</item>
-        <item>banane</item>
-        <item>citron</item>
-        <item>citron vert</item>
-        <item>orange</item>
-        <item>baie</item>
-        <item>baies</item>
-        <item>avocat</item>
-        <item>gingembre</item>
-        <item>piment</item>
-        <item>piment</item>
-        <item>persil</item>
-        <item>basilic</item>
-        <item>ciboulette</item>
-        <item>haricot</item>
-        <item>"pois"</item>
-        <item>maïs</item>
-        <item>courge</item>
-        <item>aubergine</item>
-        <item>aubergine</item>
-        <item>céleri</item>
-        <item>roquette</item>
-        <item>roquette</item>
-        <item>poire</item>
-        <item>raisin</item>
-        <item>mangue</item>
-        <item>herbe</item>
-        <item>légume</item>
-        <item>fruit</item>
+        <item>tomate</item><item>"bell pepper"</item><item>oignon</item><item>ail</item><item>carotte</item>
+        <item>pomme de terre</item><item>laitue</item><item>salade</item><item>concombre</item><item>courgette</item>
+        <item>courgette</item><item>brocoli</item><item>chou-fleur</item><item>épinard</item><item>poireau</item>
+        <item>champignon</item><item>pomme</item><item>banane</item><item>citron</item><item>citron vert</item>
+        <item>orange</item><item>baie</item><item>baies</item><item>avocat</item><item>gingembre</item>
+        <item>piment</item><item>piment</item><item>persil</item><item>basilic</item><item>ciboulette</item>
+        <item>haricot</item><item>"pea"</item><item>maïs</item><item>courge</item><item>aubergine</item>
+        <item>aubergine</item><item>céleri</item><item>roquette</item><item>roquette</item><item>poire</item>
+        <item>raisin</item><item>mangue</item><item>herbe</item><item>légume</item><item>fruit</item>
     </string-array>
     <string-array name="grocery_kw_bakery">
-        <item>pain</item>
-        <item>"petit pain"</item>
-        <item>"pain rond"</item>
-        <item>pain de mie</item>
-        <item>baguette</item>
-        <item>croissant</item>
-        <item>bagel</item>
+        <item>pain</item><item>"roll"</item><item>"bun"</item><item>pain de mie</item><item>baguette</item>
+        <item>croissant</item><item>bagel</item>
     </string-array>
     <string-array name="grocery_kw_drinks">
-        <item>eau</item>
-        <item>jus</item>
-        <item>café</item>
-        <item>"thé"</item>
-        <item>cola</item>
-        <item>soda</item>
-        <item>bière</item>
-        <item>vin</item>
-        <item>smoothie</item>
+        <item>eau</item><item>jus</item><item>café</item><item>"tea"</item><item>cola</item>
+        <item>soda</item><item>bière</item><item>vin</item><item>smoothie</item>
     </string-array>
     <string-array name="grocery_kw_spices">
-        <item>sel</item>
-        <item>poivre</item>
-        <item>paprika</item>
-        <item>curry</item>
-        <item>cumin</item>
-        <item>cannelle</item>
-        <item>muscade</item>
-        <item>origan</item>
-        <item>thym</item>
-        <item>romarin</item>
-        <item>"sauce soja"</item>
-        <item>vinaigre</item>
-        <item>moutarde</item>
-        <item>ketchup</item>
-        <item>mayonnaise</item>
-        <item>bouillon</item>
-        <item>fond</item>
-        <item>"concentré de tomate"</item>
-        <item>vanille</item>
-        <item>épice</item>
-        <item>"huile d’olive"</item>
-        <item>"huile"</item>
-        <item>sauce</item>
+        <item>sel</item><item>poivre</item><item>paprika</item><item>curry</item><item>cumin</item>
+        <item>cannelle</item><item>muscade</item><item>origan</item><item>thym</item><item>romarin</item>
+        <item>"soy sauce"</item><item>vinaigre</item><item>moutarde</item><item>ketchup</item><item>mayonnaise</item>
+        <item>bouillon</item><item>fond</item><item>"tomato paste"</item><item>vanille</item><item>épice</item>
+        <item>"olive oil"</item><item>"oil"</item><item>sauce</item>
     </string-array>
     <string-array name="grocery_kw_pantry">
-        <item>nouille</item>
-        <item>spaghetti</item>
-        <item>pâtes</item>
-        <item>riz</item>
-        <item>farine</item>
-        <item>sucre</item>
-        <item>lentille</item>
-        <item>pois chiche</item>
-        <item>couscous</item>
-        <item>avoine</item>
-        <item>flocons d’avoine</item>
-        <item>muesli</item>
-        <item>céréale</item>
-        <item>"boîte "</item>
-        <item>en conserve</item>
-        <item>"lait de coco"</item>
-        <item>"levure chimique"</item>
-        <item>levure</item>
-        <item>miel</item>
-        <item>confiture</item>
-        <item>chocolat</item>
-        <item>cacao</item>
-        <item>polenta</item>
-        <item>semoule</item>
+        <item>nouille</item><item>spaghetti</item><item>pâtes</item><item>riz</item><item>farine</item>
+        <item>sucre</item><item>lentille</item><item>pois chiche</item><item>couscous</item><item>avoine</item>
+        <item>flocons d’avoine</item><item>muesli</item><item>céréale</item><item>"can "</item><item>en conserve</item>
+        <item>"coconut milk"</item><item>"baking powder"</item><item>levure</item><item>miel</item><item>confiture</item>
+        <item>chocolat</item><item>cacao</item><item>polenta</item><item>semoule</item>
     </string-array>
     <string-array name="grocery_kw_dairy">
-        <item>lait</item>
-        <item>crème</item>
-        <item>beurre</item>
-        <item>yaourt</item>
-        <item>yaourt</item>
-        <item>fromage blanc</item>
-        <item>"fromage à tartiner"</item>
-        <item>fromage</item>
-        <item>"œuf"</item>
-        <item>mozzarella</item>
-        <item>parmesan</item>
-        <item>feta</item>
-        <item>margarine</item>
+        <item>lait</item><item>crème</item><item>beurre</item><item>yaourt</item><item>yaourt</item>
+        <item>fromage blanc</item><item>"cream cheese"</item><item>fromage</item><item>"egg"</item><item>mozzarella</item>
+        <item>parmesan</item><item>feta</item><item>margarine</item>
     </string-array>
+
+    <!-- Background staples the meal-planner excludes from the reuse score. -->
     <string-array name="ingredient_staples">
-        <item>sel</item>
-        <item>"sel et poivre"</item>
-        <item>poivre</item>
-        <item>"poivre noir"</item>
-        <item>"poivre blanc"</item>
-        <item>huile</item>
-        <item>"huile d’olive"</item>
-        <item>"huile végétale"</item>
-        <item>"huile de tournesol"</item>
-        <item>"huile de colza"</item>
-        <item>beurre</item>
-        <item>eau</item>
-        <item>vinaigre</item>
-        <item>sucre</item>
-        <item>farine</item>
-        <item>bouillon</item>
-        <item>"bouillon de légumes"</item>
-        <item>"bouillon de poulet"</item>
-        <item>fond</item>
-        <item>"cube de bouillon"</item>
-        <item>moutarde</item>
-        <item>"concentré de tomate"</item>
-        <item>"sauce soja"</item>
-        <item>paprika</item>
-        <item>muscade</item>
-        <item>miel</item>
-        <item>"levure chimique"</item>
-        <item>"sucre vanillé"</item>
-        <item>"levure sèche"</item>
-        <item>levure</item>
+        <item>sel</item><item>"salt and pepper"</item><item>poivre</item><item>"black pepper"</item><item>"white pepper"</item>
+        <item>oil</item><item>"olive oil"</item><item>"vegetable oil"</item><item>"sunflower oil"</item><item>"canola oil"</item>
+        <item>beurre</item><item>eau</item><item>vinaigre</item><item>sucre</item><item>farine</item>
+        <item>bouillon</item><item>"vegetable broth"</item><item>"chicken broth"</item><item>fond</item><item>"stock cube"</item>
+        <item>moutarde</item><item>"tomato paste"</item><item>"soy sauce"</item>
+        <item>paprika</item><item>muscade</item><item>miel</item>
+        <item>"baking powder"</item><item>"vanilla sugar"</item><item>"dry yeast"</item><item>levure</item>
     </string-array>
+
+    <!-- Staples seeded into a new household's pantry (display spelling). -->
     <string-array name="pantry_defaults">
-        <item>Sel</item>
-        <item>Poivre</item>
-        <item>Huile d’olive</item>
-        <item>Beurre</item>
-        <item>Vinaigre</item>
-        <item>Sucre</item>
-        <item>Farine</item>
-        <item>Bouillon de légumes</item>
-        <item>Cube de bouillon</item>
-        <item>Moutarde</item>
-        <item>Concentré de tomate</item>
-        <item>Sauce soja</item>
-        <item>Paprika</item>
-        <item>Muscade</item>
-        <item>Miel</item>
-        <item>Levure chimique</item>
-        <item>Sucre vanillé</item>
-        <item>Levure sèche</item>
+        <item>Sel</item><item>Poivre</item><item>Huile d’olive</item><item>Beurre</item><item>Vinaigre</item>
+        <item>Sucre</item><item>Farine</item><item>Bouillon de légumes</item><item>Cube de bouillon</item><item>Moutarde</item>
+        <item>Concentré de tomate</item><item>Sauce soja</item><item>Paprika</item><item>Muscade</item><item>Miel</item>
+        <item>Levure chimique</item><item>Sucre vanillé</item><item>Levure sèche</item>
     </string-array>
+
+    <!-- Recognized measuring units (kept verbatim; never converted). Metric is universal. -->
     <string-array name="ingredient_units">
-        <item>g</item>
-        <item>kg</item>
-        <item>mg</item>
-        <item>l</item>
-        <item>ml</item>
-        <item>cl</item>
-        <item>dl</item>
-        <item>litre</item>
-        <item>litre</item>
-        <item>gramme</item>
-        <item>kilogramme</item>
-        <item>tasse</item>
-        <item>tasses</item>
-        <item>c. à soupe</item>
-        <item>c. à soupe</item>
-        <item>cuillère à soupe</item>
-        <item>cuillères à soupe</item>
-        <item>c. à café</item>
-        <item>c. à café</item>
-        <item>cuillère à café</item>
-        <item>cuillères à café</item>
-        <item>oz</item>
-        <item>lb</item>
-        <item>lbs</item>
-        <item>livre</item>
-        <item>livres</item>
-        <item>gousse</item>
-        <item>gousses</item>
-        <item>pincée</item>
-        <item>pincées</item>
-        <item>boîte</item>
-        <item>boîtes</item>
-        <item>tranche</item>
-        <item>tranches</item>
-        <item>botte</item>
-        <item>bâton</item>
-        <item>bâtons</item>
-        <item>paquet</item>
-        <item>sachet</item>
-        <item>sac</item>
-        <item>bocal</item>
-        <item>poignée</item>
-        <item>goutte</item>
-        <item>gouttes</item>
-        <item>trait</item>
-        <item>pinte</item>
-        <item>quart</item>
-        <item>gallon</item>
-        <item>tige</item>
-        <item>tiges</item>
-        <item>brin</item>
-        <item>brins</item>
-        <item>tête</item>
-        <item>morceau</item>
-        <item>morceaux</item>
+        <item>g</item><item>kg</item><item>mg</item><item>l</item><item>ml</item><item>cl</item><item>dl</item>
+        <item>litre</item><item>litre</item><item>gramme</item><item>kilogramme</item>
+        <item>tasse</item><item>tasses</item><item>c. à soupe</item><item>c. à soupe</item><item>cuillère à soupe</item><item>cuillères à soupe</item>
+        <item>c. à café</item><item>c. à café</item><item>cuillère à café</item><item>cuillères à café</item><item>oz</item><item>lb</item>
+        <item>lbs</item><item>livre</item><item>livres</item><item>gousse</item><item>gousses</item><item>pincée</item>
+        <item>pincées</item><item>boîte</item><item>boîtes</item><item>tranche</item><item>tranches</item><item>botte</item>
+        <item>bâton</item><item>bâtons</item><item>paquet</item><item>sachet</item><item>sac</item><item>bocal</item>
+        <item>poignée</item><item>goutte</item><item>gouttes</item><item>trait</item><item>pinte</item><item>quart</item>
+        <item>gallon</item><item>tige</item><item>tiges</item><item>brin</item><item>brins</item><item>tête</item>
+        <item>morceau</item><item>morceaux</item>
     </string-array>
+
+    <!-- Main-protein keywords for the meal-planner variety scoring (substring match, lower-case).
+         Grouped by a fixed canonical key; only the keywords are translated per language. -->
     <string-array name="protein_kw_poultry">
-        <item>poulet</item>
-        <item>dinde</item>
-        <item>volaille</item>
+        <item>poulet</item><item>dinde</item><item>poultry</item>
     </string-array>
     <string-array name="protein_kw_fish">
-        <item>poisson</item>
-        <item>saumon</item>
-        <item>thon</item>
-        <item>truite</item>
-        <item>crevette</item>
-        <item>crevette</item>
+        <item>poisson</item><item>saumon</item><item>thon</item><item>truite</item><item>crevette</item><item>crevette</item>
     </string-array>
     <string-array name="protein_kw_mince">
         <item>haché</item>
     </string-array>
     <string-array name="protein_kw_pork">
-        <item>porc</item>
-        <item>bacon</item>
+        <item>porc</item><item>bacon</item>
     </string-array>
     <string-array name="protein_kw_beef">
-        <item>bœuf</item>
-        <item>steak</item>
+        <item>bœuf</item><item>steak</item>
     </string-array>
     <string-array name="protein_kw_lamb">
         <item>agneau</item>
     </string-array>
     <string-array name="protein_kw_plant">
-        <item>tofu</item>
-        <item>tempeh</item>
-        <item>seitan</item>
+        <item>tofu</item><item>tempeh</item><item>seitan</item>
     </string-array>
 </resources>
