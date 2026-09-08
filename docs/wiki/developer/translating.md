@@ -71,6 +71,26 @@ Translate the items in each list:
   uncategorized (the word is kept as a tag) instead of being filed under `other`. Those
   belong in `mealtype_alias_lunch`/`_dinner`, the *when* axis.
 
+### Optional: the browser board and cooking times
+
+Three more lists, all optional — leave them out and English is used:
+
+- `discover_sites` — the recipe sites offered as tiles under **Discover**, for households
+  cooking in your language. Plain links to each site's own recipe section; tapping one opens it
+  in the in-app browser, where the user browses and imports the page they picked. Check that
+  every address answers **200**, and prefer sites that publish schema.org JSON-LD — that is what
+  the import reads. Without this array your language gets the English board.
+- `discover_site_names` — `domain label|display name`, e.g. `cuisineaz|Cuisine AZ`. Only needed
+  where plain capitalization gets it wrong; `marmiton` already reads "Marmiton" on its own. This
+  names the tile **and** the cookbook an imported recipe is filed under — one list, so the two
+  can never drift apart. Merged across all languages.
+- `duration_hours` / `duration_minutes` — the words that mark an hour or a minute in a *typed or
+  extracted* cooking time (`1 heure 30 minutes`, `45 mn`). Read only. How a duration is **written
+  out** needs no translation: the platform's own `MeasureFormat` renders it in the device
+  language, so "1 Std. 10 Min." / "1 hr 10 min" come out right even for a language openCook does
+  not ship. These are merged across all languages, so a German recipe still parses on an English
+  phone.
+
 ### Optional: grammar helpers
 
 Everything above is vocabulary. Four more lists describe how your language *builds* ingredient

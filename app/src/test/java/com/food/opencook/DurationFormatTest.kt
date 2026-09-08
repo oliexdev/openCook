@@ -24,15 +24,28 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
-import java.util.Locale
 
 class DurationFormatTest {
 
-    private val originalLocale = Locale.getDefault()
+    // The unit words and labels come from arrays.xml/strings.xml at runtime; a JVM test seeds
+    // them itself. Parsing always accepts every language at once — that is the point of the
+    // union — while the label is whatever the phone's language writes.
+    private val hourWords = listOf("stunden", "stunde", "std", "h", "heures", "heure", "hours", "hour")
+    private val minuteWords = listOf("minuten", "minute", "min", "m", "minutes", "mn", "mins")
 
-    // toHuman() localizes its unit labels to the default locale; pin it for deterministic assertions.
-    @Before fun setGerman() = Locale.setDefault(Locale.GERMAN)
-    @After fun restore() = Locale.setDefault(originalLocale)
+    @Before fun german() {
+        DurationFormat.setUnits(hourWords, minuteWords)
+        // On a device this is android.icu MeasureFormat in the device locale; here a stand-in,
+        // so the assertions stay about *our* logic and not about ICU's wording.
+        DurationFormat.setRenderer { h, m -> render(h, m, "Std", "Min") }
+    }
+
+    @After fun restore() = DurationFormat.setRenderer { h, m -> render(h, m, "h", "min") }
+
+    private fun render(h: Int, m: Int, hLabel: String, mLabel: String) = listOfNotNull(
+        h.takeIf { it > 0 }?.let { "$it $hLabel" },
+        m.takeIf { it > 0 }?.let { "$it $mLabel" },
+    ).joinToString(" ")
 
     @Test
     fun isoToHuman() {
@@ -45,7 +58,7 @@ class DurationFormatTest {
 
     @Test
     fun isoToHumanEnglishLocale() {
-        Locale.setDefault(Locale.ENGLISH)
+        DurationFormat.setRenderer { h, m -> render(h, m, "h", "min") }
         assertEquals("25 min", DurationFormat.toHuman("PT25M"))
         assertEquals("1 h", DurationFormat.toHuman("PT1H"))
         assertEquals("1 h 10 min", DurationFormat.toHuman("PT1H10M"))
@@ -73,8 +86,19 @@ class DurationFormatTest {
 
     @Test
     fun secondBasedDurationEnglishLocale() {
-        Locale.setDefault(Locale.ENGLISH)
+        DurationFormat.setRenderer { h, m -> render(h, m, "h", "min") }
         assertEquals("15 min", DurationFormat.toHuman("PT900S"))
+    }
+
+    /** Parsing takes every bundled language at once: a German recipe read on an English phone
+     *  still has to round-trip, and a French one on either. */
+    @Test
+    fun humanToIsoAcceptsEveryLanguage() {
+        assertEquals("PT90M", DurationFormat.toIso("1 heure 30 minutes"))
+        assertEquals("PT45M", DurationFormat.toIso("45 mn"))
+        assertEquals("PT130M", DurationFormat.toIso("2 hours 10 mins"))
+        // The longest word wins, so "minutes" is not cut short by "min".
+        assertEquals("PT20M", DurationFormat.toIso("20 minutes"))
     }
 
     @Test

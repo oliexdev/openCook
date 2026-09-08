@@ -70,6 +70,9 @@ class OpenCookApplication : Application(), Configuration.Provider {
         settingsRepository.serverUrl
             .onEach { baseUrlInterceptor.setBaseUrl(it) }
             .launchIn(appScope)
+        // Language-independent lists (browser boards, site names, duration words) — synchronous,
+        // so they are in place before the first screen or share-import can ask for them.
+        localizedLists.loadStatic()
         // Load the content-language domain lists (grocery keywords, staples, units) at
         // startup and whenever the household content language changes.
         settingsRepository.contentLanguage

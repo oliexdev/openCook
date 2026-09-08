@@ -19,11 +19,23 @@
 package com.food.opencook
 
 import com.food.opencook.data.recipeimport.SourceCookbook
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Before
 import org.junit.Test
 
 class SourceCookbookTest {
+
+    // The friendly names live in `discover_site_names` (arrays.xml) and are pushed in at
+    // startup; a JVM test has no resources, so it seeds the few it asserts on.
+    private val saved = SourceCookbook.activeNames
+
+    @Before fun seed() = SourceCookbook.setNames(
+        mapOf("chefkoch" to "Chefkoch", "ndr" to "NDR", "kochbar" to "Kochbar"),
+    )
+
+    @After fun restore() = SourceCookbook.setNames(saved)
 
     @Test
     fun knownSitesGetFriendlyNames() {

@@ -30,33 +30,23 @@ import java.util.Locale
  */
 object SourceCookbook {
 
-    // Nice casing for common German recipe sites; everything else is capitalized generically.
-    private val KNOWN = mapOf(
-        "chefkoch" to "Chefkoch",
-        "ndr" to "NDR",
-        "wdr" to "WDR",
-        "kochbar" to "Kochbar",
-        "lecker" to "Lecker",
-        "eatsmarter" to "EAT SMARTER",
-        "essen-und-trinken" to "Essen & Trinken",
-        "gaumenfreundin" to "Gaumenfreundin",
-        "kitchenstories" to "Kitchen Stories",
-        "springlane" to "Springlane",
-        "brigitte" to "Brigitte",
-        // English-language sites (the discover board's other default set).
-        "allrecipes" to "Allrecipes",
-        "bbcgoodfood" to "BBC Good Food",
-        "bbc" to "BBC Food",
-        "seriouseats" to "Serious Eats",
-        "simplyrecipes" to "Simply Recipes",
-        "foodnetwork" to "Food Network",
-        "epicurious" to "Epicurious",
-        "delish" to "Delish",
-        "jamieoliver" to "Jamie Oliver",
-        "budgetbytes" to "Budget Bytes",
-        "tasteofhome" to "Taste of Home",
-        "recipetineats" to "RecipeTin Eats",
-    )
+    /**
+     * Domain label -> the name the site spells itself with ("eatsmarter" -> "EAT SMARTER").
+     * Filled from `discover_site_names` in `values-<lang>/arrays.xml` by `LocalizedLists` at
+     * startup, merged across every bundled language: which site a link came from has nothing to
+     * do with the language the phone is set to. Anything not listed is capitalized generically,
+     * which is already right for most sites.
+     */
+    @Volatile
+    private var names: Map<String, String> = emptyMap()
+
+    /** Replace the name table (called by `LocalizedLists`). */
+    fun setNames(newNames: Map<String, String>) {
+        if (newNames.isNotEmpty()) names = newNames
+    }
+
+    /** Active names — exposed so tests can snapshot and restore around [setNames]. */
+    val activeNames: Map<String, String> get() = names
 
     /** Second-level labels that are part of a country suffix, never the site's own name. */
     private val SUFFIX_LABELS = setOf("co", "com", "org", "net", "gov", "edu", "ac")
@@ -67,7 +57,7 @@ object SourceCookbook {
             ?.lowercase(Locale.ROOT)
             ?: return null
         val label = mainLabel(host) ?: return null
-        return KNOWN[label] ?: label.replaceFirstChar { it.titlecase(Locale.ROOT) }
+        return names[label] ?: label.replaceFirstChar { it.titlecase(Locale.ROOT) }
     }
 
     /** The registrable site label (second-level domain), stripping a leading "www." —

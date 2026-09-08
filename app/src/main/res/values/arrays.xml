@@ -228,4 +228,60 @@
         <item>balsamic vinegar|vinegar</item>
         <item>rice flour|flour</item>
     </string-array>
+
+    <!-- Starting points for the in-app browser, for households cooking in this language.
+         Plain links: tapping one opens that site's own recipe section, the user browses and
+         picks. Keep every entry answering 200, and prefer sites that publish schema.org
+         JSON-LD (that is what the import reads). Leave the array out and the English board
+         is used. -->
+    <string-array name="discover_sites">
+        <item>https://www.allrecipes.com/recipes/</item>
+        <item>https://www.bbc.co.uk/food/recipes</item>
+        <item>https://www.seriouseats.com/all-recipes-5117985</item>
+        <item>https://www.simplyrecipes.com/</item>
+        <item>https://www.epicurious.com/recipes-menus</item>
+        <item>https://www.delish.com/cooking/recipe-ideas/</item>
+        <item>https://www.jamieoliver.com/recipes/</item>
+        <item>https://www.budgetbytes.com/category/recipes/</item>
+        <item>https://www.tasteofhome.com/recipes/</item>
+        <item>https://www.recipetineats.com/recipes/</item>
+    </string-array>
+
+    <!-- How a site spells its own name: "domain label|display name". Only needed where simple
+         capitalization gets it wrong ("bbcgoodfood" would read "Bbcgoodfood"). Names the
+         browser tile *and* the cookbook an imported recipe is filed under - one list, so the
+         two can never drift apart. Merged across all languages. -->
+    <string-array name="discover_site_names">
+        <item>allrecipes|Allrecipes</item>
+        <item>bbcgoodfood|BBC Good Food</item>
+        <item>bbc|BBC Food</item>
+        <item>seriouseats|Serious Eats</item>
+        <item>simplyrecipes|Simply Recipes</item>
+        <item>foodnetwork|Food Network</item>
+        <item>epicurious|Epicurious</item>
+        <item>delish|Delish</item>
+        <item>jamieoliver|Jamie Oliver</item>
+        <item>budgetbytes|Budget Bytes</item>
+        <item>tasteofhome|Taste of Home</item>
+        <item>recipetineats|RecipeTin Eats</item>
+    </string-array>
+
+    <!-- Words that mark an hour / a minute in a typed or imported cooking time
+         ("1 hour 10 min"). Read only, never written: what a duration *reads* as is
+         rendered by the platform (android.icu MeasureFormat, device locale). Merged across all
+         languages, so a German recipe still parses on an English phone. -->
+    <string-array name="duration_hours">
+        <item>hours</item>
+        <item>hour</item>
+        <item>hrs</item>
+        <item>hr</item>
+        <item>h</item>
+    </string-array>
+    <string-array name="duration_minutes">
+        <item>minutes</item>
+        <item>minute</item>
+        <item>mins</item>
+        <item>min</item>
+        <item>m</item>
+    </string-array>
 </resources>

@@ -18,15 +18,25 @@
 
 package com.food.opencook.util
 
-import java.util.Locale
 
 /**
- * Converts between schema.org ISO-8601 durations ("PT25M", "PT1H10M") and a
- * human form localized to the device language ("1 Std 10 Min" in German, "1 h 10 min"
- * otherwise). Storage stays ISO-8601; only the UI shows/edits the friendly form.
- * Parsing accepts both German ("Std/Min") and English ("h/min") units, so an edited
- * value round-trips regardless of locale. Anything that doesn't look like a duration is
- * passed through unchanged, so user free-text is never destroyed.
+ * Converts between schema.org ISO-8601 durations ("PT25M", "PT1H10M") and a human form
+ * ("1 Std 10 Min", "1 h 10 min"). Storage stays ISO-8601; only the UI shows/edits the
+ * friendly form.
+ *
+ * The two directions answer to two different languages, on purpose. What a duration *reads*
+ * as is for whoever is holding the phone, and the platform already knows how every language
+ * writes an hour — so it is rendered by `android.icu.text.MeasureFormat` in the device locale,
+ * the same way [DateLabels] leaves date order to `DateFormat.getBestDateTimePattern`. Nothing
+ * to translate, and languages openCook does not ship still come out right.
+ *
+ * What a duration is *read back* from was typed by a cook or extracted from a recipe, and the
+ * platform has no parser for that. So parsing accepts the hour/minute words of **every** bundled
+ * language at once (`duration_hours` / `duration_minutes` in arrays.xml) — an English phone must
+ * still understand "1 Std 10 Min" out of a German recipe. `LocalizedLists` fills both in.
+ *
+ * Anything that doesn't look like a duration is passed through unchanged, so user free-text is
+ * never destroyed.
  */
 object DurationFormat {
 
@@ -34,8 +44,45 @@ object DurationFormat {
     // ones) carry durations like "PT900S" or "PT0M" instead of "PT15M". Seconds are folded
     // into minutes below so the UI never shows a raw ISO string. See GitHub issue #2.
     private val ISO = Regex("""^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$""", RegexOption.IGNORE_CASE)
-    private val HOURS = Regex("""(\d+)\s*(?:Std|Stunde|Stunden|h)""", RegexOption.IGNORE_CASE)
-    private val MINUTES = Regex("""(\d+)\s*(?:Min|Minuten|m)""", RegexOption.IGNORE_CASE)
+    /** German + English, so unit tests and a not-yet-localized process still round-trip.
+     *  The real lists live in arrays.xml and arrive via [setUnits]. */
+    private val DEFAULT_HOURS = listOf("stunden", "stunde", "std", "h")
+    private val DEFAULT_MINUTES = listOf("minuten", "minute", "min", "m")
+
+    @Volatile private var hours = wordRegex(DEFAULT_HOURS)
+    @Volatile private var minutes = wordRegex(DEFAULT_MINUTES)
+    /** Plain fallback for unit tests and the moments before `LocalizedLists` has run. */
+    private val PLAIN_RENDERER: (Int, Int) -> String = { h, m ->
+        listOfNotNull(
+            h.takeIf { it > 0 }?.let { "$it h" },
+            m.takeIf { it > 0 }?.let { "$it min" },
+        ).joinToString(" ")
+    }
+
+    @Volatile private var renderer: (Int, Int) -> String = PLAIN_RENDERER
+
+    /** Replace the parse vocabulary (called by `LocalizedLists`): the union across every
+     *  bundled language, so a recipe written in one is still understood on a phone set to
+     *  another. */
+    fun setUnits(hourWords: List<String>, minuteWords: List<String>) {
+        if (hourWords.isNotEmpty()) hours = wordRegex(hourWords)
+        if (minuteWords.isNotEmpty()) minutes = wordRegex(minuteWords)
+    }
+
+    /** Replace how a duration is written out — `LocalizedLists` hands in the platform's own
+     *  `MeasureFormat`. Kept behind a lambda so this object stays pure and unit-testable. */
+    fun setRenderer(render: (hours: Int, minutes: Int) -> String) { renderer = render }
+
+    /** "25 min" → the 25. Longest word first, so "min" never wins over "minutes" and leaves a
+     *  stray "utes" behind, and every word is quoted — a unit may carry a dot ("Std."). The
+     *  gap allows a non-breaking space: that is what `MeasureFormat` emits in several
+     *  locales, and its own output has to parse back. */
+    private fun wordRegex(words: List<String>): Regex = Regex(
+        words.filter { it.isNotBlank() }
+            .sortedByDescending { it.length }
+            .joinToString("|", prefix = """(\d+)[\s\u00A0\u202F]*(?:""", postfix = ")") { Regex.escape(it) },
+        RegexOption.IGNORE_CASE,
+    )
 
     /** A matched [ISO] duration as total minutes, seconds rounded to the nearest minute. */
     private fun totalMinutes(match: MatchResult): Int {
@@ -60,13 +107,8 @@ object DurationFormat {
         val total = totalMinutes(match)
         val hours = total / 60
         val minutes = total % 60
-        val (h, m) = if (Locale.getDefault().language == "de") "Std" to "Min" else "h" to "min"
-        return when {
-            hours > 0 && minutes > 0 -> "$hours $h $minutes $m"
-            hours > 0 -> "$hours $h"
-            minutes > 0 -> "$minutes $m"
-            else -> "" // a matched but zero-length duration ("PT0M") shows nothing, not raw ISO
-        }
+        // A matched but zero-length duration ("PT0M") shows nothing, not a raw ISO string.
+        return if (hours > 0 || minutes > 0) renderer(hours, minutes) else ""
     }
 
     /**
@@ -77,9 +119,9 @@ object DurationFormat {
         val trimmed = text?.trim().orEmpty()
         if (trimmed.isEmpty()) return null
         if (ISO.matches(trimmed)) return trimmed.uppercase()
-        val hours = HOURS.find(trimmed)?.groupValues?.get(1)?.toIntOrNull() ?: 0
-        val minutes = MINUTES.find(trimmed)?.groupValues?.get(1)?.toIntOrNull() ?: 0
-        val total = hours * 60 + minutes
+        val h = hours.find(trimmed)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+        val m = minutes.find(trimmed)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+        val total = h * 60 + m
         return if (total > 0) "PT${total}M" else trimmed
     }
 }

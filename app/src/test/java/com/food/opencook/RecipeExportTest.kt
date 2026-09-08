@@ -30,6 +30,7 @@ import com.food.opencook.data.local.relation.RecipeWithDetails
 import com.food.opencook.data.recipeimport.RecipeImportParser
 import com.food.opencook.data.remote.dto.RecipeDto
 import kotlinx.serialization.json.Json
+import com.food.opencook.util.DurationFormat
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -51,9 +52,16 @@ class RecipeExportTest {
 
     @Before
     fun pinLocale() {
-        // DurationFormat renders "Std/Min" vs "h/min" from the default locale.
         previousLocale = Locale.getDefault()
         Locale.setDefault(Locale.GERMAN)
+        // On a device the duration wording comes from android.icu MeasureFormat; pin a German
+        // stand-in so the export assertions stay about the markdown, not about ICU's spelling.
+        DurationFormat.setRenderer { h, m ->
+            listOfNotNull(
+                h.takeIf { it > 0 }?.let { "$it Std" },
+                m.takeIf { it > 0 }?.let { "$it Min" },
+            ).joinToString(" ")
+        }
     }
 
     @After

@@ -218,4 +218,44 @@
         <item>heidelbeeren|beeren</item>
         <item>himbeeren|beeren</item>
     </string-array>
+
+    <string-array name="discover_sites">
+        <item>https://www.chefkoch.de/rezepte/</item>
+        <item>https://www.kochbar.de/rezepte/</item>
+        <item>https://www.lecker.de/rezepte</item>
+        <item>https://eatsmarter.de/rezepte</item>
+        <item>https://www.essen-und-trinken.de/rezepte</item>
+        <item>https://www.gaumenfreundin.de/rezepte/</item>
+        <item>https://www.kitchenstories.com/de/rezepte</item>
+        <item>https://www.springlane.de/magazin/</item>
+        <item>https://www.brigitte.de/rezepte/</item>
+        <item>https://www.ndr.de/ratgeber/kochen/</item>
+    </string-array>
+
+    <string-array name="discover_site_names">
+        <item>chefkoch|Chefkoch</item>
+        <item>ndr|NDR</item>
+        <item>wdr|WDR</item>
+        <item>kochbar|Kochbar</item>
+        <item>lecker|Lecker</item>
+        <item>eatsmarter|EAT SMARTER</item>
+        <item>essen-und-trinken|Essen &amp; Trinken</item>
+        <item>gaumenfreundin|Gaumenfreundin</item>
+        <item>kitchenstories|Kitchen Stories</item>
+        <item>springlane|Springlane</item>
+        <item>brigitte|Brigitte</item>
+    </string-array>
+
+    <string-array name="duration_hours">
+        <item>stunden</item>
+        <item>stunde</item>
+        <item>std</item>
+        <item>h</item>
+    </string-array>
+    <string-array name="duration_minutes">
+        <item>minuten</item>
+        <item>minute</item>
+        <item>min</item>
+        <item>m</item>
+    </string-array>
 </resources>

@@ -238,4 +238,35 @@
         <item>farine de riz|farine</item>
         <item>pois chiche|pois</item>
     </string-array>
+
+    <string-array name="discover_sites">
+        <item>https://www.marmiton.org/recettes/</item>
+        <item>https://www.750g.com/home_rubrique_-_recettes.htm</item>
+        <item>https://www.cuisineaz.com/recettes-p1</item>
+        <item>https://chefsimon.com/recettes</item>
+        <item>https://www.academiedugout.fr/recettes</item>
+        <item>https://www.cuisineactuelle.fr/recettes-de-cuisine</item>
+        <item>https://www.ricardocuisine.com/recettes</item>
+    </string-array>
+
+    <string-array name="discover_site_names">
+        <item>marmiton|Marmiton</item>
+        <item>cuisineaz|Cuisine AZ</item>
+        <item>chefsimon|Chef Simon</item>
+        <item>academiedugout|Académie du Goût</item>
+        <item>cuisineactuelle|Cuisine Actuelle</item>
+        <item>ricardocuisine|Ricardo Cuisine</item>
+    </string-array>
+
+    <string-array name="duration_hours">
+        <item>heures</item>
+        <item>heure</item>
+        <item>h</item>
+    </string-array>
+    <string-array name="duration_minutes">
+        <item>minutes</item>
+        <item>minute</item>
+        <item>min</item>
+        <item>mn</item>
+    </string-array>
 </resources>

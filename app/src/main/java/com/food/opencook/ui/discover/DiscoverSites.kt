@@ -40,67 +40,51 @@ data class DiscoverSite(val url: String) {
 }
 
 /**
- * The curated starting points. These are plain links: tapping one opens that site's own recipe
- * section in the in-app browser, where the user browses and picks. openCook never reads the
- * listing pages itself — see the plan's legal note; the app imports exactly the page a person
- * chose to open.
+ * The curated starting points, per language. These are plain links: tapping one opens that
+ * site's own recipe section in the in-app browser, where the user browses and picks. openCook
+ * never reads the listing pages itself — see the plan's legal note; the app imports exactly the
+ * page a person chose to open.
  *
- * Every entry was checked to answer with 200; keep it that way when editing.
+ * The addresses themselves live in `discover_sites` in `values-<lang>/arrays.xml`, so adding a
+ * language's board is a translation, not a code change. Every entry was checked to answer with
+ * 200; keep it that way when editing.
  */
 object DiscoverSites {
 
     /**
-     * German-language starting points, shown when the household reads its recipes in German.
+     * language code -> its starting points, filled from `discover_sites` in each
+     * `values-<lang>/arrays.xml` by `LocalizedLists` at startup. A new language contributes a
+     * board by adding that array — there is nothing to change here.
      */
-    val GERMAN: List<DiscoverSite> = listOf(
-        "https://www.chefkoch.de/rezepte/",
-        "https://www.kochbar.de/rezepte/",
-        "https://www.lecker.de/rezepte",
-        "https://eatsmarter.de/rezepte",
-        "https://www.essen-und-trinken.de/rezepte",
-        "https://www.gaumenfreundin.de/rezepte/",
-        "https://www.kitchenstories.com/de/rezepte",
-        "https://www.springlane.de/magazin/",
-        "https://www.brigitte.de/rezepte/",
-        "https://www.ndr.de/ratgeber/kochen/",
-    ).map(::DiscoverSite)
+    @Volatile
+    private var boards: Map<String, List<DiscoverSite>> = emptyMap()
 
-    /**
-     * English-language starting points — the same idea for everyone else. Three of them
-     * (Allrecipes, Serious Eats, Simply Recipes) refuse automated requests, so
-     * they could not be checked from a script; they are here because they are among the
-     * best-known recipe sites there are, and a tile that does not work is one tap from gone.
-     *
-     * The number in the Serious Eats address is that site's content id — stable, not a token,
-     * but it is the one entry here that would silently point at nothing if they reshuffle their
-     * sections. Everything else is addressed by path.
-     */
-    val ENGLISH: List<DiscoverSite> = listOf(
-        "https://www.allrecipes.com/recipes/",
-        "https://www.bbc.co.uk/food/recipes",
-        "https://www.seriouseats.com/all-recipes-5117985",
-        "https://www.simplyrecipes.com/",
-        "https://www.epicurious.com/recipes-menus",
-        "https://www.delish.com/cooking/recipe-ideas/",
-        "https://www.jamieoliver.com/recipes/",
-        "https://www.budgetbytes.com/category/recipes/",
-        "https://www.tasteofhome.com/recipes/",
-        "https://www.recipetineats.com/recipes/",
-    ).map(::DiscoverSite)
+    /** The board a household falls back to: the app's own default language. */
+    private const val FALLBACK = "en"
+
+    /** Replace the boards (called by `LocalizedLists`). Ignores an empty load so a resource
+     *  hiccup leaves the previous boards standing rather than emptying the screen. */
+    fun setBoards(byLanguage: Map<String, List<String>>) {
+        if (byLanguage.isNotEmpty()) {
+            boards = byLanguage.mapValues { (_, urls) -> urls.map(::DiscoverSite) }
+        }
+    }
+
+    /** Active boards — exposed so tests can snapshot and restore around [setBoards]. */
+    val activeBoards: Map<String, List<DiscoverSite>> get() = boards
 
     /**
      * The board a household starts with, by the language its recipes are in — a board full of
-     * German sites is no help to someone cooking in English. English is the fallback, matching
-     * the app's own default language.
+     * German sites is no help to someone cooking in English. Falls back to English, matching
+     * the app's own default language, for a language that ships no board of its own.
      */
     fun defaultsFor(language: String): List<DiscoverSite> =
-        if (language.equals("de", ignoreCase = true)) GERMAN else ENGLISH
+        boards[language.lowercase()] ?: boards[FALLBACK].orEmpty()
 
     /** True for a tile that ships with the app — those are hidden when removed, not deleted.
      *  Checked across **all** languages, so switching language never turns a hidden tile into a
      *  second copy of itself. */
-    fun isDefault(url: String): Boolean =
-        GERMAN.any { it.url == url } || ENGLISH.any { it.url == url }
+    fun isDefault(url: String): Boolean = boards.values.any { board -> board.any { it.url == url } }
 
     /**
      * The tiles to show: the built-in ones for [language] that the user kept, plus the addresses

@@ -21,10 +21,16 @@ package com.food.opencook.data.localization
 import android.content.Context
 import android.content.res.Configuration
 import android.content.res.Resources
+import android.icu.text.MeasureFormat
+import android.icu.util.Measure
+import android.icu.util.MeasureUnit
 import com.food.opencook.R
 import com.food.opencook.data.recipeimport.IngredientLineParser
+import com.food.opencook.data.recipeimport.SourceCookbook
 import com.food.opencook.data.settings.ContentLanguages
 import com.food.opencook.data.settings.SettingsRepository
+import com.food.opencook.ui.discover.DiscoverSites
+import com.food.opencook.util.DurationFormat
 import com.food.opencook.util.GroceryCategories
 import com.food.opencook.util.GroceryCategory
 import com.food.opencook.util.IngredientLexicon
@@ -49,6 +55,38 @@ class LocalizedLists @Inject constructor(
     @ApplicationContext private val context: Context,
     private val settings: SettingsRepository,
 ) {
+
+    /**
+     * The lists that do not depend on which language is *active*: the browser's starting points
+     * (a map keyed by language), how a site spells its name, and the hour/minute words a typed
+     * duration is read back from. Synchronous and called once from `Application.onCreate`, so
+     * these are in place before anything can import or render — unlike [reload], which has to
+     * wait for the household's content-language setting to arrive.
+     */
+    fun loadStatic() {
+        DiscoverSites.setBoards(
+            ContentLanguages.CODES.associateWith {
+                resourcesFor(it).getStringArray(R.array.discover_sites).toList()
+            },
+        )
+        SourceCookbook.setNames(pairMap(R.array.discover_site_names))
+        DurationFormat.setUnits(
+            hourWords = unionLower(R.array.duration_hours),
+            minuteWords = unionLower(R.array.duration_minutes),
+        )
+        // Writing a duration out is the platform's job, not a translation: ICU knows how every
+        // language abbreviates an hour, so "1 Std. 10 Min." / "1 hr 10 min" / "1 h 10 min" come
+        // out right in languages openCook itself does not ship. Device locale, like every other
+        // label the reader sees (see DateLabels, which leaves date order to the same idea).
+        val measures = MeasureFormat.getInstance(Locale.getDefault(), MeasureFormat.FormatWidth.SHORT)
+        DurationFormat.setRenderer { hours, minutes ->
+            val parts = buildList {
+                if (hours > 0) add(Measure(hours, MeasureUnit.HOUR))
+                if (minutes > 0) add(Measure(minutes, MeasureUnit.MINUTE))
+            }
+            measures.formatMeasures(*parts.toTypedArray())
+        }
+    }
 
     /** Reload for the current effective content language. Safe to call repeatedly. */
     suspend fun reload() {
@@ -135,6 +173,17 @@ class LocalizedLists @Inject constructor(
                 .map { (a, b) -> a to b },
         )
     }
+
+    /** A `"key|value"` array, merged across every bundled language, as a map. Values keep their
+     *  capitalization (they are display names), so this is not the lower-cased union. */
+    private fun pairMap(id: Int): Map<String, String> =
+        ContentLanguages.CODES
+            .flatMap { resourcesFor(it).getStringArray(id).toList() }
+            .mapNotNull { entry ->
+                val parts = entry.split(SEP)
+                if (parts.size == 2 && parts[0].isNotBlank()) parts[0].lowercase() to parts[1] else null
+            }
+            .toMap()
 
     /** Flatten "<key> → word-list array" pairs into the word → key lookup the domain objects use. */
     private fun aliasMap(vararg groups: Pair<String, Int>): Map<String, String> =
