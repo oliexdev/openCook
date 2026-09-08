@@ -66,13 +66,20 @@
   "category_aliases": {
     "nudeln": "pasta",
     "fleisch": "meat",
+    "geflügel": "meat",
     "fisch": "fish",
+    "meeresfrüchte": "fish",
     "suppe": "soup",
+    "eintopf": "soup",
     "vegetarisch": "vegetarian",
     "veggie": "vegetarian",
+    "vegan": "vegetarian",
     "salat": "salad",
     "nachtisch": "dessert",
-    "sonstiges": "other"
+    "nachspeise": "dessert",
+    "süßspeise": "dessert",
+    "sonstiges": "other",
+    "diverses": "other"
   },
   "meal_type_aliases": {
     "frühstück": "breakfast",

@@ -16,7 +16,10 @@
   ~  along with this program.  If not, see <https://www.gnu.org/licenses/>.
   -->
 
-<resources>
+<!-- These are *vocabulary* lists, not positional arrays: each language names as many words as
+     it needs, and they are unioned across languages at runtime. InconsistentArrays compares
+     item counts between locales, which is meaningless here. -->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="InconsistentArrays">
     <!-- Default (English) grocery-aisle keyword lists. Substring match, lower-case; aisle order
          is fixed in code (first match wins). Items with spaces are quoted to keep them. -->
     <string-array name="grocery_kw_frozen">
@@ -123,5 +126,106 @@
     </string-array>
     <string-array name="protein_kw_plant">
         <item>tofu</item><item>tempeh</item><item>seitan</item>
+    </string-array>
+
+    <!-- Legacy/import category words → the fixed category keys (exact match, lower-case).
+         The keys themselves ("pasta", "meat", …) always match and need no entry here; add only
+         the words your language uses when a recipe was imported or written by hand. -->
+    <string-array name="cat_alias_pasta">
+        <item>noodles</item><item>pastas</item>
+    </string-array>
+    <string-array name="cat_alias_meat">
+        <item>meats</item><item>poultry</item>
+    </string-array>
+    <string-array name="cat_alias_fish">
+        <item>seafood</item>
+    </string-array>
+    <string-array name="cat_alias_soup">
+        <item>soups</item><item>stew</item>
+    </string-array>
+    <string-array name="cat_alias_vegetarian">
+        <item>veggie</item><item>vegan</item>
+    </string-array>
+    <string-array name="cat_alias_salad">
+        <item>salads</item>
+    </string-array>
+    <string-array name="cat_alias_dessert">
+        <item>desserts</item><item>sweets</item>
+    </string-array>
+    <string-array name="cat_alias_other">
+        <item>misc</item><item>miscellaneous</item>
+    </string-array>
+
+    <!-- Legacy/import meal words → the fixed meal-type keys (exact match, lower-case).
+         The keys themselves ("breakfast", "lunch", "snack", "dinner") need no entry. -->
+    <string-array name="mealtype_alias_breakfast">
+        <item>morning</item><item>brunch</item>
+    </string-array>
+    <string-array name="mealtype_alias_lunch">
+        <item>midday</item><item>noon</item>
+    </string-array>
+    <string-array name="mealtype_alias_snack">
+        <item>cake</item><item>coffee</item><item>tea time</item>
+    </string-array>
+    <string-array name="mealtype_alias_dinner">
+        <item>supper</item><item>evening</item>
+    </string-array>
+
+    <!-- Language mechanics for ingredient matching. All four are optional: leave a list out and
+         the English/German fallback applies — nothing breaks, matching is just less precise. -->
+
+    <!-- Measure and vague-amount words that leak into an ingredient *name* ("3 tbsp oil",
+         "a pinch of salt"). Stripped before and after a leading number. Only words that never
+         *start* a real ingredient name belong here. -->
+    <string-array name="ingredient_leading_noise">
+        <item>"a bit of"</item><item>"a little"</item><item>"a few"</item><item>"a pinch of"</item>
+        <item>"a handful of"</item><item>about</item><item>approx.</item><item>approx</item><item>some</item>
+        <item>g</item><item>kg</item><item>mg</item><item>ml</item><item>cl</item><item>l</item>
+        <item>oz</item><item>lb</item><item>lbs</item><item>tbsp</item><item>tsp</item>
+        <item>cup</item><item>cups</item><item>can</item><item>cans</item><item>jar</item>
+        <item>pack</item><item>package</item><item>slice</item><item>slices</item>
+        <item>clove</item><item>cloves</item><item>pinch</item><item>bunch</item>
+        <item>stick</item><item>sticks</item><item>sprig</item><item>sprigs</item><item>drop</item><item>drops</item>
+    </string-array>
+
+    <!-- Words opening a trailing *use* phrase: "butter for frying" is still butter. -->
+    <string-array name="ingredient_use_phrases">
+        <item>to</item><item>for</item>
+    </string-array>
+
+    <!-- Suffixes relating a plural to its singular ("tomatoes"/"tomato"). -->
+    <string-array name="ingredient_plural_suffixes">
+        <item>s</item><item>es</item>
+    </string-array>
+
+    <!-- Words marking the modifier of a head-INITIAL compound ("huile d\'olive" → huile).
+         English puts the head last, so this list is deliberately empty. -->
+    <string-array name="ingredient_head_connectors" />
+
+    <!-- Same-product groups, "|"-separated. Keep short: a wrong entry silently merges
+         two real ingredients. -->
+    <string-array name="ingredient_synonyms">
+        <item>spring onion|scallion|green onion</item>
+        <item>coriander|cilantro</item>
+        <item>passata|sieved tomatoes|tomato passata</item>
+        <item>baking soda|bicarbonate of soda</item>
+        <item>cornstarch|corn flour</item>
+    </string-array>
+
+    <!-- "Never the same" pairs, "|"-separated, exactly two per line. These block a staple from
+         swallowing a named variety once head detection generalizes. -->
+    <string-array name="ingredient_distinctions">
+        <item>coconut milk|milk</item>
+        <item>almond milk|milk</item>
+        <item>oat milk|milk</item>
+        <item>buttermilk|milk</item>
+        <item>brown sugar|sugar</item>
+        <item>powdered sugar|sugar</item>
+        <item>icing sugar|sugar</item>
+        <item>vanilla sugar|sugar</item>
+        <item>sesame oil|oil</item>
+        <item>truffle oil|oil</item>
+        <item>balsamic vinegar|vinegar</item>
+        <item>rice flour|flour</item>
     </string-array>
 </resources>

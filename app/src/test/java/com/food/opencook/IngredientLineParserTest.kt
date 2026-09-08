@@ -27,6 +27,9 @@ class IngredientLineParserTest {
 
     private fun p(s: String) = IngredientLineParser.parse(s)
 
+    /** Snapshot of the default vocabulary, restored after a test swaps it. */
+    private val units = IngredientLineParser.activeUnits
+
     @Test fun amountUnitName() {
         val i = p("600 g Hackfleisch, halb und halb")
         assertEquals(600.0, i.quantity!!, 1e-9)
@@ -53,6 +56,26 @@ class IngredientLineParserTest {
         assertEquals(1.5, i.quantity!!, 1e-9)
         assertEquals("l", i.unit)
         assertEquals("Wasser", i.name)
+    }
+
+    /** French measures are several words — a single-token unit test would leave them in the name. */
+    @Test fun multiWordUnit() {
+        IngredientLineParser.setUnits(setOf("g", "c. à soupe", "cuillère à café"))
+        try {
+            val i = p("2 c. à soupe de sucre")
+            assertEquals(2.0, i.quantity!!, 1e-9)
+            assertEquals("c. à soupe", i.unit)
+            assertEquals("de sucre", i.name)
+
+            val j = p("1 cuillère à café sel")
+            assertEquals("cuillère à café", j.unit)
+            assertEquals("sel", j.name)
+
+            // The longest match wins, but a unit is only taken when a name is left over.
+            assertNull(p("2 c. à soupe").unit)
+        } finally {
+            IngredientLineParser.setUnits(units)
+        }
     }
 
     @Test fun containerUnit() {

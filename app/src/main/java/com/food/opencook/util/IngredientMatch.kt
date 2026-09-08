@@ -39,31 +39,90 @@ package com.food.opencook.util
  */
 object IngredientMatch {
 
-    private val PLURAL_SUFFIXES = listOf("en", "n", "e", "s")
     private const val MIN_STEM = 3
 
     /** Quantity / prep note glued onto a name: "Mehl (ca. 200 g)" → "Mehl". */
     private val PARENTHETICAL = Regex("""\s*\([^)]*\)""")
 
-    /**
-     * Trailing usage phrase that names a *use*, not a second ingredient — the real item is
-     * the head before it: "Butter zum Anbraten" → "Butter", "Salz nach Belieben" → "Salz".
-     */
-    private val TRAILING_QUALIFIER = Regex("""\s+(zum|zur|nach|für|fürs|to|for)\s+.*$""")
-
-    // Leaked amounts glued into the *name* field (the structured model normally keeps
-    // quantity/unit separate, but extraction sometimes leaves "3 Löffel Öl"/"etwas Öl").
-    // Stripping the leading amount reduces both to the bare noun so the staple/coverage
-    // checks fire. Order: vague quantifier → number(s)/fraction/range → a single unit word.
-    private val LEADING_VAGUE =
-        Regex("""^(etwas|ein wenig|ein paar|ein bisschen|eine prise|eine handvoll|nach belieben|circa|ca\.?)\s+""")
+    /** A leaked amount at the front: "3 Löffel Öl" → "Löffel Öl", "1/2 TL Salz" → "TL Salz". */
     private val LEADING_NUMBER =
         Regex("""^(\d+([.,]\d+)?([-–]\d+([.,]\d+)?)?|[½¼¾⅓⅔⅛])\s*""")
-    private val LEADING_UNIT = Regex(
-        """^(el|tl|g|kg|mg|ml|cl|l|dose|dosen|glas|gläser|becher|prise|prisen|löffel|""" +
-            """esslöffel|teelöffel|tasse|tassen|bund|stück|stk\.?|packung|packungen|pkg|pck|""" +
-            """scheibe|scheiben|zehe|zehen|kopf|köpfe|blatt|blätter)\s+""",
+
+    /**
+     * The language-dependent words this matcher needs. All four are plain word lists, so a new
+     * language is added in `arrays.xml` — see `LocalizedLists`, which pushes in the union over
+     * every bundled content language.
+     *
+     * @param leadingNoise measure and vague-amount words that leak into the *name* field
+     *   ("3 Löffel Öl", "etwas Öl"); stripped before **and** after the number, so one list
+     *   covers both positions.
+     * @param usePhrases words that open a trailing *use* phrase rather than naming a second
+     *   ingredient: "Butter zum Anbraten" → "Butter", "huile pour la friture" → "huile".
+     * @param pluralSuffixes suffixes that relate a plural to its singular ("Tomaten"/"Tomate").
+     * @param headConnectors words that mark the *modifier* of a head-initial compound, so the
+     *   head is the first token: "huile d\'olive" → "huile". German and English put the head
+     *   last and contribute nothing here — an empty list keeps exactly the old rule.
+     */
+    data class Vocabulary(
+        val leadingNoise: List<String> = emptyList(),
+        val usePhrases: List<String> = emptyList(),
+        val pluralSuffixes: List<String> = emptyList(),
+        val headConnectors: List<String> = emptyList(),
     )
+
+    /** German+English fallback, so unit tests and a not-yet-initialized process behave as before. */
+    private val DEFAULT_VOCABULARY_DE_EN = Vocabulary(
+        leadingNoise = listOf(
+            "etwas", "ein wenig", "ein paar", "ein bisschen", "eine prise", "eine handvoll",
+            "nach belieben", "circa", "ca.", "ca", "about", "approx.", "approx",
+            "el", "tl", "g", "kg", "mg", "ml", "cl", "l", "dose", "dosen", "glas", "gläser",
+            "becher", "prise", "prisen", "löffel", "esslöffel", "teelöffel", "tasse", "tassen",
+            "bund", "stück", "stk.", "stk", "packung", "packungen", "pkg", "pck",
+            "scheibe", "scheiben", "zehe", "zehen", "kopf", "köpfe", "blatt", "blätter",
+            "tbsp", "tsp", "cup", "cups", "oz", "lb", "clove", "cloves", "pinch", "slice", "slices",
+        ),
+        usePhrases = listOf("zum", "zur", "nach", "für", "fürs", "to", "for"),
+        pluralSuffixes = listOf("en", "n", "e", "s"),
+        headConnectors = emptyList(),
+    )
+
+    @Volatile
+    private var vocabulary: Vocabulary = DEFAULT_VOCABULARY_DE_EN
+
+    @Volatile
+    private var leadingNoiseRe: Regex? = leadingRegex(DEFAULT_VOCABULARY_DE_EN.leadingNoise)
+
+    @Volatile
+    private var usePhraseRe: Regex? = trailingRegex(DEFAULT_VOCABULARY_DE_EN.usePhrases)
+
+    /**
+     * Replace the language vocabulary (called by `LocalizedLists`). Clears the normalization
+     * memo, because every cached entry was produced by the previous word lists.
+     */
+    fun setVocabulary(v: Vocabulary) {
+        vocabulary = v
+        leadingNoiseRe = leadingRegex(v.leadingNoise)
+        usePhraseRe = trailingRegex(v.usePhrases)
+        normalizeCache.clear()
+    }
+
+    /** Active vocabulary — exposed so tests can snapshot and restore around [setVocabulary]. */
+    val activeVocabulary: Vocabulary get() = vocabulary
+
+    /** Longest word first, so "eine prise" wins over "eine"; entries are literal, not patterns. */
+    private fun alternation(words: Collection<String>): String =
+        words.asSequence()
+            .map { it.trim().lowercase() }
+            .filter { it.isNotEmpty() }
+            .distinct()
+            .sortedByDescending { it.length }
+            .joinToString("|") { Regex.escape(it) }
+
+    private fun leadingRegex(words: Collection<String>): Regex? =
+        alternation(words).takeIf { it.isNotEmpty() }?.let { Regex("^($it)\\s+") }
+
+    private fun trailingRegex(words: Collection<String>): Regex? =
+        alternation(words).takeIf { it.isNotEmpty() }?.let { Regex("\\s+($it)\\s+.*$") }
 
     /** True if [a] and [b] refer to the same ingredient (see class doc for the layers). */
     fun matches(a: String, b: String): Boolean {
@@ -73,7 +132,7 @@ object IngredientMatch {
         if (isDistinct(x, y)) return false
         if (x == y) return true
         if (IngredientLexicon.sameSynonym(x, y)) return true
-        if (PLURAL_SUFFIXES.any { suf -> isPluralOf(x, y, suf) || isPluralOf(y, x, suf) }) return true
+        if (vocabulary.pluralSuffixes.any { suf -> isPluralOf(x, y, suf) || isPluralOf(y, x, suf) }) return true
         // Compound-noun head: in German the right-most part is the head ("Weizen-mehl" → mehl).
         // Only conflate when that head is a staple — otherwise distinct products that merely
         // share a suffix ("Kichererbsen"/"Erbsen") would collapse together.
@@ -94,15 +153,32 @@ object IngredientMatch {
         if (p.isEmpty() || i.isEmpty()) return false
         if (isDistinct(p, i)) return false
         if (matches(pantry, ingredient)) return true
-        // Generic single-word pantry noun vs an adjective-qualified recipe ingredient: the
-        // last whitespace-separated token in German is the head noun. Only a staple head
+        // Generic single-word pantry noun vs a qualified recipe ingredient. Only a staple head
         // generalizes to its variety.
         if (' ' !in p && ' ' in i) {
-            val head = i.substringAfterLast(' ')
+            val head = headOf(i)
             if (isDistinct(p, head)) return false
             return IngredientStaples.isStapleWord(p) && matches(p, head)
         }
         return false
+    }
+
+    /**
+     * The head noun of a multi-word ingredient. German and English put it last ("schwarzer
+     * Pfeffer", "black pepper"). Romance languages put it first and mark the modifier with a
+     * connector ("huile d\'olive", "aceite de oliva") — so the head is the first token exactly
+     * when the second one is such a connector. Because that list is per-language data and
+     * German/English contribute none, this cannot make "sugar snap peas" look like sugar.
+     */
+    private fun headOf(name: String): String {
+        val tokens = name.trim().split(Regex("\\s+"))
+        if (tokens.size >= 2 && isHeadConnector(tokens[1])) return tokens[0]
+        return tokens.last()
+    }
+
+    /** A connector ending in an apostrophe binds to its noun ("d\'olive"), so match the prefix. */
+    private fun isHeadConnector(token: String): Boolean = vocabulary.headConnectors.any { c ->
+        if (c.endsWith("'")) token.startsWith(c) else token == c
     }
 
     /** Public, idempotent name normalization — shared with the lexicon/learned-link holders. */
@@ -119,15 +195,19 @@ object IngredientMatch {
      * "Sojasauce" compare equal.
      */
     private fun normalize(s: String): String = normalizeCache.computeIfAbsent(s) { raw ->
-        var t = raw.lowercase()
-            .replace(PARENTHETICAL, "")
-            .replace(TRAILING_QUALIFIER, "")
-            .trim()
-        t = t.replace(LEADING_VAGUE, "")
+        var t = raw.lowercase().replace(PARENTHETICAL, "")
+        usePhraseRe?.let { t = t.replace(it, "") }
+        t = t.trim()
+        // The noise list runs on both sides of the number, so "etwas Öl" and "3 Löffel Öl"
+        // both reduce to the bare noun without needing two separate word lists.
+        leadingNoiseRe?.let { t = t.replace(it, "") }
         t = t.replace(LEADING_NUMBER, "")
-        t = t.replace(LEADING_UNIT, "")
+        leadingNoiseRe?.let { t = t.replace(it, "") }
         t.replace("soße", "sauce")
             .replace("ß", "ss")
+            // Typographic apostrophe ’ vs the ASCII one — both spellings of "huile d'olive"
+            // must compare equal, or a staple written one way misses the pantry row written the other.
+            .replace('’', '\'')
             .trim()
     }
 

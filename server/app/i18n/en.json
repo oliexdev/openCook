@@ -73,6 +73,21 @@
     "tsp",
     "tsps"
   ],
-  "category_aliases": {},
+  "category_aliases": {
+    "noodles": "pasta",
+    "pastas": "pasta",
+    "meats": "meat",
+    "poultry": "meat",
+    "seafood": "fish",
+    "soups": "soup",
+    "stew": "soup",
+    "veggie": "vegetarian",
+    "vegan": "vegetarian",
+    "salads": "salad",
+    "desserts": "dessert",
+    "sweets": "dessert",
+    "misc": "other",
+    "miscellaneous": "other"
+  },
   "meal_type_aliases": {}
 }

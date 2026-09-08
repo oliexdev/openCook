@@ -44,6 +44,21 @@ class MealTypesTest {
         assertNull(MealTypes.normalizeKey(null))
     }
 
+    /** The alias words live in arrays.xml now; adding a language must not need a code change. */
+    @Test
+    fun aliasesAreDataAndSwappable() {
+        val saved = MealTypes.activeAliases
+        try {
+            MealTypes.setAliases(saved + mapOf("dîner" to "dinner", "goûter" to "snack"))
+            assertEquals("dinner", MealTypes.normalizeKey(" Dîner "))
+            assertEquals("snack", MealTypes.normalizeKey("Goûter"))
+            // The stable keys never depend on the alias table.
+            assertEquals("lunch", MealTypes.normalizeKey("lunch"))
+        } finally {
+            MealTypes.setAliases(saved)
+        }
+    }
+
     @Test
     fun nullAndBlankStorageMeanTheDefault() {
         assertEquals(listOf("lunch", "dinner"), MealTypes.fromStored(null))

@@ -22,6 +22,7 @@ import com.food.opencook.data.remote.dto.HowToStepDto
 import com.food.opencook.data.remote.dto.IngredientDto
 import com.food.opencook.data.remote.dto.NutritionDto
 import com.food.opencook.data.remote.dto.RecipeDto
+import com.food.opencook.util.RecipeCategories
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -106,6 +107,8 @@ object RecipeImportParser {
         if (name.isNullOrBlank() || (structured.isEmpty() && instructions.isEmpty())) return null
 
         val yieldStr = obj.firstString("recipeYield", "yield", "Portionen", "servings")
+        // Our own backup key first, then the site's schema.org category (see [schemaCategory]).
+        val category = obj.firstString("openCookCategory") ?: schemaCategory(obj)
         return RecipeDto(
             identifier = obj.firstString("identifier"),
             name = name,
@@ -113,12 +116,12 @@ object RecipeImportParser {
             recipeYield = yieldStr,
             openCookServings = obj.first("openCookServings")?.str()?.toIntOrNull()
                 ?: yieldStr?.let(::leadingInt),
-            openCookCategory = obj.firstString("openCookCategory"),
+            openCookCategory = category,
             openCookIngredients = structured,
             recipeInstructions = instructions,
             image = extractImages(obj, byId), // refs resolved by the import flow (data-URI / zip path / http)
             openCookNotes = extractStringList(obj, "openCookNotes"),
-            openCookTags = extractTags(obj),
+            openCookTags = extractTags(obj, category),
             openCookMealTypes = extractStringList(obj, "openCookMealTypes"),
             prepTime = obj.firstString("prepTime")?.takeIf { it.startsWith("PT") },
             cookTime = obj.firstString("cookTime")?.takeIf { it.startsWith("PT") },
@@ -233,15 +236,31 @@ object RecipeImportParser {
             .ifEmpty { listOf(text.trim()) }
     }
 
-    private fun extractTags(obj: JsonObject): List<String> {
+    private fun extractTags(obj: JsonObject, category: String?): List<String> {
         // openCookTags first: our own backups write the tag list verbatim there, while
         // foreign recipes only have the schema.org keyword-ish fields.
         val el = obj.first("openCookTags", "keywords", "recipeCategory", "recipeCuisine") ?: return emptyList()
-        return when (el) {
-            is JsonArray -> el.mapNotNull { it.str()?.trim() }.filter { it.isNotEmpty() }
-            is JsonPrimitive -> el.str()?.split(",")?.map(String::trim)?.filter(String::isNotEmpty).orEmpty()
-            else -> emptyList()
-        }
+        // Drop the word that became the category — "Dessert" as both is noise. Anything we did
+        // not recognise ("Plat principal") stays a tag, so nothing from the page is lost.
+        val key = RecipeCategories.matchKeyOrNull(category) ?: return wordList(el)
+        return wordList(el).filterNot { RecipeCategories.matchKeyOrNull(it) == key }
+    }
+
+    /** The site's schema.org `recipeCategory` as one of our keys, or null. Sites write this
+     *  field freely ("Dessert", "Plat principal", "Hauptspeise, Vegetarisch"), so only a value
+     *  the localized alias lists actually know becomes the category — an unrecognised one leaves
+     *  the recipe uncategorized rather than pretending it is "other". `recipeCuisine`
+     *  ("Italian") is deliberately not consulted: it answers a different question. */
+    private fun schemaCategory(obj: JsonObject): String? =
+        obj.first("recipeCategory")
+            ?.let(::wordList)
+            ?.firstNotNullOfOrNull { RecipeCategories.matchKeyOrNull(it) }
+
+    /** A schema.org keyword-ish field as a list: an array, or one string holding a comma list. */
+    private fun wordList(el: JsonElement): List<String> = when (el) {
+        is JsonArray -> el.mapNotNull { it.str()?.trim() }.filter { it.isNotEmpty() }
+        is JsonPrimitive -> el.str()?.split(",")?.map(String::trim)?.filter(String::isNotEmpty).orEmpty()
+        else -> emptyList()
     }
 
     /** Image reference(s): schema.org `image` as a string, an array, or an ImageObject

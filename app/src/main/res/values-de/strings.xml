@@ -537,6 +537,7 @@
     <string name="settings_content_language_system">Systemsprache</string>
     <string name="lang_german">Deutsch</string>
     <string name="lang_english">English</string>
+    <string name="lang_french">Français</string>
 
     <!-- Recipe categories (stored as keys, shown localized) -->
     <string name="cat_pasta">Pasta</string>

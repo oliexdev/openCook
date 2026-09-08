@@ -168,6 +168,15 @@ class IngredientMatchTest {
         assertFalse(IngredientMatch.matches("rote Paprika", "Paprika"))
     }
 
+    /** "Huile d\u2019olive" (typographic) and "huile d\'olive" (ASCII) are the same product. */
+    @Test
+    fun apostropheSpellingsCompareEqual() {
+        assertTrue(IngredientMatch.matches("Huile d\u2019olive", "huile d\'olive"))
+        assertTrue(IngredientMatch.containsLike(setOf("huile d\'olive"), "Huile d\u2019olive"))
+        // Still not the same as a different oil.
+        assertFalse(IngredientMatch.matches("huile d\'olive", "huile de noix"))
+    }
+
     @Test
     fun pantrySpecificDoesNotCoverGenericIngredient() {
         // The specific pantry stock can't satisfy a generic recipe request — the recipe
