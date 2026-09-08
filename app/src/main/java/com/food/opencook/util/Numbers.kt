@@ -100,22 +100,26 @@ object RecipeCategories {
     /** Active aliases — exposed so tests can snapshot and restore around [setAliases]. */
     val activeAliases: Map<String, String> get() = aliases
 
-    /** Map a stored/legacy/AI category (any language) to a stable key; unknown → [DEFAULT]. */
-    fun normalizeKey(raw: String?): String {
-        val t = raw?.trim()?.lowercase() ?: return DEFAULT
-        if (t in KEYS) return t
-        return aliases[t] ?: DEFAULT
+    /** Match a category word (any language) to a stable key, or null when it means nothing to
+     *  us. Unlike [normalizeKey] this keeps "I don't know it" apart from a deliberate "other",
+     *  which an import needs: a site's `recipeCategory` of "Plat principal"/"Hauptspeise" names
+     *  a *meal*, not one of our categories, so it must leave the field empty instead of
+     *  silently filing the recipe under [DEFAULT]. */
+    fun matchKeyOrNull(raw: String?): String? {
+        val t = raw?.trim()?.lowercase()?.takeIf { it.isNotEmpty() } ?: return null
+        return if (t in KEYS) t else aliases[t]
     }
+
+    /** Map a stored/legacy/AI category (any language) to a stable key; unknown → [DEFAULT]. */
+    fun normalizeKey(raw: String?): String = matchKeyOrNull(raw) ?: DEFAULT
 
     /** Display label: localized for known/legacy values; a custom free-text value is kept verbatim. */
     fun displayLabel(context: Context, raw: String?): String {
         if (raw.isNullOrBlank()) return context.getString(R.string.cat_other)
-        val t = raw.trim().lowercase()
-        val key = normalizeKey(raw)
-        // "Other" is a real answer, not a miss — tell the two apart before falling back to the
-        // user's own free text (normalizeKey maps both to DEFAULT).
-        val isKnown = key != DEFAULT || t in KEYS || t in aliases
-        return if (isKnown) context.getString(labelRes(key)) else raw.trim()
+        // "Other" is a real answer, not a miss — matchKeyOrNull tells the two apart, so the
+        // user's own free text survives instead of collapsing into the "Other" label.
+        val key = matchKeyOrNull(raw) ?: return raw.trim()
+        return context.getString(labelRes(key))
     }
 }
 

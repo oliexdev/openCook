@@ -19,6 +19,7 @@
 package com.food.opencook
 
 import com.food.opencook.data.recipeimport.RecipeImportParser
+import com.food.opencook.util.RecipeCategories
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -180,6 +181,64 @@ class RecipeImportParserTest {
         assertEquals("12 g", n.fatContent)
         assertEquals("30 g", n.carbohydrateContent)
         assertEquals("pro Portion", n.openCookBasis)
+    }
+
+    /** A recipe page's own `recipeCategory` is the only category a web import ever gets — it is
+     *  saved without a review screen, so an unrecognised word must not fake one. */
+    @Test
+    fun schemaCategoryBecomesTheCategoryWhenRecognised() {
+        val r = parse("""{"name":"Mousse","recipeIngredient":["Schokolade"],"recipeCategory":"Nachtisch"}""")
+        assertEquals("dessert", r[0].openCookCategory)
+        // It became the category, so it is not repeated as a tag.
+        assertTrue(r[0].openCookTags.isEmpty())
+
+        // Comma list / array: the first word we know wins, the rest stays tag material.
+        assertEquals(
+            "soup",
+            parse("""{"name":"S","recipeIngredient":["W"],"recipeCategory":"Hauptspeise, Suppe"}""")[0].openCookCategory,
+        )
+        assertEquals(
+            "salad",
+            parse("""{"name":"S","recipeIngredient":["W"],"recipeCategory":["Vorspeise","Salat"]}""")[0].openCookCategory,
+        )
+    }
+
+    @Test
+    fun unknownSchemaCategoryLeavesTheRecipeUncategorized() {
+        // "Hauptspeise"/"Plat principal" name a meal, not one of the eight categories — forcing
+        // them to "other" would be a wrong answer instead of no answer.
+        val r = parse("""{"name":"Gulasch","recipeIngredient":["Rind"],"recipeCategory":"Hauptspeise"}""")
+        assertNull(r[0].openCookCategory)
+        assertEquals(listOf("Hauptspeise"), r[0].openCookTags) // kept, nothing from the page is lost
+    }
+
+    @Test
+    fun frenchSchemaCategoryUsesTheLocalizedAliases() {
+        val saved = RecipeCategories.activeAliases
+        try {
+            RecipeCategories.setAliases(saved + mapOf("poisson" to "fish", "pâtes" to "pasta"))
+            assertEquals(
+                "fish",
+                parse("""{"name":"Cabillaud","recipeIngredient":["cabillaud"],"recipeCategory":"Poisson"}""")[0]
+                    .openCookCategory,
+            )
+            val plat = parse("""{"name":"Boeuf","recipeIngredient":["boeuf"],"recipeCategory":"Plat principal"}""")
+            assertNull(plat[0].openCookCategory)
+            assertEquals(listOf("Plat principal"), plat[0].openCookTags)
+        } finally {
+            RecipeCategories.setAliases(saved)
+        }
+    }
+
+    @Test
+    fun ownBackupCategoryWinsAndKeywordsStayTheTagSource() {
+        val r = parse(
+            """{"name":"Lasagne","recipeIngredient":["Nudeln"],
+               "openCookCategory":"pasta","recipeCategory":"Suppe",
+               "keywords":"schnell, Ofen"}""",
+        )
+        assertEquals("pasta", r[0].openCookCategory)
+        assertEquals(listOf("schnell", "Ofen"), r[0].openCookTags)
     }
 
     @Test

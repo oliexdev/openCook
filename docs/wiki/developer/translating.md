@@ -64,7 +64,12 @@ Translate the items in each list:
 - `cat_alias_*` / `mealtype_alias_*` — the words your language uses for the eight recipe
   categories and the four meal types, so a hand-written or imported recipe that says
   `viande` / `dîner` still lands on the `meat` / `dinner` key. The keys themselves always
-  match and need no entry.
+  match and need no entry. This list is also what a **web import** is matched against: a
+  recipe page's `recipeCategory` (`Nachtisch`, `Dessert`, `Soupe`) becomes the recipe's
+  category only if it is listed here. A word that names a **meal** rather than a category —
+  `Hauptspeise`, `Plat principal` — is deliberately left out: the recipe then stays
+  uncategorized (the word is kept as a tag) instead of being filed under `other`. Those
+  belong in `mealtype_alias_lunch`/`_dinner`, the *when* axis.
 
 ### Optional: grammar helpers
 
