@@ -18,7 +18,7 @@
 
 package com.food.opencook.ui.mealplan
 
-import com.food.opencook.data.local.relation.RecipeWithDetails
+import com.food.opencook.data.local.relation.RecipeSummary
 import com.food.opencook.util.DurationFormat
 import com.food.opencook.util.IngredientMatch
 import com.food.opencook.util.IngredientStaples
@@ -138,7 +138,7 @@ object MealPlanner {
         dates: List<LocalDate>,
         skipped: Set<LocalDate>,
         pinned: Map<LocalDate, String>,
-        candidates: List<RecipeWithDetails>,
+        candidates: List<RecipeSummary>,
         recentlyPlanned: Map<String, LocalDate>,
         pantry: Set<String>,
         householdSize: Int,
@@ -263,7 +263,7 @@ object MealPlanner {
         dates: List<LocalDate>,
         skipped: Set<LocalDate>,
         pinned: Map<LocalDate, String>,
-        candidates: List<RecipeWithDetails>,
+        candidates: List<RecipeSummary>,
         recentlyPlanned: Map<String, LocalDate>,
         pantry: Set<String>,
         householdSize: Int,
@@ -307,10 +307,10 @@ object MealPlanner {
     }
 
     private fun score(
-        recipe: RecipeWithDetails,
+        recipe: RecipeSummary,
         date: LocalDate,
         placed: Map<LocalDate, String>,
-        byId: Map<String, RecipeWithDetails>,
+        byId: Map<String, RecipeSummary>,
         recentlyPlanned: Map<String, LocalDate>,
         pantry: Set<String>,
         coreByRecipe: Map<String, Set<String>>,
@@ -469,14 +469,14 @@ object MealPlanner {
      * Recipes cookable from [available] ingredient names, best coverage first.
      * Powers the shopping "ingredient not found → suggest an alternative" flow.
      */
-    fun cookableFrom(available: Set<String>, candidates: List<RecipeWithDetails>): List<RecipeWithDetails> =
+    fun <T : RecipeSummary> cookableFrom(available: Set<String>, candidates: List<T>): List<T> =
         candidates
             .map { it to coverage(it, available) }
             .filter { it.second > 0.0 }
             .sortedByDescending { it.second }
             .map { it.first }
 
-    private fun coverage(recipe: RecipeWithDetails, available: Set<String>): Double {
+    private fun coverage(recipe: RecipeSummary, available: Set<String>): Double {
         val names = recipe.ingredientNames()
         if (names.isEmpty()) return 0.0
         return names.count { IngredientMatch.containsLike(available, it) }.toDouble() / names.size
@@ -489,12 +489,12 @@ object MealPlanner {
 
     /** The dish's main protein group (poultry/beef/fish/…) or null. The title usually names the
      *  hero ("Hähnchenbrust …"); fall back to the first protein-bearing ingredient. */
-    private fun mainProtein(recipe: RecipeWithDetails): String? =
+    private fun mainProtein(recipe: RecipeSummary): String? =
         ProteinGroups.groupOf(recipe.recipe.name.orEmpty())
             ?: recipe.ingredients.firstNotNullOfOrNull { ProteinGroups.groupOf(it.name) }
 
     /** Total time in minutes, falling back to prep + cook when totalTime is absent. */
-    private fun effectiveMinutes(recipe: RecipeWithDetails): Double? {
+    private fun effectiveMinutes(recipe: RecipeSummary): Double? {
         DurationFormat.minutes(recipe.recipe.totalTime)?.let { return it.toDouble() }
         val prep = DurationFormat.minutes(recipe.recipe.prepTime)
         val cook = DurationFormat.minutes(recipe.recipe.cookTime)
@@ -502,5 +502,5 @@ object MealPlanner {
     }
 }
 
-private fun RecipeWithDetails.ingredientNames(): Set<String> =
+private fun RecipeSummary.ingredientNames(): Set<String> =
     ingredients.map { it.name.lowercase().trim() }.filter { it.isNotEmpty() }.toSet()

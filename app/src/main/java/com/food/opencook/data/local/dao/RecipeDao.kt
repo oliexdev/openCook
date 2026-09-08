@@ -29,6 +29,7 @@ import com.food.opencook.data.local.entity.IngredientEntity
 import com.food.opencook.data.local.entity.InstructionEntity
 import com.food.opencook.data.local.entity.NutritionEntity
 import com.food.opencook.data.local.entity.RecipeEntity
+import com.food.opencook.data.local.relation.RecipeListItem
 import com.food.opencook.data.local.relation.RecipeWithDetails
 import kotlinx.coroutines.flow.Flow
 
@@ -41,6 +42,17 @@ interface RecipeDao {
     @Transaction
     @Query("SELECT * FROM recipes ORDER BY updatedAt DESC")
     fun observeAll(): Flow<List<RecipeWithDetails>>
+
+    /** Same rows for a *list* screen, without the instruction and nutrition relations
+     *  ([RecipeListItem]) — the grid and the meal plan never show them. */
+    @Transaction
+    @Query("SELECT * FROM recipes ORDER BY updatedAt DESC")
+    fun observeAllListItems(): Flow<List<RecipeListItem>>
+
+    /** The planner's candidate pool, one shot — same lean shape as [observeAllListItems]. */
+    @Transaction
+    @Query("SELECT * FROM recipes")
+    suspend fun getAllListItemsOnce(): List<RecipeListItem>
 
     @Transaction
     @Query("SELECT * FROM recipes WHERE id = :id")
@@ -184,6 +196,12 @@ interface RecipeDao {
      *  normalization happens in Kotlin so umlauts compare correctly, unlike SQLite lower()). */
     @Query("SELECT id, name FROM recipes")
     suspend fun allIdAndNames(): List<RecipeIdName>
+
+    /** Reactive id + name. The shopping list labels each row with the dishes that need it and
+     *  wants nothing else from a recipe — reading the whole library for that made every write
+     *  to any recipe table re-read every ingredient and step. */
+    @Query("SELECT id, name FROM recipes")
+    fun observeIdAndNames(): Flow<List<RecipeIdName>>
 
     // Projection upserts: update-in-place (no REPLACE, so child rows aren't
     // cascade-deleted when a parent recipe is re-projected during sync).

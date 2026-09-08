@@ -135,6 +135,8 @@ private class FakeRecipeDao : RecipeDao {
         images.removeAll { it.recipeId == recipeId }
     }
     override fun observeAll(): Flow<List<RecipeWithDetails>> = throw NotImplementedError()
+    override fun observeAllListItems(): Flow<List<com.food.opencook.data.local.relation.RecipeListItem>> =
+        throw NotImplementedError()
     override fun observeById(id: String): Flow<RecipeWithDetails?> = throw NotImplementedError()
     override suspend fun getByIdOnce(id: String): RecipeWithDetails? =
         recipes.firstOrNull { it.id == id }?.let { recipe ->
@@ -147,6 +149,7 @@ private class FakeRecipeDao : RecipeDao {
             )
         }
     override suspend fun getAllOnce(): List<RecipeWithDetails> = emptyList()
+    override suspend fun getAllListItemsOnce(): List<com.food.opencook.data.local.relation.RecipeListItem> = emptyList()
     override suspend fun pageWithDetails(limit: Int, offset: Int): List<RecipeWithDetails> = emptyList()
     override suspend fun recipeCount(): Int = recipes.size
     override suspend fun ingredientIdsFor(recipeId: String): List<String> = ingredients.filter { it.recipeId == recipeId }.map { it.id }
@@ -169,6 +172,8 @@ private class FakeRecipeDao : RecipeDao {
     override suspend fun distinctIngredientNames(): List<String> = ingredients.map { it.name }.distinct()
     override suspend fun allIdAndNames(): List<com.food.opencook.data.local.dao.RecipeIdName> =
         recipes.map { com.food.opencook.data.local.dao.RecipeIdName(it.id, it.name) }
+    override fun observeIdAndNames(): Flow<List<com.food.opencook.data.local.dao.RecipeIdName>> =
+        throw NotImplementedError()
 }
 
 private class FakeRecipeLikeDao : com.food.opencook.data.local.dao.RecipeLikeDao {

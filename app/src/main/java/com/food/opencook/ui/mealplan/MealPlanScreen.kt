@@ -160,18 +160,10 @@ fun MealPlanScreen(
     val addedMsg = stringResource(R.string.shopping_added)
     val alreadyOnListMsg = stringResource(R.string.shopping_already_on_list)
 
-    // Self-heal on open: roll un-cooked but procured past dishes onto the next free day.
-    // Idempotent, so running once per screen entry is enough — no daily confirmation.
-    // Re-anchoring the window on the same pass keeps a phone left on this screen overnight
-    // from insisting that yesterday is today.
-    //
-    // The rolling fill runs *after* the reconcile, so a dish that just rolled forward counts
-    // as occupying its new day and the planner doesn't plan on top of it.
-    LaunchedEffect(Unit) {
-        viewModel.refreshToday()
-        viewModel.reconcilePastDays()
-        viewModel.autoFillWindow()
-    }
+    // Self-heal on open (re-anchor the window, roll past days forward, fill free days).
+    // The work and its once-a-day guard live in the ViewModel: this composition is thrown
+    // away on every tab switch, so it is not a place to decide "has this run already".
+    LaunchedEffect(Unit) { viewModel.openPlan() }
 
     val appBar: AppBarViewModel = hiltViewModel()
     val syncStatus by appBar.status.collectAsStateWithLifecycle()

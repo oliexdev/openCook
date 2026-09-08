@@ -185,8 +185,11 @@ fun ShoppingListBody(
         Modifier.fillMaxSize().padding(horizontal = Spacing.screen),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        val visible = if (searchQuery.isNullOrBlank()) items
+        val overrides by viewModel.overrides.collectAsStateWithLifecycle()
+        val visible = remember(items, searchQuery) {
+            if (searchQuery.isNullOrBlank()) items
             else items.filter { it.item.text.contains(searchQuery, ignoreCase = true) }
+        }
 
         when {
             items.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -207,16 +210,22 @@ fun ShoppingListBody(
             // One flat list, grouped by store aisle. Checked items stay in place,
             // struck through — never auto-removed (use the bulk action to clear).
             // Household-taught overrides beat the keyword heuristic.
-            val overrides by viewModel.overrides.collectAsStateWithLifecycle()
-            val grouped = visible.groupBy { GroceryCategories.categorize(it.item.text, overrides) }
-                .toList().sortedBy { it.first.ordinal }
+            // Remembered: sorting an item into an aisle scans it against every keyword of
+            // every language, so re-deriving this for the whole list on each tick, keystroke
+            // or drag frame is the difference between a smooth list and a sticky one.
+            val grouped = remember(visible, overrides) {
+                visible.groupBy { GroceryCategories.categorize(it.item.text, overrides) }
+                    .toList().sortedBy { it.first.ordinal }
+            }
             // The very first row peeks its swipe action once (one-time discoverability hint).
             val firstRowId = grouped.firstOrNull()?.second?.firstOrNull()?.item?.id
             // Every list key (headers + rows) → its section's category, for drop hit-testing.
-            val keyCategory = buildMap {
-                grouped.forEach { (category, list) ->
-                    put("h_${category.name}", category)
-                    list.forEach { put(it.item.id, category) }
+            val keyCategory = remember(grouped) {
+                buildMap {
+                    grouped.forEach { (category, list) ->
+                        put("h_${category.name}", category)
+                        list.forEach { put(it.item.id, category) }
+                    }
                 }
             }
 

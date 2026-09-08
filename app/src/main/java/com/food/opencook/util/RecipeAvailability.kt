@@ -18,7 +18,7 @@
 
 package com.food.opencook.util
 
-import com.food.opencook.data.local.relation.RecipeWithDetails
+import com.food.opencook.data.local.relation.RecipeSummary
 
 /**
  * "Can I cook this right now?" — the single definition of it.
@@ -34,7 +34,7 @@ import com.food.opencook.data.local.relation.RecipeWithDetails
 object RecipeAvailability {
 
     /** Ingredient names the pantry does not cover. Empty means the dish is cookable now. */
-    fun missing(recipe: RecipeWithDetails, pantry: Set<String>): List<String> =
+    fun missing(recipe: RecipeSummary, pantry: Set<String>): List<String> =
         recipe.ingredients.mapNotNull { ing ->
             ing.name.trim().takeIf {
                 it.isNotEmpty() &&
@@ -47,6 +47,6 @@ object RecipeAvailability {
      * Everything for this dish is on hand. A recipe with no ingredients at all is *not*
      * counted as stocked: it is unfinished data, not a meal you can start cooking.
      */
-    fun isStocked(recipe: RecipeWithDetails, pantry: Set<String>): Boolean =
+    fun isStocked(recipe: RecipeSummary, pantry: Set<String>): Boolean =
         recipe.ingredients.isNotEmpty() && missing(recipe, pantry).isEmpty()
 }

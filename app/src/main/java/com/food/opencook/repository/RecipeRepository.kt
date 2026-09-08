@@ -35,6 +35,7 @@ import com.food.opencook.data.local.entity.InstructionEntity
 import com.food.opencook.data.local.entity.JobEntity
 import com.food.opencook.data.local.entity.NutritionEntity
 import com.food.opencook.data.local.entity.RecipeEntity
+import com.food.opencook.data.local.relation.RecipeListItem
 import com.food.opencook.data.local.relation.RecipeWithDetails
 import com.food.opencook.data.remote.JobsApi
 import com.food.opencook.data.remote.dto.RecipeDto
@@ -105,6 +106,14 @@ class RecipeRepository @Inject constructor(
         recipeDao.getBySourcePhoto(jobId)
     suspend fun getRecipeOnce(recipeId: String): RecipeWithDetails? = recipeDao.getByIdOnce(recipeId)
     suspend fun getAllRecipesOnce(): List<RecipeWithDetails> = recipeDao.getAllOnce()
+
+    /** List-sized variants of the two above: no instructions, no nutrition. */
+    fun observeRecipeListItems(): Flow<List<RecipeListItem>> = recipeDao.observeAllListItems()
+    suspend fun getAllRecipeListItemsOnce(): List<RecipeListItem> = recipeDao.getAllListItemsOnce()
+
+    /** Recipe id → name, reactive. All the shopping list needs from a recipe. */
+    fun observeRecipeNames(): Flow<Map<String, String>> =
+        recipeDao.observeIdAndNames().map { rows -> rows.associate { it.id to (it.name ?: "") } }
 
     /**
      * The existing recipe whose name matches [name] (normalized), or null. Used for

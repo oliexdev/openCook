@@ -16,28 +16,37 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+
 package com.food.opencook.data.local.relation
 
 import androidx.room.Embedded
 import androidx.room.Relation
 import com.food.opencook.data.local.entity.ImageEntity
 import com.food.opencook.data.local.entity.IngredientEntity
-import com.food.opencook.data.local.entity.InstructionEntity
-import com.food.opencook.data.local.entity.NutritionEntity
 import com.food.opencook.data.local.entity.RecipeEntity
 
 /**
- * A recipe with all of its child rows, read in one shot. The lists are not
- * guaranteed ordered by Room, so consumers sort by `position` (see DAO/mapper).
+ * What a recipe *list* needs: the row itself plus its ingredients. Classification, search,
+ * availability and planner scoring all work off exactly this much, so they take a
+ * [RecipeSummary] instead of a concrete shape and serve both the full [RecipeWithDetails]
+ * and the lean [RecipeListItem].
  */
-data class RecipeWithDetails(
+interface RecipeSummary {
+    val recipe: RecipeEntity
+    val ingredients: List<IngredientEntity>
+}
+
+/**
+ * A recipe as a list shows it: the row, its ingredients (search / "cookable now") and its
+ * photos. Deliberately without instructions and nutrition — the recipe grid, the meal plan
+ * and the planner never read them, and a `@Relation` fetches whatever it declares, so every
+ * step text of the whole library used to be loaded on every write to any of those tables.
+ * Open a recipe and [RecipeWithDetails] is read for that one row.
+ */
+data class RecipeListItem(
     @Embedded override val recipe: RecipeEntity,
     @Relation(parentColumn = "id", entityColumn = "recipeId")
     override val ingredients: List<IngredientEntity>,
     @Relation(parentColumn = "id", entityColumn = "recipeId")
-    val instructions: List<InstructionEntity>,
-    @Relation(parentColumn = "id", entityColumn = "recipeId")
     val images: List<ImageEntity>,
-    @Relation(parentColumn = "id", entityColumn = "recipeId")
-    val nutrition: NutritionEntity?,
 ) : RecipeSummary

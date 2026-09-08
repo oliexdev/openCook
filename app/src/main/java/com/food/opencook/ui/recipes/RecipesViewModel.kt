@@ -21,7 +21,8 @@ package com.food.opencook.ui.recipes
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.food.opencook.data.local.relation.RecipeWithDetails
+import com.food.opencook.data.local.relation.RecipeListItem
+import com.food.opencook.data.local.relation.RecipeSummary
 import com.food.opencook.data.settings.SettingsRepository
 import com.food.opencook.repository.PantryRepository
 import com.food.opencook.repository.RecipeRepository
@@ -33,11 +34,13 @@ import com.food.opencook.util.RecipeCategories
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -68,7 +71,7 @@ data class RecipeFilters(
  */
 internal object RecipeSearchFilter {
     fun matches(
-        item: RecipeWithDetails,
+        item: RecipeSummary,
         query: String,
         filters: RecipeFilters,
         likedIds: Set<String>,
@@ -112,8 +115,8 @@ class RecipesViewModel @Inject constructor(
         .map { items -> items.map { it.name.lowercase().trim() }.toSet() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
-    private val all: StateFlow<List<RecipeWithDetails>> =
-        repository.observeRecipes()
+    private val all: StateFlow<List<RecipeListItem>> =
+        repository.observeRecipeListItems()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _query = MutableStateFlow("")
@@ -133,14 +136,19 @@ class RecipesViewModel @Inject constructor(
         repository.observeLikedRecipeIds()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
-    val recipes: StateFlow<List<RecipeWithDetails>> =
+    val recipes: StateFlow<List<RecipeListItem>> =
         combine(all, _query, _filters, likedIds, pantryNames) { list, q, filters, liked, pantry ->
             list.filter { item ->
                 RecipeSearchFilter.matches(item, q, filters, liked, pantry) { key ->
                     RecipeCategories.displayLabel(context, key)
                 }
             }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        }
+            // Scanning every recipe's ingredients and resolving a localized category label per
+            // row is real work — off the main thread, or it lands in the frame that draws the
+            // list (and in the tab transition that got us here).
+            .flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val serverBaseUrl: StateFlow<String?> =
         settings.serverUrl.stateIn(viewModelScope, SharingStarted.Eagerly, null)
