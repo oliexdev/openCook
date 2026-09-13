@@ -43,6 +43,7 @@ import com.food.opencook.data.remote.dto.CreateJobResponseDto
 import com.food.opencook.data.remote.dto.JobResponseDto
 import com.food.opencook.data.remote.dto.RecipeDto
 import com.food.opencook.repository.DrainOutcome
+import com.food.opencook.repository.MealPlanRepository
 import com.food.opencook.repository.PantryRepository
 import com.food.opencook.repository.RecipeRepository
 import com.food.opencook.repository.SaveResult
@@ -189,7 +190,7 @@ private class FakeRecipeLikeDao : com.food.opencook.data.local.dao.RecipeLikeDao
         kotlinx.coroutines.flow.flowOf(likes.filter { it.liked }.map { it.recipeId }.distinct())
 }
 
-private class FakeMessageDao : MessageDao {
+internal class FakeMessageDao : MessageDao {
     val messages = mutableListOf<MessageEntity>()
     override suspend fun insert(message: MessageEntity) {
         if (messages.none { it.timestamp == message.timestamp }) messages += message
@@ -209,7 +210,7 @@ private class FakeMessageDao : MessageDao {
 }
 
 /** Deterministic stamper: strictly increasing timestamps. */
-private class FakeStamper : Stamper {
+internal class FakeStamper : Stamper {
     private var n = 0L
     override suspend fun stamp(): Hlc = Hlc(1_000 + n++, 0, "T")
 }
@@ -272,6 +273,7 @@ class RecipeRepositoryDrainTest {
             importCorrector = { it },
             shoppingRepository = ShoppingRepository(noopShoppingDao, recorder, pantryRepo),
             pantryRepository = pantryRepo,
+            mealPlanRepository = MealPlanRepository(FakeMealPlanDao(), FakeMealDayDao(), recorder),
             contentLanguage = { "de" },
         )
     }

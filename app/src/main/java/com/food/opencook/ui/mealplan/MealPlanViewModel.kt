@@ -389,6 +389,7 @@ class MealPlanViewModel @Inject constructor(
     fun openPlan() {
         refreshToday()
         viewModelScope.launch {
+            mealPlanRepository.purgeOrphanEntries()
             reconcilePastDays().join()
             autoFillWindow().join()
         }

@@ -96,6 +96,7 @@ class RecipeRepository @Inject constructor(
     private val importCorrector: ImportCorrector,
     private val shoppingRepository: ShoppingRepository,
     private val pantryRepository: PantryRepository,
+    private val mealPlanRepository: MealPlanRepository,
     private val contentLanguage: com.food.opencook.data.settings.ContentLanguageProvider,
 ) {
     fun observeRecipes(): Flow<List<RecipeWithDetails>> = recipeDao.observeAll()
@@ -424,6 +425,7 @@ class RecipeRepository @Inject constructor(
         transactor.withTransaction { recipeDao.deleteRecipe(recipeId) }
         recordChanges(listOf(FieldChange(SyncDatasets.RECIPES, recipeId, SyncDatasets.COLUMN_DELETED, "true")))
         shoppingRepository.removeOpenForRecipe(recipeId)
+        mealPlanRepository.deleteEntriesForRecipe(recipeId)
     }
 
     private suspend fun recordChanges(changes: List<FieldChange>) = messageRecorder.record(changes)

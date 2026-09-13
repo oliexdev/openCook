@@ -100,6 +100,15 @@ class RecipeDetailViewModel @Inject constructor(
         repository.observeRecipe(recipeId)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /** Null until the first query comes back, then whether this recipe exists at all. The
+     *  screen needs the difference: [recipe] is null while loading *and* when the id points
+     *  at nothing (a link from somewhere that outlived the dish), and the two used to look
+     *  identical — a spinner that never stopped. Knowing it is gone, the screen leaves. */
+    val recipeMissing: StateFlow<Boolean?> =
+        repository.observeRecipe(recipeId)
+            .map { it == null }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
     val serverBaseUrl: StateFlow<String?> =
         settings.serverUrl.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 

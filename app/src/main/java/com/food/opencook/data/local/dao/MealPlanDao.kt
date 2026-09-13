@@ -85,4 +85,15 @@ interface MealPlanDao {
 
     @Query("DELETE FROM meal_plan WHERE id = :id")
     suspend fun deleteById(id: String)
+
+    /** Every entry planning this dish — ids, because each one is deleted through
+     *  [MealPlanRepository.deleteEntry] so it gets its own tombstone. */
+    @Query("SELECT id FROM meal_plan WHERE recipeId = :recipeId")
+    suspend fun idsForRecipe(recipeId: String): List<String>
+
+    /** Entries whose recipe is gone. Nothing can render them — the plan would show a
+     *  nameless tile that opens an empty recipe screen — and they still occupy their cell
+     *  against the rolling planner. See `MealPlanRepository.purgeOrphanEntries`. */
+    @Query("SELECT id FROM meal_plan WHERE recipeId NOT IN (SELECT id FROM recipes)")
+    suspend fun orphanEntryIds(): List<String>
 }

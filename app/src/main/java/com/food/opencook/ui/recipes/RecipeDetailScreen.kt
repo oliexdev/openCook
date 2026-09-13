@@ -145,6 +145,7 @@ fun RecipeDetailScreen(
     viewModel: RecipeDetailViewModel = hiltViewModel(),
 ) {
     val recipe by viewModel.recipe.collectAsStateWithLifecycle()
+    val recipeMissing by viewModel.recipeMissing.collectAsStateWithLifecycle()
     val baseUrl by viewModel.serverBaseUrl.collectAsStateWithLifecycle()
     val liked by viewModel.liked.collectAsStateWithLifecycle()
     val cooked by viewModel.cooked.collectAsStateWithLifecycle()
@@ -170,6 +171,10 @@ fun RecipeDetailScreen(
     val addedMessage = stringResource(R.string.shopping_added)
     val alreadyOnListMessage = stringResource(R.string.shopping_already_on_list)
     var showDeleteConfirm by remember { mutableStateOf(false) }
+
+    var leaving by remember { mutableStateOf(false) }
+    val leave: () -> Unit = { if (!leaving) { leaving = true; onBack() } }
+    LaunchedEffect(recipeMissing) { if (recipeMissing == true) leave() }
     var showPlanSheet by remember { mutableStateOf(false) }
     var showExportSheet by remember { mutableStateOf(false) }
 
@@ -213,7 +218,7 @@ fun RecipeDetailScreen(
             text = { Text(stringResource(R.string.recipe_delete_confirm_text)) },
             confirmButton = {
                 Button(
-                    onClick = { showDeleteConfirm = false; viewModel.delete(onBack) },
+                    onClick = { showDeleteConfirm = false; viewModel.delete(leave) },
                     colors = androidx.compose.material3.ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error,
                     ),

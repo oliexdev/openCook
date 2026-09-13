@@ -105,6 +105,39 @@ class MealPlanRepository @Inject constructor(
         messageRecorder.record(MealPlanMessageEncoder.tombstone(id))
     }
 
+    /**
+     * Drop every plan entry for a recipe that is being deleted. The recipe row is the only
+     * place a planned dish gets its name and photo from, so an entry left behind renders as a
+     * nameless tile whose recipe screen never arrives — and it keeps the cell occupied
+     * against the rolling planner. Tombstoned, so the household's other devices follow.
+     *
+     * Confirmed-cooked entries go too: the retrospective can't show a dish it has no recipe
+     * for, so keeping them would only inflate the "we cooked something" count behind a screen
+     * that silently skips them.
+     */
+    suspend fun deleteEntriesForRecipe(recipeId: String) {
+        mealPlanDao.idsForRecipe(recipeId).forEach { deleteEntry(it) }
+    }
+
+    /**
+     * Self-heal for entries orphaned before [deleteEntriesForRecipe] existed, or by a recipe
+     * another device deleted while this one held the plan row. Returns how many went.
+     *
+     * Deliberately **local-only**, no tombstones: "the recipe isn't here" is this device's
+     * view, and a sync round applies a whole batch with recipes projected first, so a peer
+     * that still has the recipe has a legitimate entry we must not delete out from under it.
+     * Every device that lacks the recipe cleans up its own copy on the next plan open.
+     *
+     * The day keeps its `autoPlanned` flag — the rolling planner offers a day once and this
+     * must not re-open it, not least because an auto-filled entry's id is derived from
+     * (date, slot): re-filling the same cell would write a row the log already tombstoned.
+     */
+    suspend fun purgeOrphanEntries(): Int {
+        val ids = mealPlanDao.orphanEntryIds()
+        ids.forEach { mealPlanDao.deleteById(it) }
+        return ids.size
+    }
+
     /** Add a dish to [date] already marked cooked — used when you cook something off-plan and
      *  record it as today's actual meal. Returns the new entry id (for undo). */
     suspend fun addCookedEntry(date: String, recipeId: String, slot: String): String {
