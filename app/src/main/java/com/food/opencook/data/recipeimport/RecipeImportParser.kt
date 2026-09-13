@@ -203,7 +203,7 @@ object RecipeImportParser {
                     } else {
                         val text = e.firstString("text", "name", "step", "description")
                         if (text != null) {
-                            steps += HowToStepDto(text = text, openCookId = e.firstString("openCookId"))
+                            steps += HowToStepDto(text = text.replace(Regex("<br\\s*/?>"), "\n").replace(Regex("<li[^>]*>"), "").replace(Regex("</li>"), "\n").replace(Regex("</?(ul|ol)[^>]*>"), "").replace(Regex("<[^>]+>"), "").replace(Regex("\n{2,}"), "\n").trim(), openCookId = e.firstString("openCookId"))
                         } else {
                             e.first("itemListElement")?.let(::add)
                         }
