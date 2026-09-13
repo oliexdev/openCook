@@ -46,7 +46,9 @@
     <string name="scan_no_server">Die KI läuft auf deinem openCook-Server. Ohne Server kannst du Rezepte weiterhin manuell anlegen oder aus einer Datei importieren.</string>
     <string name="scan_go_to_settings">Zu den Einstellungen</string>
     <string name="scan_server_offline_title">Server gerade nicht erreichbar</string>
+    <string name="scan_off_home_network_title">Nicht im Heimnetz</string>
     <string name="scan_server_offline">Du kannst trotzdem fotografieren — die Fotos bleiben auf dem Handy und werden automatisch erkannt, sobald der Server wieder antwortet.</string>
+    <string name="scan_off_home_network">Die Erkennung läuft auf deinem Heimserver, der nur im WLAN (oder per VPN) erreichbar ist. Fotografiere trotzdem — die Fotos bleiben auf dem Handy und werden erkannt, sobald du wieder zu Hause bist.</string>
     <plurals name="scan_server_offline_queued">
         <item quantity="one">%d Scan wartet.</item>
         <item quantity="other">%d Scans warten.</item>
@@ -428,14 +430,16 @@
     <string name="deleted">Gelöscht</string>
 
     <!-- Sync status (shared top bar) -->
-    <string name="sync_status_ok">Synchronisiert</string>
-    <string name="sync_status_ok_peer">Synchronisiert (über %1$s)</string>
+    <string name="sync_status_ok">Alles synchron</string>
+    <string name="sync_status_ok_peer">Alles synchron (über %1$s)</string>
     <string name="sync_status_not_configured">Kein Server – tippen für Einstellungen</string>
     <string name="sync_status_syncing">Synchronisiere…</string>
     <string name="sync_status_failed">Nicht verbunden – tippen zum Synchronisieren</string>
+    <string name="sync_status_off_home_network">Nicht im Heimnetz – Sync pausiert</string>
     <string name="sync_status_household_missing">Haushalt auf dem Server nicht gefunden – evtl. wurde er neu aufgesetzt. In den Einstellungen neu beitreten.</string>
     <string name="sync_error_offline">Server nicht erreichbar – wird automatisch erneut versucht, sobald er verfügbar ist.</string>
-    <string name="sync_status_last_success">Zuletzt synchronisiert: %1$s</string>
+    <string name="sync_error_off_home_network">Sync funktioniert nur im heimischen WLAN (oder per VPN) – es geht von allein weiter, sobald du wieder verbunden bist.</string>
+    <string name="sync_status_last_success">Alles synchron – zuletzt ausgetauscht %1$s</string>
     <string name="sync_progress_recipes">Rezepte synchronisieren … %1$d</string>
     <string name="sync_progress_images">Bilder laden … %1$d / %2$d</string>
     <string name="sync_progress_percent">%1$d %%</string>

@@ -21,11 +21,6 @@ package com.food.opencook
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
-import androidx.work.Constraints
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.PeriodicWorkRequestBuilder
-import androidx.work.WorkManager
 import com.food.opencook.data.localization.LocalizedLists
 import com.food.opencook.data.notification.JobNotifier
 import com.food.opencook.data.peer.PeerAdvertiser
@@ -34,13 +29,12 @@ import com.food.opencook.data.settings.SettingsRepository
 import com.food.opencook.repository.IngredientLinkRepository
 import com.food.opencook.sync.SyncManager
 import com.food.opencook.util.LearnedIngredientLinks
-import com.food.opencook.work.SyncWorker
+import com.food.opencook.work.WorkScheduler
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.launchIn
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 /** Application entry point; root of the Hilt dependency graph. */
@@ -55,6 +49,7 @@ class OpenCookApplication : Application(), Configuration.Provider {
     @Inject lateinit var localizedLists: LocalizedLists
     @Inject lateinit var peerAdvertiser: PeerAdvertiser
     @Inject lateinit var ingredientLinkRepository: IngredientLinkRepository
+    @Inject lateinit var workScheduler: WorkScheduler
 
     private val appScope = CoroutineScope(SupervisorJob())
 
@@ -91,20 +86,7 @@ class OpenCookApplication : Application(), Configuration.Provider {
         syncManager.start()
         // Answer peer-to-peer sync (embedded server + mDNS) while foregrounded on Wi-Fi.
         peerAdvertiser.install()
-        // Background sync even when the app is closed. The server (a desktop PC) is
-        // often off, so we spread cheap attempts across the day and let WorkManager
-        // run them only while connected — see SyncWorker.
-        scheduleBackgroundSync()
-    }
-
-    private fun scheduleBackgroundSync() {
-        val request = PeriodicWorkRequestBuilder<SyncWorker>(3, TimeUnit.HOURS)
-            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
-            .build()
-        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-            "opencook-background-sync",
-            ExistingPeriodicWorkPolicy.KEEP,
-            request,
-        )
+        // Background sync even when the app is closed — see WorkScheduler/SyncWorker.
+        workScheduler.scheduleBackgroundSync()
     }
 }

@@ -24,12 +24,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.SyncDisabled
 import androidx.compose.material.icons.outlined.SyncProblem
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.outlined.WifiOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,9 +44,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.food.opencook.R
@@ -114,10 +121,15 @@ private fun SyncProgressBar(state: SyncStatus.Syncing) {
 }
 
 /**
- * Sync-arrows icon reflecting sync state; tap to sync now (disabled while syncing).
- * Synced is the brand tint; "no server" / "couldn't reach" are calm grey — not an
- * error, so never red. In an error state tapping also pops a snackbar spelling out
- * the problem (so the cryptic icon isn't the only signal), then still retries.
+ * The household's sync state in one glyph; tap to sync now (disabled while syncing).
+ *
+ * At rest — everything exchanged — it is a green check, so "we're up to date" is a
+ * statement the user can read at a glance rather than infer. It only turns into the
+ * spinning sync arrows while data is genuinely moving: the app checks every 30 s, and
+ * an icon that twitched each time would keep people waiting for an arrival that isn't
+ * coming (see SyncManager.runSync). "No server" / "couldn't reach" are calm grey —
+ * not an error, so never red. In an error state tapping also pops a snackbar spelling
+ * out the problem (so the cryptic icon isn't the only signal), then still retries.
  */
 @Composable
 fun SyncStatusIcon(status: SyncStatus, onSync: () -> Unit) {
@@ -144,13 +156,23 @@ fun SyncStatusIcon(status: SyncStatus, onSync: () -> Unit) {
         }
         is SyncStatus.Idle -> IconButton(onClick = onClick) {
             Icon(
-                Icons.Outlined.Sync,
+                Icons.Outlined.CheckCircle,
                 contentDescription = lastSuccessDescription(status.lastSuccessEpochMs),
-                tint = MaterialTheme.colorScheme.primary,
+                // The brand's herb green, so "all good" reads as all good in both themes.
+                tint = MaterialTheme.colorScheme.secondary,
             )
         }
         is SyncStatus.Syncing -> IconButton(onClick = onClick, enabled = false) {
-            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+            SpinningSyncIcon()
+        }
+        SyncStatus.OffHomeNetwork -> IconButton(onClick = onClick) {
+            // Wrong network is a different story from "server is down": not a sync
+            // symbol at all, but the missing Wi-Fi that is the actual reason.
+            Icon(
+                Icons.Outlined.WifiOff,
+                contentDescription = stringResource(R.string.sync_status_off_home_network),
+                tint = muted,
+            )
         }
         is SyncStatus.Failed -> IconButton(onClick = onClick) {
             // "Not reachable" is the normal offline state, not an error → muted, not red.
@@ -171,9 +193,27 @@ fun SyncStatusIcon(status: SyncStatus, onSync: () -> Unit) {
     }
 }
 
+/** The sync arrows, turning for as long as data is actually moving. */
+@Composable
+private fun SpinningSyncIcon() {
+    val rotation by rememberInfiniteTransition(label = "sync").animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(1_200, easing = LinearEasing)),
+        label = "rotation",
+    )
+    Icon(
+        Icons.Outlined.Sync,
+        contentDescription = stringResource(R.string.sync_status_syncing),
+        tint = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.graphicsLayer { rotationZ = rotation },
+    )
+}
+
 /** The message a tap should surface, or null when the state isn't an error worth explaining. */
 @Composable
 private fun syncErrorMessage(status: SyncStatus): String? = when (status) {
+    SyncStatus.OffHomeNetwork -> stringResource(R.string.sync_error_off_home_network)
     is SyncStatus.Failed -> stringResource(R.string.sync_error_offline)
     SyncStatus.HouseholdMissing -> stringResource(R.string.sync_status_household_missing)
     else -> null

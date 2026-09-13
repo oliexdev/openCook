@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.WifiOff
 import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.FileOpen
 import androidx.compose.material.icons.outlined.Info
@@ -149,6 +150,17 @@ fun ScanScreen(
                 actionLabel = stringResource(R.string.scan_go_to_settings),
                 onAction = onNavigateToSettings,
             )
+        } else if (state.offHomeNetwork) {
+            // Not the server's fault: this phone simply isn't on the network the server
+            // lives on, so say that instead of "server not reachable".
+            HintCard(
+                icon = Icons.Outlined.WifiOff,
+                title = stringResource(R.string.scan_off_home_network_title),
+                body = stringResource(R.string.scan_off_home_network),
+                note = state.queuedScans.takeIf { it > 0 }?.let {
+                    pluralStringResource(R.plurals.scan_server_offline_queued, it, it)
+                },
+            )
         } else if (state.serverOffline) {
             HintCard(
                 icon = Icons.Outlined.CloudOff,
@@ -250,8 +262,10 @@ private fun HintCard(
     icon: ImageVector,
     title: String,
     body: String,
-    actionLabel: String,
-    onAction: () -> Unit,
+    // No action at all when there is nothing useful to tap (off the home network,
+    // retrying can't help — only reconnecting can).
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
     note: String? = null,
 ) {
     Surface(
@@ -276,10 +290,12 @@ private fun HintCard(
                         modifier = Modifier.padding(top = 4.dp),
                     )
                 }
-                TextButton(
-                    onClick = onAction,
-                    modifier = Modifier.padding(top = 4.dp),
-                ) { Text(actionLabel) }
+                if (actionLabel != null && onAction != null) {
+                    TextButton(
+                        onClick = onAction,
+                        modifier = Modifier.padding(top = 4.dp),
+                    ) { Text(actionLabel) }
+                }
             }
         }
     }

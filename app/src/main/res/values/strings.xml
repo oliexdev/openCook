@@ -47,7 +47,9 @@
     <string name="scan_no_server">The AI runs on your openCook server. Without one you can still add recipes by hand or import them from a file.</string>
     <string name="scan_go_to_settings">Go to settings</string>
     <string name="scan_server_offline_title">Server not reachable right now</string>
+    <string name="scan_off_home_network_title">Not on your home network</string>
     <string name="scan_server_offline">You can still take photos — they stay on the phone and are recognized automatically as soon as the server answers again.</string>
+    <string name="scan_off_home_network">Recognition runs on your home server, which is only reachable on your Wi-Fi (or via VPN). Take photos anyway — they stay on the phone and are recognized once you\'re back.</string>
     <plurals name="scan_server_offline_queued">
         <item quantity="one">%d scan is waiting.</item>
         <item quantity="other">%d scans are waiting.</item>
@@ -426,14 +428,16 @@
     <string name="deleted">Deleted</string>
 
     <!-- Sync status (shared top bar) -->
-    <string name="sync_status_ok">Synced</string>
-    <string name="sync_status_ok_peer">Synced (via %1$s)</string>
+    <string name="sync_status_ok">Everything in sync</string>
+    <string name="sync_status_ok_peer">Everything in sync (via %1$s)</string>
     <string name="sync_status_not_configured">No server – tap for settings</string>
     <string name="sync_status_syncing">Syncing…</string>
     <string name="sync_status_failed">Not connected – tap to sync</string>
+    <string name="sync_status_off_home_network">Not on your home network – sync paused</string>
     <string name="sync_status_household_missing">Household not found on the server – it may have been re-set up. Re-join in settings.</string>
     <string name="sync_error_offline">Server unreachable – will retry automatically once it\'s available.</string>
-    <string name="sync_status_last_success">Last synced: %1$s</string>
+    <string name="sync_error_off_home_network">Sync only works on your home Wi-Fi (or via VPN) – it continues by itself as soon as you\'re back.</string>
+    <string name="sync_status_last_success">Everything in sync – last exchange %1$s</string>
     <string name="sync_progress_recipes">Syncing recipes … %1$d</string>
     <string name="sync_progress_images">Loading images … %1$d / %2$d</string>
     <string name="sync_progress_percent">%1$d %%</string>

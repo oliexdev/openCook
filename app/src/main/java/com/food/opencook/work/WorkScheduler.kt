@@ -19,12 +19,14 @@
 package com.food.opencook.work
 
 import android.content.Context
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
-import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.NetworkType
 import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
@@ -35,21 +37,21 @@ import java.time.Duration
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Enqueues the upload → poll chain for a scan. Both steps require connectivity and
- * back off exponentially; expedited so they start promptly but fall back to normal
- * work if the foreground-service quota is exhausted. Unique per local job id so a
- * re-trigger collapses rather than duplicating.
- */
+/** The single place that hands deferred work to WorkManager. */
 @Singleton
 class WorkScheduler @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
+    /**
+     * Enqueues the upload → poll chain for a scan. Both steps need a home network (the
+     * AI server is a LAN address) and back off exponentially; expedited so they start
+     * promptly but fall back to normal work if the foreground-service quota is
+     * exhausted. Unique per local job id so a re-trigger collapses rather than
+     * duplicating.
+     */
     fun scheduleScan(localJobId: String) {
         val input = workDataOf(UploadJobWorker.KEY_LOCAL_JOB_ID to localJobId)
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
+        val constraints = homeNetworkConstraints()
 
         val upload = OneTimeWorkRequestBuilder<UploadJobWorker>()
             .setInputData(input)
@@ -98,9 +100,54 @@ class WorkScheduler @Inject constructor(
         )
     }
 
+    /**
+     * Sync in the background even while the app is closed. The server is typically a
+     * desktop that is off most of the day, so rather than one hopeful moment we spread
+     * cheap attempts across it — and only on a network that could reach it at all.
+     */
+    fun scheduleBackgroundSync() {
+        val request = PeriodicWorkRequestBuilder<SyncWorker>(Duration.ofHours(3))
+            .setConstraints(homeNetworkConstraints())
+            .build()
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            BACKGROUND_SYNC_NAME,
+            // UPDATE, not KEEP: an installed app must pick up changed constraints
+            // (Wi-Fi/VPN instead of "any network") without a reinstall.
+            ExistingPeriodicWorkPolicy.UPDATE,
+            request,
+        )
+    }
+
     fun cancelLocalBackup() {
         WorkManager.getInstance(context).cancelUniqueWork(LocalBackupWorker.UNIQUE_NAME)
     }
 
     private fun uniqueName(localJobId: String) = "scan-$localJobId"
+
+    private companion object {
+        const val BACKGROUND_SYNC_NAME = "opencook-background-sync"
+    }
+}
+
+/**
+ * Constraint for everything that talks to the household: the server and peer phones
+ * live on the LAN, so "any connection" is the wrong bar — on mobile data such a job
+ * can only run into a timeout and then back off. Wi-Fi and Ethernet qualify, and so
+ * does a VPN tunnel (the supported way in from outside). Mirrors the gate the
+ * foreground sync applies through LanMonitor.
+ *
+ * [NetworkType.CONNECTED] is only the legacy fallback WorkManager wants alongside the
+ * request; the request itself is what the scheduler enforces here (minSdk 30).
+ */
+private fun homeNetworkConstraints(): Constraints {
+    val request = NetworkRequest.Builder()
+        // The builder requires NOT_VPN by default, which would exclude the tunnel case.
+        .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+        .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+        .addTransportType(NetworkCapabilities.TRANSPORT_ETHERNET)
+        .addTransportType(NetworkCapabilities.TRANSPORT_VPN)
+        .build()
+    return Constraints.Builder()
+        .setRequiredNetworkRequest(request, NetworkType.CONNECTED)
+        .build()
 }

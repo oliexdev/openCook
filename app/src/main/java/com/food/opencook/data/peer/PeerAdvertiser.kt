@@ -19,10 +19,6 @@
 package com.food.opencook.data.peer
 
 import android.content.Context
-import android.net.ConnectivityManager
-import android.net.Network
-import android.net.NetworkCapabilities
-import android.net.NetworkRequest
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.os.Build
@@ -30,15 +26,14 @@ import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
+import com.food.opencook.data.discovery.LanMonitor
 import com.food.opencook.data.discovery.ServerDiscovery
 import com.food.opencook.data.settings.SettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -70,6 +65,7 @@ class PeerAdvertiser @Inject constructor(
     private val peerSyncServer: PeerSyncServer,
     private val settings: SettingsRepository,
     private val serverDiscovery: ServerDiscovery,
+    private val lanMonitor: LanMonitor,
 ) : DefaultLifecycleObserver {
 
     // Plain IO pool. (A limitedParallelism(1) lane looked attractive for strict
@@ -88,7 +84,7 @@ class PeerAdvertiser @Inject constructor(
     fun install() {
         ProcessLifecycleOwner.get().lifecycle.addObserver(this)
         scope.launch {
-            combine(foreground, standby, wifiAvailable(), settings.householdCode, settings.p2pEnabled) { fg, sb, wifi, code, p2p ->
+            combine(foreground, standby, lanMonitor.onLocalWifi(), settings.householdCode, settings.p2pEnabled) { fg, sb, wifi, code, p2p ->
                 p2p && (fg || sb) && wifi && !code.isNullOrBlank()
             }
                 .distinctUntilChanged()
@@ -184,31 +180,6 @@ class PeerAdvertiser @Inject constructor(
         registrationListener = null
         serverDiscovery.ownServiceName = null
         peerSyncServer.stop()
-    }
-
-    /** Emits whether an active Wi-Fi network is up, live-updated via a network callback. */
-    private fun wifiAvailable() = callbackFlow {
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-
-        fun currentlyOnWifi(): Boolean =
-            cm.getNetworkCapabilities(cm.activeNetwork)
-                ?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
-
-        trySend(currentlyOnWifi())
-        val callback = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) {
-                trySend(true)
-            }
-
-            override fun onLost(network: Network) {
-                trySend(currentlyOnWifi())
-            }
-        }
-        val request = NetworkRequest.Builder()
-            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-            .build()
-        runCatching { cm.registerNetworkCallback(request, callback) }
-        awaitClose { runCatching { cm.unregisterNetworkCallback(callback) } }
     }
 
     private companion object {

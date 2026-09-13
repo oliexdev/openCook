@@ -125,8 +125,15 @@ class SyncEngine @Inject constructor(
      * @param onProgress fires during both the message-apply and image-download phases.
      *   Throttled (per-percent for apply, per-image for downloads) so the UI isn't
      *   flooded. Stays silent for small syncs where neither phase warrants a banner.
+     * @param onTransfer fires as soon as a round turns out to have *actual* work —
+     *   something to push, something pulled, or image bytes moving. Most rounds are
+     *   empty checks (every 30 s in the foreground), and the UI uses this to animate
+     *   only for the rounds that really exchange something. May fire several times.
      */
-    suspend fun sync(onProgress: (Progress) -> Unit = {}): Result {
+    suspend fun sync(
+        onProgress: (Progress) -> Unit = {},
+        onTransfer: () -> Unit = {},
+    ): Result {
         val code = settings.householdCodeOnce()?.takeIf { it.isNotBlank() } ?: return Result.NoHousehold
         val serverConfigured = !settings.serverUrlOnce().isNullOrBlank()
 
@@ -136,10 +143,10 @@ class SyncEngine @Inject constructor(
             // household (reset/reinstalled) — surface that rather than retrying. If the
             // call merely failed (unreachable), the server may have moved (new DHCP IP) —
             // re-discover it on the LAN once and retry.
-            var attempt = runCatching { exchange(syncApi, code, isPeer = false, SERVER_KEY, onProgress) }
+            var attempt = runCatching { exchange(syncApi, code, isPeer = false, SERVER_KEY, onProgress, onTransfer) }
             if (attempt.exceptionOrNull().isUnknownHousehold()) return Result.UnknownHousehold
             if (attempt.isFailure && rediscoverServer()) {
-                attempt = runCatching { exchange(syncApi, code, isPeer = false, SERVER_KEY, onProgress) }
+                attempt = runCatching { exchange(syncApi, code, isPeer = false, SERVER_KEY, onProgress, onTransfer) }
                 if (attempt.exceptionOrNull().isUnknownHousehold()) return Result.UnknownHousehold
             }
             attempt.getOrNull()?.let { pulled ->
@@ -159,7 +166,7 @@ class SyncEngine @Inject constructor(
             peerUrlInterceptor.setBaseUrl(peer.baseUrl())
             // Keyed by service name, not address: the ephemeral port changes with every
             // foreground session, the advertised name stays stable.
-            val attempt = runCatching { exchange(peerSyncApi, code, isPeer = true, peer.name, onProgress) }
+            val attempt = runCatching { exchange(peerSyncApi, code, isPeer = true, peer.name, onProgress, onTransfer) }
             attempt.exceptionOrNull()?.let {
                 Log.w(TAG, "peer sync with '${peer.name}' (${peer.baseUrl()}) failed", it)
             }
@@ -183,6 +190,7 @@ class SyncEngine @Inject constructor(
         isPeer: Boolean,
         targetKey: String,
         onProgress: (Progress) -> Unit,
+        onTransfer: () -> Unit,
     ): Int {
         // Push any device-local images (bundle imports, camera shots) first, so the
         // imageRef they emit travels in this same round. Best-effort: a failure here
@@ -195,7 +203,7 @@ class SyncEngine @Inject constructor(
         // way; with a server in play the row merely stays queued so the server still gets
         // its own copy later (see [uploadLocalImages]).
         val hasServer = !settings.serverUrlOnce().isNullOrBlank()
-        runCatching { uploadLocalImages(api, code, keepQueued = isPeer && hasServer) }
+        runCatching { uploadLocalImages(api, code, keepQueued = isPeer && hasServer, onTransfer) }
 
         val local = messageDao.all()
         val localTrie = MerkleTrie.build(local.map { it.timestamp })
@@ -208,11 +216,16 @@ class SyncEngine @Inject constructor(
             pushCursor == null -> emptyList()
             else -> local.filter { Hlc.parse(it.timestamp).millis >= pushCursor }
         }
+        // Only when we know the target's trie: the very first contact of a process pushes
+        // the whole log by definition, and announcing that as "transferring" would animate
+        // the icon on every app start for a round that usually changes nothing.
+        if (cached != null && toPush.isNotEmpty()) onTransfer()
         val request = SyncRequestDto(
             merkle = localTrie.toDto(),
             messages = toPush.map { SyncMessageDto(it.timestamp, it.dataset, it.rowId, it.column, it.value) },
         )
         val response = api.sync(code, request)
+        if (response.messages.isNotEmpty()) onTransfer()
         response.merkle?.let { remoteMerkles[targetKey] = it.toMerkle() }
 
         // Adopt household-wide state (name + settings like person count) so all
@@ -225,7 +238,7 @@ class SyncEngine @Inject constructor(
         // Pull synced images down to local storage so they stay visible after the
         // target goes offline. Best-effort: any image we can't fetch right now
         // (a peer may not hold every file) retries on the next sync round.
-        runCatching { downloadRemoteImages(api, onProgress) }
+        runCatching { downloadRemoteImages(api, onProgress, onTransfer) }
         return response.messages.size
     }
 
@@ -286,9 +299,15 @@ class SyncEngine @Inject constructor(
      * server and a peer phone), so the later server upload lands under the very name the
      * imageRef message already carries, and re-uploading identical bytes is idempotent.
      */
-    private suspend fun uploadLocalImages(api: SyncApi, code: String, keepQueued: Boolean = false) {
+    private suspend fun uploadLocalImages(
+        api: SyncApi,
+        code: String,
+        keepQueued: Boolean = false,
+        onTransfer: () -> Unit = {},
+    ) {
         val locals = recipeDao.localOnlyImages()
         if (locals.isEmpty()) return
+        onTransfer()
         val now = System.currentTimeMillis()
         for (img in locals) {
             val file = img.localPath?.let(::File)?.takeIf { it.exists() } ?: continue
@@ -329,9 +348,14 @@ class SyncEngine @Inject constructor(
      * typical home LAN. Emits a [Progress] update after each finished file so the UI
      * can show "Bilder laden … 17/50" instead of pretending the sync is done.
      */
-    private suspend fun downloadRemoteImages(api: SyncApi, onProgress: (Progress) -> Unit) = coroutineScope {
+    private suspend fun downloadRemoteImages(
+        api: SyncApi,
+        onProgress: (Progress) -> Unit,
+        onTransfer: () -> Unit = {},
+    ) = coroutineScope {
         val remotes = recipeDao.remoteOnlyImages()
         if (remotes.isEmpty()) return@coroutineScope
+        onTransfer()
         val total = remotes.size
         val done = AtomicInteger(0)
         // Stay silent for tiny rounds — flashing a "1/2 Bilder" banner for every

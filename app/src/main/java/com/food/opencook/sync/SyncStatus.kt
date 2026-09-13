@@ -59,6 +59,14 @@ sealed interface SyncStatus {
     data class Failed(val reason: String) : SyncStatus
 
     /**
+     * The phone isn't on a network that could reach the household at all — typically
+     * mobile data with Wi-Fi off. Server and peers live on the LAN, so sync pauses
+     * instead of burning timeouts every 30 s, and the UI says *why* rather than
+     * blaming the server (see [Failed]). Resumes by itself on the next Wi-Fi/VPN.
+     */
+    data object OffHomeNetwork : SyncStatus
+
+    /**
      * The server rejected our household credential (HTTP 404): the household no
      * longer exists there — typically the server DB was reset/reinstalled. Unlike
      * [Failed] this won't fix itself by retrying; the user must re-join or create a

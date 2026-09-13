@@ -21,6 +21,7 @@ package com.food.opencook.ui.scan
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.food.opencook.data.discovery.LanMonitor
 import com.food.opencook.data.image.ImageStore
 import com.food.opencook.data.settings.SettingsRepository
 import com.food.opencook.repository.RecipeRepository
@@ -48,6 +49,8 @@ data class ScanUiState(
     val serverReachable: Boolean? = null,
     /** Scans already taken that are still waiting to be uploaded. */
     val queuedScans: Int = 0,
+    /** Phone is on mobile data (or nothing) — the LAN server can't be reached at all. */
+    val offHomeNetwork: Boolean = false,
 ) {
     /** Server there but not answering — a new scan will queue instead of running now. */
     val serverOffline: Boolean get() = serverConfigured && serverReachable == false
@@ -60,6 +63,7 @@ class ScanViewModel @Inject constructor(
     private val imageStore: ImageStore,
     private val syncManager: SyncManager,
     settings: SettingsRepository,
+    lanMonitor: LanMonitor,
 ) : ViewModel() {
 
     val uiState: StateFlow<ScanUiState> =
@@ -68,7 +72,10 @@ class ScanViewModel @Inject constructor(
             syncManager.serverReachable,
             // A job without a server id has not been uploaded yet — that's the queue.
             repository.observeActiveJobs().map { jobs -> jobs.count { it.serverJobId == null } },
-        ) { configured, reachable, queued -> ScanUiState(configured, reachable, queued) }
+            lanMonitor.onHomeNetwork(),
+        ) { configured, reachable, queued, atHome ->
+            ScanUiState(configured, reachable, queued, offHomeNetwork = !atHome)
+        }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ScanUiState())
 
     /** Re-probe the server after the user tapped "try again" on the offline hint. */

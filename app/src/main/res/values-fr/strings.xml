@@ -47,7 +47,9 @@
     <string name="scan_no_server">L\'IA tourne sur votre serveur openCook. Sans serveur, vous pouvez toujours ajouter des recettes à la main ou les importer depuis un fichier.</string>
     <string name="scan_go_to_settings">Aller aux paramètres</string>
     <string name="scan_server_offline_title">Serveur actuellement injoignable</string>
+    <string name="scan_off_home_network_title">Hors du réseau domestique</string>
     <string name="scan_server_offline">Vous pouvez continuer à prendre des photos — elles restent sur le téléphone et sont reconnues automatiquement dès que le serveur répond à nouveau.</string>
+    <string name="scan_off_home_network">La reconnaissance tourne sur votre serveur domestique, joignable uniquement sur votre Wi-Fi (ou via VPN). Prenez quand même des photos — elles restent sur le téléphone et seront reconnues dès votre retour.</string>
     <plurals name="scan_server_offline_queued">
         <item quantity="one">%d analyse est en attente.</item>
         <item quantity="other">%d analyses sont en attente.</item>
@@ -435,14 +437,16 @@
     <string name="deleted">Supprimé</string>
 
     <!-- Sync status (shared top bar) -->
-    <string name="sync_status_ok">Synchronisé</string>
-    <string name="sync_status_ok_peer">Synchronisé (via %1$s)</string>
+    <string name="sync_status_ok">Tout est synchronisé</string>
+    <string name="sync_status_ok_peer">Tout est synchronisé (via %1$s)</string>
     <string name="sync_status_not_configured">Aucun serveur – touchez pour les paramètres</string>
     <string name="sync_status_syncing">Synchronisation…</string>
     <string name="sync_status_failed">Non connecté – touchez pour synchroniser</string>
+    <string name="sync_status_off_home_network">Hors du réseau domestique – synchro en pause</string>
     <string name="sync_status_household_missing">Foyer introuvable sur le serveur – il a peut-être été reconfiguré. Rejoignez-le à nouveau dans les paramètres.</string>
     <string name="sync_error_offline">Serveur injoignable – nouvelle tentative automatique dès qu\'il sera disponible.</string>
-    <string name="sync_status_last_success">Dernière synchronisation : %1$s</string>
+    <string name="sync_error_off_home_network">La synchro ne fonctionne que sur le Wi-Fi domestique (ou via VPN) – elle reprend d\'elle-même dès votre retour.</string>
+    <string name="sync_status_last_success">Tout est synchronisé – dernier échange %1$s</string>
     <string name="sync_progress_recipes">Synchronisation des recettes … %1$d</string>
     <string name="sync_progress_images">Chargement des images … %1$d / %2$d</string>
     <string name="sync_progress_percent">%1$d %%</string>
