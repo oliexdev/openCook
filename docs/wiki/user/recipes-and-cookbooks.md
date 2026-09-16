@@ -24,6 +24,21 @@ No photo needed:
    steps, servings, times, category and tags.
 3. Save. It lands in your library like any other recipe.
 
+## Discover: browse recipe sites in the app
+
+**Discover recipes** is a board of cooking sites you can open without leaving openCook. Tap a tile
+and the site loads in a built-in browser view; when a recipe is on screen, **Import this recipe**
+saves it to your library through the same reader the share sheet uses.
+
+- The board **follows your content language**, and you can shape it: remove a tile you never use, or
+  **Add** any address of your own (`chefkoch.de/rezepte`).
+- These are other people's sites, with their own ads and their own cookies — openCook is not
+  affiliated with them and saves only the recipe you choose to import, for your personal use.
+- Cookies are kept per site, so a consent banner you accepted doesn't come back on every visit. You
+  can delete a single site's cookies again from its tile.
+- It needs Android's System WebView. Without it the board says so, and photos, files, shared links
+  and manual entry all still work.
+
 ## Import from the web (browser extension)
 
 A small browser add-on grabs recipes from cooking websites (Chefkoch, Lecker, Eat-this, and any

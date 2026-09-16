@@ -7,10 +7,11 @@ Features:
 * Works fully offline — your recipes never leave your device
 * No account, no ads, no tracking
 * Turn cookbook photos into structured recipes (optional self-hosted AI)
-* Weekly meal planner
+* Rolling meal planner that tells you why a dish was suggested
 * Shared shopping list
 * Barcode scanning via Open Food Facts
-* Import recipes from the web
-* Family sync through your own home server (invite code, LAN/VPN only)
+* Import recipes from the web, or browse recipe sites right inside the app
+* Family sync through your own home server, or phone-to-phone over Wi-Fi
+* Available in English, German and French
 
 openCook is free software licensed under the GPLv3.

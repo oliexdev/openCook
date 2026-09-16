@@ -23,6 +23,7 @@ A recipe and meal-planning app that:
 * turns a **photo of a recipe into a ready-to-edit recipe** for you,
 * helps you **plan the week** and shop **once** for it,
 * lets the **whole family share** the same recipes, plan and list,
+* speaks **English, German and French**,
 * is **open source** and free.
 
 # Features :sparkles:
@@ -31,17 +32,20 @@ A recipe and meal-planning app that:
   ingredients, amounts, steps, cooking time and servings. Several recipes on one page are split
   apart automatically, each with its own picture. (Nutrition is only kept when it's actually printed
   — never made up.)
-* **Plan your week** — get sensible meal suggestions that avoid repeats, reuse ingredients
-  across days, and turn big meals into leftover days — and you can always see *why* a dish was picked.
+* **Plan your week** — one rolling list of days that keeps filling itself: sensible suggestions
+  that avoid repeats, reuse ingredients across days and turn big meals into leftover days. Swap any
+  dish for another, and you can always see *why* it was picked.
 * **One shared shopping list** — a weekly list the whole household can tick off
   together. It knows what's already in your pantry, and everyday staples (salt, pepper, oil…) stay
   off the list.
 * **Find anything** — recipes group into cookbooks and are fully searchable.
+* **Look back** — a retrospective of everything you've actually cooked, month by month.
 * **Scan to add** — add pantry or shopping items by scanning a barcode (with Open
   Food Facts lookup).
-* **Import from the web** — browsing a recipe on your phone (Chefkoch, Lecker, …)? Just **Share →
-  openCook** and it's saved, no server needed. On the desktop a small browser extension does the
-  same. See [`extension/`](extension/README.md).
+* **Import from the web** — browse recipe sites (Chefkoch, Lecker, …) on the **Discover** board
+  right inside the app and save what's on screen with one tap. From any other browser, **Share →
+  openCook** does the same, no server needed. On the desktop a small browser extension takes over.
+  See [`extension/`](extension/README.md).
 * **Stay in sync** — every family member's phone stays up to date, with or without a
   server: with **phone-to-phone sync** (one switch) devices on the same Wi-Fi sync
   **directly with each other**, even while the app is closed; a self-hosted server (if

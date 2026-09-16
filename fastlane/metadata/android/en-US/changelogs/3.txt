@@ -1,0 +1,6 @@
+* Discover: browse recipe sites inside the app and import with one tap.
+* openCook now speaks French, next to English and German.
+* The meal planner is one rolling 15-day list — swap a dish and see why it was suggested.
+* New retrospective: everything you cooked, month by month.
+* Sync pauses off your home network, and the icon only turns when data really moves.
+* Faster tab switching, plus fixes for web imports, deleted recipes and standby sync.
