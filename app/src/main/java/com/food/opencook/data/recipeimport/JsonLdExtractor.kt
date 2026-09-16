@@ -27,8 +27,8 @@ import kotlinx.serialization.json.Json
  *
  * Each block is handed to the existing [RecipeBundle]/[RecipeImportParser] path, which walks
  * `@graph`/arrays, tolerates non-Recipe nodes, and resolves the image ref. Malformed blocks
- * are skipped; a block that fails to parse is retried once with basic HTML entities decoded
- * (some sites HTML-escape the JSON inside the script tag).
+ * are skipped; a block that fails to parse is retried once with its HTML entities decoded
+ * ([HtmlText.unescape]) — some sites HTML-escape the JSON inside the script tag.
  */
 object JsonLdExtractor {
 
@@ -39,7 +39,7 @@ object JsonLdExtractor {
 
     fun extractFirstRecipe(html: String, json: Json): ImportedRecipe? {
         for (raw in JSON_LD_BLOCK.findAll(html).map { it.groupValues[1].trim() }) {
-            for (candidate in listOf(raw, unescapeBasicEntities(raw))) {
+            for (candidate in listOf(raw, HtmlText.unescape(raw))) {
                 val imp = runCatching { RecipeBundle.read(candidate.encodeToByteArray(), json) }
                     .getOrDefault(emptyList())
                     .firstOrNull()
@@ -48,8 +48,4 @@ object JsonLdExtractor {
         }
         return null
     }
-
-    private fun unescapeBasicEntities(s: String): String = s
-        .replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
-        .replace("&quot;", "\"").replace("&#34;", "\"").replace("&#39;", "'").replace("&#x27;", "'")
 }

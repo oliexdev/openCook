@@ -203,7 +203,13 @@ object RecipeImportParser {
                     } else {
                         val text = e.firstString("text", "name", "step", "description")
                         if (text != null) {
-                            steps += HowToStepDto(text = text, openCookId = e.firstString("openCookId"))
+                            // A step of ours carries its row id and stays one step. A foreign one
+                            // may have held <br>/<li> markup, now newlines: those become separate
+                            // steps, exactly like the lines of a plain-string import, so the
+                            // numbered list on the detail screen keeps one line per number.
+                            val id = e.firstString("openCookId")
+                            if (id != null) steps += HowToStepDto(text = text, openCookId = id)
+                            else text.toLines().forEach { steps += HowToStepDto(text = it) }
                         } else {
                             e.first("itemListElement")?.let(::add)
                         }
@@ -319,9 +325,14 @@ object RecipeImportParser {
 
     private fun JsonObject.firstString(vararg keys: String): String? = first(*keys)?.str()
 
+    /**
+     * Every string this parser reads passes through here, which makes it the one place where
+     * imported markup is neutralised — see [HtmlText]. A value that was nothing but markup
+     * (`<p></p>`) reads as absent afterwards, like any other empty field.
+     */
     private fun JsonElement.str(): String? = when (this) {
         is JsonNull -> null
-        is JsonPrimitive -> content.takeIf { it.isNotBlank() }
+        is JsonPrimitive -> HtmlText.toPlainText(content).takeIf { it.isNotBlank() }
         else -> null
     }
 

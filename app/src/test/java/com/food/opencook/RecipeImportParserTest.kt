@@ -258,4 +258,62 @@ class RecipeImportParserTest {
                      "image":{"@type":"ImageObject","url":"https://h/i.jpg"}}""")[0].image,
         )
     }
+
+    @Test
+    fun htmlInStepsBecomesCleanSeparateSteps() {
+        // The HelloFresh shape: a HowToStep whose text is a CMS fragment.
+        val r = parse(
+            """{"name":"Pasta &amp; Pesto","description":"Schnell &amp; einfach","recipeIngredient":["a"],
+               "recipeInstructions":[{"@type":"HowToStep","text":"Zwiebel sch\u00e4len.<br>Mit <b>Salz &amp; Pfeffer</b> w\u00fcrzen."},
+                                     {"@type":"HowToStep","text":"<p>Ofen vorheizen.</p><p>Teig kneten.</p>"}]}""",
+        )
+        assertEquals(
+            listOf("Zwiebel sch\u00e4len.", "Mit Salz & Pfeffer w\u00fcrzen.", "Ofen vorheizen.", "Teig kneten."),
+            r[0].recipeInstructions.map { it.text },
+        )
+        assertEquals("Pasta & Pesto", r[0].name)
+        assertEquals("Schnell & einfach", r[0].description)
+    }
+
+    @Test
+    fun htmlBlobInstructionsSplitOnMarkupNotSentences() {
+        // One string holding markup: the site's own line breaks win over sentence splitting.
+        val r = parse(
+            """{"name":"X","recipeIngredient":["a"],
+               "recipeInstructions":"<ul><li>Eier kochen. Dann pellen.</li><li>Reis kochen.</li></ul>"}""",
+        )
+        assertEquals(listOf("Eier kochen. Dann pellen.", "Reis kochen."), r[0].recipeInstructions.map { it.text })
+    }
+
+    @Test
+    fun markupOnlyStepsAreDropped() {
+        val r = parse(
+            """{"name":"X","recipeIngredient":["a"],
+               "recipeInstructions":[{"text":"<p></p>"},{"text":"Kochen."}]}""",
+        )
+        assertEquals(listOf("Kochen."), r[0].recipeInstructions.map { it.text })
+    }
+
+    @Test
+    fun ourOwnStepsSurviveTheRoundTripUnsplit() {
+        // A step of ours carries its row id, which maps 1:1 to a row — never split it, and
+        // never mistake the user's angle brackets for markup.
+        val r = parse(
+            """{"name":"X","recipeIngredient":["a"],"recipeInstructions":[
+                 {"@type":"HowToStep","openCookId":"s-1","text":"Backofen <180 \u00b0C> vorheizen.\nDann backen."}]}""",
+        )
+        val step = r[0].recipeInstructions.single()
+        assertEquals("s-1", step.openCookId)
+        assertEquals("Backofen <180 \u00b0C> vorheizen.\nDann backen.", step.text)
+    }
+
+    @Test
+    fun nonBreakingSpaceInIngredientStillParses() {
+        // "200&nbsp;g" would otherwise reach IngredientLineParser as one unsplittable token.
+        val r = parse("""{"name":"X","recipeIngredient":["200&nbsp;g Mehl"],"recipeInstructions":["b"]}""")
+        val ing = r[0].openCookIngredients.single()
+        assertEquals(200.0, ing.quantity!!, 1e-9)
+        assertEquals("g", ing.unit)
+        assertEquals("Mehl", ing.name)
+    }
 }
