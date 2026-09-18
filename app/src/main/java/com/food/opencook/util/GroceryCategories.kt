@@ -77,28 +77,51 @@ object GroceryCategories {
      *  defaults to German so unit tests (and a not-yet-initialized process) still work. */
     @Volatile
     private var rules: List<Pair<GroceryCategory, List<String>>> = DEFAULT_RULES_DE
+    private var fallbackRules: List<Pair<GroceryCategory, List<String>>> = emptyList()
 
     /** Replace the aisle keyword rules (called by `LocalizedLists` on language change). */
-    fun setRules(newRules: List<Pair<GroceryCategory, List<String>>>) {
+    fun setRules(
+        newRules: List<Pair<GroceryCategory, List<String>>>,
+        newFallbackRules: List<Pair<GroceryCategory, List<String>>> = emptyList(),
+    ) {
         if (newRules.isNotEmpty()) rules = newRules
+        fallbackRules = newFallbackRules
     }
 
     /** Active rules — exposed so tests can snapshot and restore around [setRules]. */
     val activeRules: List<Pair<GroceryCategory, List<String>>> get() = rules
 
+
     fun categorize(name: String): GroceryCategory {
         val n = " ${name.lowercase().trim()} "
-        for ((category, keywords) in rules) {
-            if (keywords.any { n.contains(it) }) return category
+
+        fun matches(
+            rules: List<Pair<GroceryCategory, List<String>>>,
+        ): GroceryCategory? {
+            var bestCategory: GroceryCategory? = null
+            var bestIndex = Int.MAX_VALUE
+
+            for ((category, keywords) in rules) {
+                for (keyword in keywords) {
+                    val index = n.indexOf("$keyword ")
+                    if (index >= 0 && index < bestIndex) {
+                        bestIndex = index
+                        bestCategory = category
+                    }
+                }
+            }
+
+            return bestCategory
         }
-        return GroceryCategory.OTHER
+
+        return matches(rules)
+            ?: matches(fallbackRules)
+            ?: GroceryCategory.OTHER
     }
 
-    /**
-     * Like [categorize], but a household-taught override (normalized name → aisle,
-     * from [com.food.opencook.repository.GroceryOverrideRepository]) beats the
-     * keyword heuristic — the user knows their supermarket better than our rules.
-     */
-    fun categorize(name: String, overrides: Map<String, GroceryCategory>): GroceryCategory =
+    fun categorize(
+        name: String,
+        overrides: Map<String, GroceryCategory>,
+    ): GroceryCategory =
         overrides[name.trim().lowercase()] ?: categorize(name)
 }

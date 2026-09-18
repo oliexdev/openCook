@@ -97,11 +97,19 @@ class LocalizedLists @Inject constructor(
     private fun apply(res: Resources) {
         // Classification data (aisle keywords, staples, units) describes the ingredient *word*,
         // not the UI language: a household can run an English device but hold German recipes.
-        // Loading only the active language's list would leave German words unmatched against the
-        // English vocabulary (staples slip into the planner, ingredients fall into the "Other"
-        // aisle, German units fail to parse). Union every bundled content language so both "salz"
-        // and "salt", "Hähnchen" and "chicken", "EL" and "tbsp" are recognised regardless of locale.
+        // Prefer the active content language for aisle classification, then fall back to the
+        // combined vocabulary from every bundled content language.
         GroceryCategories.setRules(
+            listOf(
+                GroceryCategory.FROZEN to res.getStringArray(R.array.grocery_kw_frozen).map { it.lowercase() },
+                GroceryCategory.MEAT_FISH to res.getStringArray(R.array.grocery_kw_meat_fish).map { it.lowercase() },
+                GroceryCategory.PRODUCE to res.getStringArray(R.array.grocery_kw_produce).map { it.lowercase() },
+                GroceryCategory.BAKERY to res.getStringArray(R.array.grocery_kw_bakery).map { it.lowercase() },
+                GroceryCategory.DRINKS to res.getStringArray(R.array.grocery_kw_drinks).map { it.lowercase() },
+                GroceryCategory.SPICES to res.getStringArray(R.array.grocery_kw_spices).map { it.lowercase() },
+                GroceryCategory.PANTRY to res.getStringArray(R.array.grocery_kw_pantry).map { it.lowercase() },
+                GroceryCategory.DAIRY to res.getStringArray(R.array.grocery_kw_dairy).map { it.lowercase() },
+            ),
             listOf(
                 GroceryCategory.FROZEN to unionLower(R.array.grocery_kw_frozen),
                 GroceryCategory.MEAT_FISH to unionLower(R.array.grocery_kw_meat_fish),
@@ -119,7 +127,6 @@ class LocalizedLists @Inject constructor(
             // stay in the active content language — they seed a new household's pantry rows.
             pantry = res.getStringArray(R.array.pantry_defaults).toList(),
         )
-        IngredientLineParser.setUnits(unionLower(R.array.ingredient_units).toSet())
         // Main-protein keywords for meal-planner variety. Fixed canonical group keys (also shown
         // in the reason), translated keyword lists unioned across languages — priority order kept.
         ProteinGroups.setGroups(
