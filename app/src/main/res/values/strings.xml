@@ -573,7 +573,7 @@
     <string name="mealtype_short_dinner">Dinner</string>
     <!-- Household setting: which meals are planned at all -->
     <string name="household_planned_meals">Planned meals</string>
-    <string name="household_planned_meals_hint">At least one meal must stay active. You can still add any other meal for a single day from the week planner.</string>
+    <string name="household_planned_meals_hint">At least one meal must stay active.</string>
     <!-- Week planner: slots -->
     <string name="mealplan_slot_add">Plan</string>
     <string name="mealplan_slot_add_named">Plan %1$s</string>

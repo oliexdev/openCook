@@ -575,7 +575,7 @@
     <string name="mealtype_short_dinner">Abend</string>
     <!-- Household setting: which meals are planned at all -->
     <string name="household_planned_meals">Geplante Mahlzeiten</string>
-    <string name="household_planned_meals_hint">Mindestens eine Mahlzeit muss aktiv bleiben. Für einzelne Tage kannst du im Wochenplaner trotzdem jede andere Mahlzeit hinzufügen.</string>
+    <string name="household_planned_meals_hint">Mindestens eine Mahlzeit muss aktiv bleiben.</string>
     <!-- Week planner: slots -->
     <string name="mealplan_slot_add">planen</string>
     <string name="mealplan_slot_add_named">%1$s planen</string>

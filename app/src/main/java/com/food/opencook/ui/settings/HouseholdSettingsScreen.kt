@@ -196,8 +196,8 @@ fun contentLanguageLabel(code: String?): String = when (code) {
  * wanting its ingredients in the house is not a real case, and the extra control would have
  * doubled the width and the reading of every row here.
  *
- * This governs the *default* view only — the week planner can still add any other meal for
- * a single day, so switching one off here never blocks anything or deletes existing entries.
+ * The week planner shows only these meals. Switching one off never deletes existing
+ * entries — dishes already planned in it stay visible below the day.
  */
 @Composable
 private fun PlannedMealsDialog(

@@ -582,7 +582,7 @@
     <string name="mealtype_short_dinner">Dîner</string>
     <!-- Household setting: which meals are planned at all -->
     <string name="household_planned_meals">Repas planifiés</string>
-    <string name="household_planned_meals_hint">Au moins un repas doit rester actif. Vous pouvez toujours ajouter n\'importe quel autre repas pour une seule journée depuis le planning.</string>
+    <string name="household_planned_meals_hint">Au moins un repas doit rester actif.</string>
     <!-- Week planner: slots -->
     <string name="mealplan_slot_add">Planifier</string>
     <string name="mealplan_slot_add_named">Planifier %1$s</string>
