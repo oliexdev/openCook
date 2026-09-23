@@ -945,6 +945,7 @@ fun SummaryStep(
 // the single drop target (with edge auto-scroll), and the card under the finger is lit.
 
 private const val REORDER_LABEL = "opencook-reorder"
+private const val FRAME_60HZ_NANOS = 1_000_000_000f / 60f
 
 // Deliberately not text/plain: the cards are mostly text fields, and a text field accepts
 // dropped text — it would take over the drag under the finger (no highlight, no edge
@@ -985,11 +986,17 @@ private class ListReorder {
 private fun rememberListReorder(scroll: ScrollState, onMove: (from: Int, to: Int) -> Unit): ListReorder {
     val reorder = remember { ListReorder() }
     reorder.onMove = onMove
+    // scrollSpeed is px per 60 Hz frame; scaling it by the real frame time keeps the speed the
+    // same on a 90/120 Hz display, where a per-frame step would race through a list of
+    // small ingredient cards twice as fast.
     LaunchedEffect(reorder) {
+        var last = withFrameNanos { it }
         while (true) {
-            withFrameNanos { }
+            val now = withFrameNanos { it }
+            val frames = ((now - last) / FRAME_60HZ_NANOS).coerceAtMost(3f)
+            last = now
             val v = reorder.scrollSpeed.floatValue
-            if (v != 0f) scroll.scrollBy(v)
+            if (v != 0f) scroll.scrollBy(v * frames)
         }
     }
     return reorder
