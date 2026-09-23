@@ -98,8 +98,11 @@
     <string name="recipes_search_hint">Search recipes…</string>
     <string name="recipes_filter_all">All</string>
     <string name="recipes_filter">Filter</string>
-    <string name="recipes_filter_title">Filter</string>
+    <string name="recipes_filter_title">Filter &amp; sort</string>
     <string name="recipes_filter_reset">Reset</string>
+    <string name="recipes_sort">Sort</string>
+    <string name="recipes_sort_newest">Newest first</string>
+    <string name="recipes_sort_name">A–Z</string>
     <string name="recipes_filter_liked">Favorites only</string>
     <string name="recipes_filter_cookable">Cookable now</string>
     <string name="recipes_filter_remove">Remove filter %1$s</string>

@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -58,9 +59,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -92,6 +97,17 @@ fun RecipesScreen(
     val query by viewModel.query.collectAsStateWithLifecycle()
     val cookbooks by viewModel.cookbooks.collectAsStateWithLifecycle()
     val filters by viewModel.filters.collectAsStateWithLifecycle()
+    val sort by viewModel.sort.collectAsStateWithLifecycle()
+    val gridState = rememberLazyGridState()
+    // Set when the user picks another order: the next (re-sorted) list starts at the top,
+    // otherwise the grid would keep following whichever recipe happened to be first.
+    var scrollToTop by remember { mutableStateOf(false) }
+    LaunchedEffect(recipes) {
+        if (scrollToTop) {
+            gridState.scrollToItem(0)
+            scrollToTop = false
+        }
+    }
     val likedIds by viewModel.likedIds.collectAsStateWithLifecycle()
     var showFilterSheet by remember { mutableStateOf(false) }
     val appBar: AppBarViewModel = hiltViewModel()
@@ -216,6 +232,7 @@ fun RecipesScreen(
                 }
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(cols),
+                    state = gridState,
                     contentPadding = PaddingValues(vertical = Spacing.md),
                     horizontalArrangement = Arrangement.spacedBy(Spacing.md),
                     verticalArrangement = Arrangement.spacedBy(Spacing.md),
@@ -239,6 +256,13 @@ fun RecipesScreen(
         FilterSheet(
             filters = filters,
             cookbooks = cookbooks,
+            sort = sort,
+            onSort = {
+                if (it != sort) {
+                    scrollToTop = true
+                    viewModel.setSort(it)
+                }
+            },
             onToggleMealType = viewModel::toggleMealType,
             onToggleCategory = viewModel::toggleCategory,
             onToggleCookbook = viewModel::toggleCookbook,
@@ -286,6 +310,8 @@ private fun ActiveFilterChip(label: String, onRemove: () -> Unit) {
 private fun FilterSheet(
     filters: RecipeFilters,
     cookbooks: List<String>,
+    sort: RecipeSort,
+    onSort: (RecipeSort) -> Unit,
     onToggleMealType: (String) -> Unit,
     onToggleCategory: (String) -> Unit,
     onToggleCookbook: (String) -> Unit,
@@ -305,6 +331,27 @@ private fun FilterSheet(
                 Text(stringResource(R.string.recipes_filter_title), style = MaterialTheme.typography.titleMedium)
                 TextButton(onClick = onClear, enabled = filters.activeCount > 0) {
                     Text(stringResource(R.string.recipes_filter_reset))
+                }
+            }
+
+            // Order first: it always applies, the filters below only when picked.
+            Text(
+                stringResource(R.string.recipes_sort),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = Spacing.sm, bottom = Spacing.xs),
+            )
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                val options = listOf(
+                    RecipeSort.NEWEST to stringResource(R.string.recipes_sort_newest),
+                    RecipeSort.NAME to stringResource(R.string.recipes_sort_name),
+                )
+                options.forEachIndexed { index, (option, label) ->
+                    SegmentedButton(
+                        selected = sort == option,
+                        onClick = { onSort(option) },
+                        shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                    ) { Text(label) }
                 }
             }
 

@@ -44,9 +44,22 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import java.text.Collator
 import java.time.LocalDate
 
 /** Filter-sheet state: multi-select within a group, AND between groups. Empty = off. */
+/** Order of the recipe list. Not a filter: [RecipesViewModel.clearFilters] leaves it alone. */
+enum class RecipeSort {
+    NEWEST,
+    NAME,
+    ;
+
+    companion object {
+        fun fromStored(value: String?): RecipeSort = entries.firstOrNull { it.name == value } ?: NEWEST
+    }
+}
+
 data class RecipeFilters(
     val mealTypes: Set<String> = emptySet(),
     val categories: Set<String> = emptySet(),
@@ -107,7 +120,7 @@ class RecipesViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     repository: RecipeRepository,
     pantryRepository: PantryRepository,
-    settings: SettingsRepository,
+    private val settings: SettingsRepository,
 ) : ViewModel() {
 
     /** Pantry contents, lowercased — feeds the "cookable now" filter. */
@@ -136,11 +149,31 @@ class RecipesViewModel @Inject constructor(
         repository.observeLikedRecipeIds()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
+    val sort: StateFlow<RecipeSort> = settings.recipeSort
+        .map(RecipeSort::fromStored)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, RecipeSort.NEWEST)
+
+    private val filtered = combine(all, _query, _filters, likedIds, pantryNames) { list, q, filters, liked, pantry ->
+        list.filter { item ->
+            RecipeSearchFilter.matches(item, q, filters, liked, pantry) { key ->
+                RecipeCategories.displayLabel(context, key)
+            }
+        }
+    }
+
     val recipes: StateFlow<List<RecipeListItem>> =
-        combine(all, _query, _filters, likedIds, pantryNames) { list, q, filters, liked, pantry ->
-            list.filter { item ->
-                RecipeSearchFilter.matches(item, q, filters, liked, pantry) { key ->
-                    RecipeCategories.displayLabel(context, key)
+        combine(filtered, sort) { list, sort ->
+            when (sort) {
+                // The DAO already delivers newest first.
+                RecipeSort.NEWEST -> list
+                // Locale-aware, so "Äpfel" files under A and case doesn't matter;
+                // nameless recipes go last instead of heading the list.
+                RecipeSort.NAME -> {
+                    val collator = Collator.getInstance().apply { strength = Collator.SECONDARY }
+                    list.sortedWith(
+                        compareBy<RecipeListItem> { it.recipe.name.isNullOrBlank() }
+                            .thenComparing({ it.recipe.name.orEmpty().trim() }, collator),
+                    )
                 }
             }
         }
@@ -154,6 +187,10 @@ class RecipesViewModel @Inject constructor(
         settings.serverUrl.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     fun setQuery(value: String) { _query.value = value }
+
+    fun setSort(value: RecipeSort) {
+        viewModelScope.launch { settings.setRecipeSort(value.name) }
+    }
 
     fun toggleMealType(key: String) = _filters.update {
         it.copy(mealTypes = if (key in it.mealTypes) it.mealTypes - key else it.mealTypes + key)

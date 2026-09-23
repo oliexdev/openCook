@@ -107,6 +107,14 @@ class SettingsRepository @Inject constructor(
         dataStore.edit { it[SWIPE_HINT_SEEN_PLAN] = true }
     }
 
+    /** How this device sorts the recipe list (a [com.food.opencook.ui.recipes.RecipeSort] name).
+     *  A personal view, so it stays local and is not synced to the household. */
+    val recipeSort: Flow<String?> = pref { it[RECIPE_SORT] }
+
+    suspend fun setRecipeSort(key: String) {
+        dataStore.edit { it[RECIPE_SORT] = key }
+    }
+
     suspend fun setLocalOnly(enabled: Boolean) {
         dataStore.edit { it[LOCAL_ONLY] = enabled }
     }
@@ -317,6 +325,7 @@ class SettingsRepository @Inject constructor(
         val PLANNED_MEALS = stringPreferencesKey("planned_meals")
         val DISCOVER_HIDDEN = stringPreferencesKey("discover_hidden")
         val DISCOVER_CUSTOM = stringPreferencesKey("discover_custom")
+        val RECIPE_SORT = stringPreferencesKey("recipe_sort")
     }
 }
 

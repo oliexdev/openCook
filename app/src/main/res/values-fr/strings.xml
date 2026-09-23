@@ -99,8 +99,11 @@
     <string name="recipes_search_hint">Rechercher des recettes…</string>
     <string name="recipes_filter_all">Toutes</string>
     <string name="recipes_filter">Filtrer</string>
-    <string name="recipes_filter_title">Filtrer</string>
+    <string name="recipes_filter_title">Filtrer et trier</string>
     <string name="recipes_filter_reset">Réinitialiser</string>
+    <string name="recipes_sort">Trier</string>
+    <string name="recipes_sort_newest">Plus récentes</string>
+    <string name="recipes_sort_name">A–Z</string>
     <string name="recipes_filter_liked">Favoris uniquement</string>
     <string name="recipes_filter_cookable">Peut être cuisinée maintenant</string>
     <string name="recipes_filter_remove">Retirer le filtre %1$s</string>
