@@ -251,13 +251,19 @@ class ReviewViewModel @Inject constructor(
         it.copy(instructions = it.instructions.filterIndexed { i, _ -> i != stepIndex })
     }
 
-    /** Swap two instruction rows so the user can reorder steps without delete-and-re-add. */
-    fun moveStep(index: Int, from: Int, to: Int) = updateRecipe(index) { r ->
-        if (from !in r.instructions.indices || to !in r.instructions.indices || from == to) return@updateRecipe r
-        val mutable = r.instructions.toMutableList()
-        val item = mutable.removeAt(from)
-        mutable.add(to, item)
-        r.copy(instructions = mutable)
+    /** Move an ingredient row (drag & drop in the editor); its position is what gets saved and synced. */
+    fun moveIngredient(index: Int, from: Int, to: Int) = updateRecipe(index) {
+        it.copy(ingredients = it.ingredients.moved(from, to))
+    }
+
+    /** Move an instruction row so the user can reorder steps without delete-and-re-add. */
+    fun moveStep(index: Int, from: Int, to: Int) = updateRecipe(index) {
+        it.copy(instructions = it.instructions.moved(from, to))
+    }
+
+    private fun <T> List<T>.moved(from: Int, to: Int): List<T> {
+        if (from !in indices || to !in indices || from == to) return this
+        return toMutableList().apply { add(to, removeAt(from)) }
     }
 
     // --- Wizard navigation (per pager page) ---
