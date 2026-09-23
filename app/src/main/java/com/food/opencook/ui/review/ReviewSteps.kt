@@ -115,6 +115,7 @@ import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import android.content.ClipData
+import android.content.ClipDescription
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.draganddrop.dragAndDropSource
 import androidx.compose.foundation.draganddrop.dragAndDropTarget
@@ -945,6 +946,11 @@ fun SummaryStep(
 
 private const val REORDER_LABEL = "opencook-reorder"
 
+// Deliberately not text/plain: the cards are mostly text fields, and a text field accepts
+// dropped text — it would take over the drag under the finger (no highlight, no edge
+// auto-scroll) and could even paste the payload into itself.
+private const val REORDER_MIME = "application/x-opencook-reorder"
+
 private class ListReorder {
     /** Card bounds in root coordinates, by list position. */
     val rows = HashMap<Int, Rect>()
@@ -953,14 +959,20 @@ private class ListReorder {
     var hovered by mutableIntStateOf(-1)
     val scrollSpeed = mutableFloatStateOf(0f)
     var onMove: (from: Int, to: Int) -> Unit = { _, _ -> }
+    var size = 0
 
     /** Set by a text field on touch-down so a long press there keeps selecting text. */
     var fieldTouched = false
 
-    fun rowAt(y: Float): Int =
-        rows.entries.firstOrNull { y >= it.value.top && y < it.value.bottom }?.key
-            ?: rows.entries.minByOrNull { kotlin.math.abs(it.value.center.y - y) }?.key
+    fun rowAt(y: Float): Int {
+        // boundsInRoot is clipped to the scroll viewport: a card scrolled out of view has an
+        // empty rect pinned to the edge, which must not win the nearest-card fallback. Rows
+        // of since-deleted cards linger in the map, hence the size check.
+        val visible = rows.entries.filter { it.key < size && it.value.height > 0f }
+        return visible.firstOrNull { y >= it.value.top && y < it.value.bottom }?.key
+            ?: visible.minByOrNull { kotlin.math.abs(it.value.center.y - y) }?.key
             ?: -1
+    }
 
     fun reset() {
         scrollSpeed.floatValue = 0f
@@ -1019,7 +1031,7 @@ private fun Modifier.reorderTarget(reorder: ListReorder): Modifier {
     return this
         .onGloballyPositioned { reorder.bounds = it.boundsInRoot() }
         .dragAndDropTarget(
-            shouldStartDragAndDrop = { it.toAndroidDragEvent().clipDescription?.label == REORDER_LABEL },
+            shouldStartDragAndDrop = { it.toAndroidDragEvent().clipDescription?.hasMimeType(REORDER_MIME) == true },
             target = target,
         )
 }
@@ -1060,7 +1072,12 @@ private fun Modifier.reorderSource(reorder: ListReorder, i: Int, size: Int): Mod
                     }
                     awaitLongPressOrCancellation(down.id) ?: return@awaitEachGesture
                     reorder.dragged = i
-                    startTransfer(DragAndDropTransferData(ClipData.newPlainText(REORDER_LABEL, i.toString())))
+                    reorder.size = size
+                    startTransfer(
+                        DragAndDropTransferData(
+                            ClipData(ClipDescription(REORDER_LABEL, arrayOf(REORDER_MIME)), ClipData.Item(i.toString())),
+                        ),
+                    )
                 }
             },
         )
@@ -1088,13 +1105,19 @@ private fun StepScroll(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    Column(
-        modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(horizontal = Spacing.screen, vertical = Spacing.sm),
-    ) {
-        content()
+    // [modifier] goes on a non-scrolling box around the scrolling column, not on the column
+    // itself: Compose hit-tests a drop target by its layout node's inner coordinates, which
+    // on the column would move with the scroll — after scrolling N px the list's drop target
+    // would "end" N px too high, and a drag held at the bottom edge would drop out of it.
+    Box(modifier.fillMaxSize()) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .padding(horizontal = Spacing.screen, vertical = Spacing.sm),
+        ) {
+            content()
+        }
     }
 }
 
