@@ -1,8 +1,9 @@
 # Scanning recipes from photos
 
 openCook's headline feature: photograph a cookbook page and it becomes a tidy, editable recipe.
-This needs a connected [home server](../developer/self-hosting.md) (the AI runs there, on your own
-machine — never in the cloud).
+This needs a connected [home server](../developer/self-hosting.md). By default, the AI runs locally
+through Ollama. If the server owner opts into OpenRouter, scanned photos are sent to OpenRouter and
+its selected model provider.
 
 ## How to scan
 

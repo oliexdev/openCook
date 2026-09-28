@@ -11,12 +11,12 @@ from pathlib import Path
 
 from app.config import get_settings
 from app.extraction import RecipeExtractor
-from app.ollama_client import OllamaClient
+from app.vision_client import make_vision_client
 
 
 async def main() -> None:
     settings = get_settings()
-    extractor = RecipeExtractor(OllamaClient(), settings.images_dir)
+    extractor = RecipeExtractor(make_vision_client(), settings.images_dir)
     recipes = await extractor.extract(Path(sys.argv[1]))
     print(json.dumps(recipes, ensure_ascii=False, indent=2))
     print(f"\n-> {len(recipes)} recipe(s); crops in {settings.images_dir}")

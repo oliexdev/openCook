@@ -1,5 +1,5 @@
-# One-command self-host for the openCook server. Ollama keeps running on the HOST
-# (it needs the GPU); this container only calls it over HTTP. See DOCKER.md.
+# One-command self-host for the openCook server. Ollama runs on the host by
+# default; OpenRouter can be selected without installing Ollama. See self-hosting.md.
 services:
   opencook:
     build: .
@@ -11,6 +11,9 @@ services:
       OPENCOOK_DATA_DIR: /data
       OPENCOOK_OLLAMA_BASE_URL: http://localhost:11434
       OPENCOOK_OLLAMA_MODEL: qwen2.5vl:7b
+      OPENCOOK_AI_PROVIDER: ${OPENCOOK_AI_PROVIDER:-ollama}
+      OPENCOOK_OPENROUTER_API_KEY: ${OPENCOOK_OPENROUTER_API_KEY:-}
+      OPENCOOK_OPENROUTER_MODEL: ${OPENCOOK_OPENROUTER_MODEL:-}
       OPENCOOK_SERVER_NAME: ${OPENCOOK_SERVER_NAME:-openCook}
       # OPENCOOK_BACKUP_DIR: /backups   # uncomment to store backups OUTSIDE the data volume
     volumes:

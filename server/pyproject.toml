@@ -1,7 +1,7 @@
 [project]
 name = "opencook-server"
 version = "0.1.0"
-description = "openCook self-hosted AI & sync server (FastAPI + Ollama)"
+description = "openCook self-hosted recipe extraction & sync server"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",

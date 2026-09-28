@@ -1,7 +1,7 @@
 # Server
 
-Python 3.12+ FastAPI app with a SQLite database, an **in-process** async job worker, an Ollama
-client for recipe extraction, and mDNS advertising. No external queue or services.
+Python 3.12+ FastAPI app with a SQLite database, an **in-process** async job worker, a
+configurable vision client for recipe extraction, and mDNS advertising. No external queue.
 
 ## Layout
 
@@ -14,6 +14,8 @@ server/app/
   schemas.py       # Pydantic request/response DTOs
   extraction.py    # qwen2.5vl pipeline → schema.org/Recipe + cropped photos
   ollama_client.py # async HTTP client to Ollama (retries/backoff)
+  openrouter_client.py # optional hosted vision client
+  vision_client.py # provider selection
   worker.py        # background job loop
   sync.py          # HLC + per-field LWW + Merkle trie  (see sync.md)
   discovery.py     # mDNS advertiser (_opencook._tcp)
@@ -52,7 +54,7 @@ ORM tables (`models.py`):
 
 1. **Orient & resize** — `ImageOps.exif_transpose`, then `_smart_resize` to longest side ≤ 1008 px
    with both dimensions a multiple of 28 (qwen2.5vl's pixel budget; keeps box coords mapping 1:1).
-2. **Text call** — the content-language prompt (`load_i18n(language).text_prompt`) → Ollama →
+2. **Text call** — the content-language prompt (`load_i18n(language).text_prompt`) → vision provider →
    `{"recipes": [{title, servings, category, tags, prep_time, cook_time, ingredients[], steps[],
    nutrition, notes}]}` (lenient JSON parse). `category` is a universal key (`pasta/meat/…`).
 3. **Box call** — `box_prompt` → `{"dish_photos": [{recipe_title, box:[x1,y1,x2,y2]}]}` in
@@ -65,6 +67,8 @@ ORM tables (`models.py`):
 
 Ollama is reached via `ollama_client.py` at `OPENCOOK_OLLAMA_BASE_URL`, model
 `OPENCOOK_OLLAMA_MODEL` (default `qwen2.5vl:7b`), with retries + backoff on transport/5xx errors.
+With `OPENCOOK_AI_PROVIDER=openrouter`, `openrouter_client.py` sends the same resized JPEG and
+prompt through OpenRouter chat completions; see [Self-hosting](self-hosting.md#openrouter-optional).
 
 **Localization:** prompts, duration words, units and category aliases live in per-language JSON
 under `app/i18n/` (`en.json` = source/fallback), loaded by `load_i18n(language)` where `language`
@@ -84,7 +88,8 @@ is the household content language sent with the job. Adding a language = a new `
 ## Config
 
 All env vars are prefixed `OPENCOOK_` (`config.py`, `.env` supported): `DATA_DIR`, `HOST`, `PORT`,
-`SERVER_NAME`, `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `WORKER_POLL_INTERVAL`, `BACKUP_DIR`,
+`SERVER_NAME`, `AI_PROVIDER`, `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `OPENROUTER_API_KEY`,
+`OPENROUTER_MODEL`, `WORKER_POLL_INTERVAL`, `BACKUP_DIR`,
 `BACKUP_KEEP`, `ADMIN_PASSWORD`. See the table in [Self-hosting](self-hosting.md).
 
 ## Tests

@@ -25,7 +25,7 @@ from pathlib import Path
 
 from PIL import Image, ImageOps
 
-from app.ollama_client import OllamaClient
+from app.vision_client import VisionClient
 
 logger = logging.getLogger(__name__)
 
@@ -160,13 +160,16 @@ def _iso_duration(text: str | None, i18n: "I18n") -> str | None:
 class _Box:
     title: str
     coords: tuple[int, int, int, int]  # in sent-image space
+    kind: str = "preparation"  # finished photos win when titles match equally
+    shared: bool = False  # one page photo explicitly illustrates several variants
 
 
 _TITLE_MATCH_MIN = 0.4
+_VARIANT_SUFFIX = re.compile(r"\s+(?:variante?|version)\s*\d+\s*$", re.I)
 
 
 def _assign_boxes(recipe_titles: list[str], boxes: list[_Box]) -> dict[int, _Box]:
-    """Assign at most one dish photo to each recipe, strictly 1:1.
+    """Assign at most one photo per recipe; share only explicitly common photos.
 
     Builds the full recipe×box title-similarity matrix and greedily takes the
     strongest pairs, removing both partners once used. This prevents two recipes
@@ -176,29 +179,47 @@ def _assign_boxes(recipe_titles: list[str], boxes: list[_Box]) -> dict[int, _Box
     """
     if not boxes or not recipe_titles:
         return {}
-    pairs: list[tuple[float, int, int]] = []
+    pairs: list[tuple[int, float, int, int]] = []
     for ri, title in enumerate(recipe_titles):
         for bi, box in enumerate(boxes):
             ratio = difflib.SequenceMatcher(
                 None, title.lower(), box.title.lower()
             ).ratio()
-            pairs.append((ratio, ri, bi))
-    pairs.sort(key=lambda p: p[0], reverse=True)
+            if ratio >= _TITLE_MATCH_MIN:
+                pairs.append((int(box.kind == "finished"), ratio, ri, bi))
+    pairs.sort(key=lambda p: (p[0], p[1]), reverse=True)
 
     assigned: dict[int, _Box] = {}
     used_boxes: set[int] = set()
-    for ratio, ri, bi in pairs:
-        if ratio < _TITLE_MATCH_MIN:
-            break
+    for _, _, ri, bi in pairs:
         if ri in assigned or bi in used_boxes:
             continue
         assigned[ri] = boxes[bi]
         used_boxes.add(bi)
+    for ri, title in enumerate(recipe_titles):
+        if ri in assigned:
+            continue
+        for box in boxes:
+            common_title = box.title.strip().lower()
+            variant_base = _VARIANT_SUFFIX.sub("", title).strip().lower()
+            matching_variants = [
+                other for other in recipe_titles
+                if _VARIANT_SUFFIX.search(other) and
+                _VARIANT_SUFFIX.sub("", other).strip().lower() == variant_base
+            ]
+            clearly_shared = (
+                len(boxes) == 1 and len(matching_variants) > 1 and
+                len(variant_base) >= 8 and variant_base in common_title
+            )
+            if (box.shared and len(common_title) >= 8 and common_title in title.lower()
+                    or clearly_shared) and any(other is box for other in assigned.values()):
+                assigned[ri] = box
+                break
     return assigned
 
 
 class RecipeExtractor:
-    def __init__(self, client: OllamaClient, images_dir: Path) -> None:
+    def __init__(self, client: VisionClient, images_dir: Path) -> None:
         self._client = client
         self._images_dir = images_dir
 
@@ -241,11 +262,14 @@ class RecipeExtractor:
         titles = [r.get("title", "") for r in recipes]
         assigned = _assign_boxes(titles, boxes)
         results = []
+        crop_cache: dict[tuple[int, int, int, int], str | None] = {}
         for i, recipe in enumerate(recipes):
             image_paths = []
             box = assigned.get(i)
             if box is not None:
-                crop_path = self._crop(original, box.coords, scale_x, scale_y)
+                if box.coords not in crop_cache:
+                    crop_cache[box.coords] = self._crop(original, box.coords, scale_x, scale_y)
+                crop_path = crop_cache[box.coords]
                 if crop_path is not None:
                     image_paths.append(crop_path)
             results.append(
@@ -262,8 +286,69 @@ class RecipeExtractor:
         if bx2 - bx1 < 10 or by2 - by1 < 10:
             return None
         name = f"{uuid.uuid4()}.jpg"
-        original.crop((bx1, by1, bx2, by2)).save(self._images_dir / name, quality=88)
+        by1 = _extend_photo_top(original, bx1, by1, bx2, by2)
+        crop = original.crop((bx1, by1, bx2, by2))
+        _trim_dark_caption(crop).save(self._images_dir / name, quality=88)
         return name
+
+
+def _extend_photo_top(image: Image.Image, x1: int, y1: int, x2: int, y2: int) -> int:
+    """Recover a colorful photo edge when the model's box starts inside the photo.
+
+    Stop at a sustained dark header; neutral photos are left at their detected box.
+    The search is limited so a second photo higher on the page cannot be included.
+    """
+    if y1 == 0 or x2 - x1 < 100:
+        return y1
+    xs = range(x1 + (x2 - x1) // 10, x2 - (x2 - x1) // 10,
+               max(1, (x2 - x1) // 60))
+
+    def colorful(y: int) -> bool:
+        pixels = [image.getpixel((x, y)) for x in xs]
+        return sum(max(p) > 85 and max(p) - min(p) > 28 for p in pixels) / len(pixels) > .3
+
+    if not colorful(min(y1 + 4, image.height - 1)):
+        return y1
+    # Vision models can start a box well inside a wide photo. A 30%-height search
+    # recovered part of the grill in a real scan but still left its upper rim out.
+    # The dark page header above the photo stops this search before other content.
+    upper = max(0, y1 - min(int((y2 - y1) * .75), int(image.height * .35)))
+    edge = y1
+    for y in range(y1 - 4, upper - 1, -4):
+        if not colorful(y):
+            break
+        edge = y
+    return edge
+
+
+def _trim_dark_caption(crop: Image.Image) -> Image.Image:
+    """Trim a dark text panel below a colorful photo in a scanned app/web screenshot.
+
+    The model may include the steps below a photo in its bounding box. Only trim
+    when a broad, sustained dark panel follows colorful photo rows; other image
+    layouts are left alone. Leave room above the boundary for an overlaid caption.
+    """
+    w, h = crop.size
+    if w < 100 or h < 120:
+        return crop
+    xs = range(w // 20, w - w // 20, max(1, w // 80))
+
+    def fractions(y: int) -> tuple[float, float]:
+        pixels = [crop.getpixel((x, y)) for x in xs]
+        return (
+            sum(max(p) < 45 for p in pixels) / len(pixels),
+            sum(max(p) > 70 and max(p) - min(p) > 25 for p in pixels) / len(pixels),
+        )
+
+    rows = [(y, *fractions(y)) for y in range(0, h, 4)]
+    for i in range(max(5, int(len(rows) * .4)), len(rows) - 10):
+        dark_below = sum(row[1] for row in rows[i:i + 5]) / 5
+        color_above = sum(row[2] for row in rows[i - 5:i]) / 5
+        remaining_dark = sum(row[1] for row in rows[i:]) / len(rows[i:])
+        if dark_below > .85 and color_above > .25 and remaining_dark > .8:
+            boundary = rows[i][0]
+            return crop.crop((0, 0, w, max(10, boundary - min(60, int(boundary * .2)))))
+    return crop
 
 
 def _to_jpeg(img: Image.Image) -> bytes:
@@ -286,6 +371,8 @@ def _parse_boxes(raw: str, sent_size: tuple[int, int]) -> list[_Box]:
         out.append(_Box(
             title=str(item.get("recipe_title", "")),
             coords=(px(box[0], sw), px(box[1], sh), px(box[2], sw), px(box[3], sh)),
+            kind=item.get("kind") if item.get("kind") == "finished" else "preparation",
+            shared=item.get("shared") is True,
         ))
     return out
 

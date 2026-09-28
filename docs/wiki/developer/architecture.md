@@ -6,7 +6,7 @@ openCook is a monorepo with two halves that talk over HTTP:
 ┌──────────────────────────┐         ┌───────────────────────────────┐
 │  app/  (Android client)  │  HTTP   │  server/  (FastAPI backend)   │
 │  Kotlin · Compose · Room │ ──────▶ │  SQLite · in-process worker   │
-│  offline-first, MVVM/UDF │ ◀────── │  Ollama (vision) · mDNS       │
+│  offline-first, MVVM/UDF │ ◀────── │  Vision provider · mDNS      │
 └──────────────────────────┘         └───────────────────────────────┘
 ```
 
@@ -35,7 +35,7 @@ openCook is a monorepo with two halves that talk over HTTP:
 
 **Recipe scan (async):**
 photo → app `POST /jobs` → server stores the image and queues a `Job` → an in-process worker calls
-**Ollama** (`qwen2.5vl:7b`) → schema.org recipe(s) + cropped dish photos → app polls `GET /jobs/{id}`
+**Ollama** (`qwen2.5vl:7b`, default) or **OpenRouter** (opt-in) → schema.org recipe(s) + cropped dish photos → app polls `GET /jobs/{id}`
 (active coroutine while open, WorkManager when backgrounded) → **Review** screen → saved to Room.
 
 **Sync (delta):**

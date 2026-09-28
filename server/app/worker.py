@@ -16,14 +16,14 @@ from app.config import get_settings
 from app.db import SessionLocal
 from app.extraction import RecipeExtractor
 from app.models import Job, JobStatus
-from app.ollama_client import OllamaClient
+from app.vision_client import make_vision_client
 
 logger = logging.getLogger(__name__)
 
 
 async def _process_one(job_id: str) -> None:
     settings = get_settings()
-    extractor = RecipeExtractor(OllamaClient(), settings.images_dir)
+    extractor = RecipeExtractor(make_vision_client(), settings.images_dir)
 
     with SessionLocal() as session:
         job = session.get(Job, job_id)

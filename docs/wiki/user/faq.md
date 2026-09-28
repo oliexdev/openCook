@@ -13,8 +13,9 @@ file holds no household code or PIN, so it's safe to keep in a cloud drive — s
 [Backup & restore](backup-and-restore.md).
 
 ### Do I need an account?
-No. There's no registration, no cloud and no tracking. Families share data through a household
-joined by an invite code — hosted on your own server, or on nothing but your phones.
+No. There's no registration or tracking. Families share data through a household joined by an
+invite code — hosted on your own server, or on nothing but your phones. Photo extraction stays
+local by default; server owners can optionally configure OpenRouter for hosted extraction.
 
 ### How does phone-to-phone sync work?
 It's one switch in Settings (on by default in serverless households, off when you have a server).

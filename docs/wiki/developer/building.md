@@ -53,7 +53,8 @@ Releases go out via GitHub releases and F-Droid — there is no in-app updater.
 
 ## Server
 
-Requires Python 3.12+ and (for extraction) Ollama on the host with `qwen2.5vl:7b` pulled.
+Requires Python 3.12+ and, for extraction, either Ollama on the host with `qwen2.5vl:7b`
+pulled or an [OpenRouter configuration](self-hosting.md#openrouter-optional).
 
 ```bash
 cd server

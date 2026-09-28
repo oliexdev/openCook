@@ -19,7 +19,7 @@ sign-up, no tracking.
 
 A recipe and meal-planning app that:
 * works **fully offline** — your recipes, plans and shopping lists are always there, no server needed,
-* needs **no account** — no sign-up, no cloud, no tracking,
+* needs **no account** — no sign-up or tracking (hosted AI is optional),
 * turns a **photo of a recipe into a ready-to-edit recipe** for you,
 * helps you **plan the week** and shop **once** for it,
 * lets the **whole family share** the same recipes, plan and list,
@@ -62,7 +62,7 @@ openCook comes in two parts:
   the household invite code is the shared secret). The phone-to-phone switch keeps each phone
   reachable for the family even with the app closed, at the cost of a small silent notification.
 * **An optional server** you host at home adds what phones can't do alone: reading recipes
-  from photos (the AI runs only on *your* machine), browser import, server-side archives — and sync that
+  from photos (locally by default, or optionally through OpenRouter), browser import, server-side archives — and sync that
   also works while nobody has the app open. You can add it to a serverless household later
   in Settings, keeping the same invite code.
 
@@ -83,9 +83,10 @@ Android Studio).
 
 ### Server (optional)
 
-Needed only for reading recipes from photos and family sync. Requires Python 3.12+ and
-[Ollama](https://ollama.com) running on the same machine with the vision model pulled
-(`ollama pull qwen2.5vl:7b`).
+Needed only for reading recipes from photos and family sync. Requires Python 3.12+.
+Photo scanning uses [Ollama](https://ollama.com) by default (pull `qwen2.5vl:7b`),
+or optionally OpenRouter with a vision model and API key; see
+[self-hosting](docs/wiki/developer/self-hosting.md#openrouter-optional).
 
 ```bash
 cd server
@@ -117,9 +118,10 @@ Full guides live in [`docs/wiki/`](docs/wiki/README.md) — a **user** track (ho
 
 # Privacy :lock:
 
-openCook has no ads, no tracking, and asks for no unnecessary permissions. There's no account and
-nothing in the cloud. Any AI runs on **your own** server, the family sync stays on your home
-network, and family members join with a simple invite code.
+openCook has no ads, no tracking, and asks for no unnecessary permissions. There's no account;
+AI runs locally by default. If you explicitly configure OpenRouter on your server, scanned photos
+go to OpenRouter and its model provider. Family sync stays on your home network or VPN, and family
+members join with a simple invite code.
 
 # Donations :heart:
 

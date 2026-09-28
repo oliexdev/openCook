@@ -6,8 +6,8 @@ network. The recommended deployment is Docker; a plain Python run also works.
 ## Prerequisites
 
 - A Linux machine on the same LAN/Wi-Fi as the phones.
-- **[Ollama](https://ollama.com) running on the host** with the vision model pulled — it needs the
-  GPU, so it stays on the host even when the server runs in a container:
+- For local photo extraction (the default), **[Ollama](https://ollama.com) running on the host**
+  with the vision model pulled:
   ```bash
   ollama pull qwen2.5vl:7b
   ```
@@ -22,9 +22,27 @@ curl http://localhost:8000/health    # {"status":"ok"}
 docker compose logs -f               # "Job worker started", mDNS advertise line
 ```
 
-The container runs **only the server** (FastAPI + SQLite + the job worker + mDNS); it calls the
-host's Ollama over HTTP. `network_mode: host` is used so mDNS reaches the LAN and the container can
+The container runs **only the server** (FastAPI + SQLite + the job worker + mDNS); by default it
+calls the host's Ollama over HTTP. `network_mode: host` lets mDNS reach the LAN and the container
 reach Ollama at `localhost:11434`. `restart: unless-stopped` brings it back after a reboot.
+
+### OpenRouter (optional)
+
+To extract photos through a hosted vision model, create `server/.env` (do not commit it):
+
+```dotenv
+OPENCOOK_AI_PROVIDER=openrouter
+OPENCOOK_OPENROUTER_API_KEY=<your OpenRouter API key>
+OPENCOOK_OPENROUTER_MODEL=qwen/qwen3.8-27b
+```
+
+Then run `docker compose up -d --build` from `server/`. Ollama is not required in this mode.
+The key and model are both required. The model shown is an example that accepts images; check
+that it still has active endpoints and review its price before selecting one. Each photo is sent
+to OpenRouter and the selected model provider twice (text extraction and dish-photo detection), so API charges
+and the provider's data handling apply. The server still needs a trusted LAN/VPN: OpenRouter does
+not add authentication to openCook's API. Remove these variables or set
+`OPENCOOK_AI_PROVIDER=ollama` to return to local extraction.
 
 Hardening (already set in `docker-compose.yml`): non-root user (uid 10001), `read_only` root
 filesystem with a `/tmp` tmpfs, `cap_drop: ALL`, `no-new-privileges`. Only `/data` is writable. No
@@ -55,8 +73,11 @@ Environment variables, all prefixed `OPENCOOK_` (a `server/.env` file is read to
 | `OPENCOOK_HOST` | `0.0.0.0` | HTTP bind address |
 | `OPENCOOK_PORT` | `8000` | HTTP port |
 | `OPENCOOK_SERVER_NAME` | hostname | Name advertised over mDNS |
+| `OPENCOOK_AI_PROVIDER` | `ollama` | `ollama` or `openrouter` for photo extraction |
 | `OPENCOOK_OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama endpoint |
 | `OPENCOOK_OLLAMA_MODEL` | `qwen2.5vl:7b` | Vision model |
+| `OPENCOOK_OPENROUTER_API_KEY` | — | OpenRouter API key (required for OpenRouter) |
+| `OPENCOOK_OPENROUTER_MODEL` | — | Vision model ID (required for OpenRouter) |
 | `OPENCOOK_WORKER_POLL_INTERVAL` | `2.0` | Job worker poll interval (s) |
 | `OPENCOOK_BACKUP_DIR` | `<data_dir>/backups` | Backup archive location |
 | `OPENCOOK_BACKUP_KEEP` | `14` | Backups to retain (rotation) |
@@ -138,5 +159,5 @@ releases. Release steps are in [Building → Releasing](building.md#releasing).
 
 - Most endpoints are **unauthenticated by design** (trusted LAN/VPN). **Never expose port 8000 to
   the internet.** Admin endpoints are password-protected; households can also set a join PIN.
-- The server reaches no filesystem beyond `/data` (in Docker) and contacts no third party except the
-  host's Ollama.
+- In Docker the server accesses `/data` and contacts the host's Ollama by default. When configured
+  for OpenRouter, recipe photos and prompts leave the home network for OpenRouter and its provider.
