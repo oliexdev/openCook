@@ -18,6 +18,7 @@
 
 package com.food.opencook.ui.review
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +32,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -114,29 +116,27 @@ private fun WizardNavBar(
     onNext: () -> Unit,
     onSave: () -> Unit,
 ) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            // Inset for the system navigation bar / gesture area so the buttons stay tappable
-            // when the app draws edge-to-edge (targetSdk 36 default). Edge-to-edge also means
-            // the IME does *not* resize the window, so the keyboard would otherwise cover this
-            // bar — union with the IME inset lifts it above the keyboard instead. Since the
-            // page content sits in a weight(1f) box above, that box shrinks accordingly and
-            // the focused field scrolls into the remaining space.
-            .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime))
-            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        OutlinedButton(onClick = onBack, enabled = !isFirst, modifier = Modifier.weight(1f)) {
-            Text(stringResource(R.string.wizard_back))
-        }
-        Button(
-            onClick = if (isLast) onSave else onNext,
-            enabled = canAdvance,
-            modifier = Modifier.weight(1f),
+    Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
+        HorizontalDivider()
+        Row(
+            Modifier
+                .fillMaxWidth()
+                // Keep the bar above the system gestures and keyboard.
+                .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime))
+                .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(if (isLast) saveLabel else stringResource(R.string.wizard_next))
+            OutlinedButton(onClick = onBack, enabled = !isFirst, modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.wizard_back))
+            }
+            Button(
+                onClick = if (isLast) onSave else onNext,
+                enabled = canAdvance,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(if (isLast) saveLabel else stringResource(R.string.wizard_next))
+            }
         }
     }
 }

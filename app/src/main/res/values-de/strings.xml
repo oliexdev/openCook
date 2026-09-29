@@ -65,6 +65,7 @@
     <string name="review_notes">Notizen</string>
     <string name="review_add_ingredient">Zutat hinzufügen</string>
     <string name="review_add_step">Schritt hinzufügen</string>
+    <string name="review_drag_handle">Zum Sortieren ziehen</string>
     <string name="review_save">Speichern</string>
     <string name="review_image_take">Foto aufnehmen</string>
     <string name="review_image_gallery">Galerie</string>

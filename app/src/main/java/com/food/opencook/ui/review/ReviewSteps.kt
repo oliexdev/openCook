@@ -44,6 +44,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.DragIndicator
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Remove
@@ -104,30 +105,8 @@ import coil3.compose.AsyncImage
 import coil3.compose.rememberAsyncImagePainter
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
-import androidx.compose.foundation.gestures.scrollBy
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.withFrameNanos
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.semantics.CustomAccessibilityAction
-import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
-import android.content.ClipData
-import android.content.ClipDescription
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.draganddrop.dragAndDropSource
-import androidx.compose.foundation.draganddrop.dragAndDropTarget
-import androidx.compose.ui.draganddrop.DragAndDropEvent
-import androidx.compose.ui.draganddrop.DragAndDropTarget
-import androidx.compose.ui.draganddrop.DragAndDropTransferData
-import androidx.compose.ui.draganddrop.toAndroidDragEvent
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.layout.boundsInRoot
 import com.food.opencook.R
 import com.food.opencook.util.MealTypes
 import com.food.opencook.util.RecipeCategories
@@ -411,18 +390,19 @@ fun IngredientsStep(
     viewModel: ReviewViewModel,
     index: Int,
 ) {
-    val scrollState = rememberScrollState()
-    val reorder = rememberListReorder(scrollState) { from, to -> viewModel.moveIngredient(index, from, to) }
-    StepScroll(scrollState, Modifier.reorderTarget(reorder)) {
+    Column(Modifier.fillMaxSize().padding(horizontal = Spacing.screen, vertical = Spacing.sm)) {
         if (recipe.ingredients.isEmpty()) {
             EmptyHint(stringResource(R.string.wizard_no_ingredients))
         } else {
-            recipe.ingredients.forEachIndexed { i, ingredient ->
+            ReorderableEditorList(
+                items = recipe.ingredients,
+                modifier = Modifier.weight(1f),
+                onMove = { from, to -> viewModel.moveIngredient(index, from, to) },
+            ) { ingredient, i, startDrag ->
                 IngredientCard(
                     ingredient = ingredient,
-                    modifier = Modifier.reorderSource(reorder, i, recipe.ingredients.size),
-                    fieldModifier = Modifier.keepsLongPress(reorder),
-                    highlighted = reorder.hovered == i && reorder.dragged != i,
+                    modifier = Modifier.padding(bottom = Spacing.sm),
+                    startDrag = startDrag,
                     onChange = { transform ->
                         viewModel.updateRecipe(index) {
                             it.copy(ingredients = it.ingredients.mapIndexed { j, ing -> if (j == i) transform(ing) else ing })
@@ -431,17 +411,19 @@ fun IngredientsStep(
                     onApplySuggestion = { viewModel.applySuggestion(index, i) },
                     onRemove = { viewModel.removeIngredient(index, i) },
                 )
-                Spacer(Modifier.height(Spacing.sm))
             }
         }
-        Spacer(Modifier.height(Spacing.sm))
-        FilledTonalButton(
-            onClick = { viewModel.addIngredient(index) },
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Icon(Icons.Outlined.Add, contentDescription = null)
-            Spacer(Modifier.width(Spacing.xs))
-            Text(stringResource(R.string.review_add_ingredient))
+        Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
+            HorizontalDivider()
+            Spacer(Modifier.height(Spacing.sm))
+            FilledTonalButton(
+                onClick = { viewModel.addIngredient(index) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Outlined.Add, contentDescription = null)
+                Spacer(Modifier.width(Spacing.xs))
+                Text(stringResource(R.string.review_add_ingredient))
+            }
         }
     }
 }
@@ -450,17 +432,16 @@ fun IngredientsStep(
 private fun IngredientCard(
     ingredient: EditableIngredient,
     modifier: Modifier,
-    fieldModifier: Modifier,
-    highlighted: Boolean,
+    startDrag: () -> Unit,
     onChange: ((EditableIngredient) -> EditableIngredient) -> Unit,
     onApplySuggestion: () -> Unit,
     onRemove: () -> Unit,
 ) {
     Card(
         modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = reorderCardColor(highlighted)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     ) {
-        // Delete sits on the right, vertically centred — the same spot as on a step card.
+        // The two controls share the right edge without narrowing the ingredient fields.
         Row(Modifier.padding(Spacing.md), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 OutlinedTextField(
@@ -470,7 +451,7 @@ private fun IngredientCard(
                     },
                     label = { Text(stringResource(R.string.wizard_ingredient_name)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth().then(fieldModifier),
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(Spacing.sm))
                 Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
@@ -479,14 +460,14 @@ private fun IngredientCard(
                         onValueChange = { v -> onChange { it.copy(quantity = v) } },
                         label = { Text(stringResource(R.string.wizard_ingredient_qty)) },
                         singleLine = true,
-                        modifier = Modifier.weight(1f).then(fieldModifier),
+                        modifier = Modifier.weight(1f),
                     )
                     OutlinedTextField(
                         value = ingredient.unit,
                         onValueChange = { v -> onChange { it.copy(unit = v) } },
                         label = { Text(stringResource(R.string.wizard_ingredient_unit)) },
                         singleLine = true,
-                        modifier = Modifier.weight(1f).then(fieldModifier),
+                        modifier = Modifier.weight(1f),
                     )
                 }
                 when {
@@ -504,9 +485,15 @@ private fun IngredientCard(
                     )
                 }
             }
-            Spacer(Modifier.width(Spacing.xs))
-            IconButton(onClick = onRemove) {
-                Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.review_remove))
+            Column(
+                modifier = Modifier.height(120.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                DragHandle(startDrag)
+                IconButton(onClick = onRemove) {
+                    Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.review_remove))
+                }
             }
         }
     }
@@ -522,19 +509,20 @@ fun StepsStep(
     viewModel: ReviewViewModel,
     index: Int,
 ) {
-    val scrollState = rememberScrollState()
-    val reorder = rememberListReorder(scrollState) { from, to -> viewModel.moveStep(index, from, to) }
-    StepScroll(scrollState, Modifier.reorderTarget(reorder)) {
+    Column(Modifier.fillMaxSize().padding(horizontal = Spacing.screen, vertical = Spacing.sm)) {
         if (recipe.instructions.isEmpty()) {
             EmptyHint(stringResource(R.string.wizard_no_steps))
         } else {
-            recipe.instructions.forEachIndexed { i, step ->
+            ReorderableEditorList(
+                items = recipe.instructions,
+                modifier = Modifier.weight(1f),
+                onMove = { from, to -> viewModel.moveStep(index, from, to) },
+            ) { step, i, startDrag ->
                 StepCard(
                     number = i + 1,
                     text = step.text,
-                    modifier = Modifier.reorderSource(reorder, i, recipe.instructions.size),
-                    fieldModifier = Modifier.keepsLongPress(reorder),
-                    highlighted = reorder.hovered == i && reorder.dragged != i,
+                    modifier = Modifier.padding(bottom = Spacing.sm),
+                    startDrag = startDrag,
                     onChange = { v ->
                         viewModel.updateRecipe(index) {
                             it.copy(instructions = it.instructions.mapIndexed { j, s -> if (j == i) s.copy(text = v) else s })
@@ -542,17 +530,19 @@ fun StepsStep(
                     },
                     onRemove = { viewModel.removeStep(index, i) },
                 )
-                Spacer(Modifier.height(Spacing.sm))
             }
         }
-        Spacer(Modifier.height(Spacing.sm))
-        FilledTonalButton(
-            onClick = { viewModel.addStep(index) },
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Icon(Icons.Outlined.Add, contentDescription = null)
-            Spacer(Modifier.width(Spacing.xs))
-            Text(stringResource(R.string.review_add_step))
+        Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
+            HorizontalDivider()
+            Spacer(Modifier.height(Spacing.sm))
+            FilledTonalButton(
+                onClick = { viewModel.addStep(index) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Outlined.Add, contentDescription = null)
+                Spacer(Modifier.width(Spacing.xs))
+                Text(stringResource(R.string.review_add_step))
+            }
         }
     }
 }
@@ -562,16 +552,15 @@ private fun StepCard(
     number: Int,
     text: String,
     modifier: Modifier,
-    fieldModifier: Modifier,
-    highlighted: Boolean,
+    startDrag: () -> Unit,
     onChange: (String) -> Unit,
     onRemove: () -> Unit,
 ) {
     Card(
         modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = reorderCardColor(highlighted)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     ) {
-        // Number and delete vertically centred, delete in the same spot as on an ingredient card.
+        // Drag and delete share the right edge, with the step number still at the left.
         Row(Modifier.padding(Spacing.md), verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier
@@ -590,12 +579,18 @@ private fun StepCard(
             OutlinedTextField(
                 value = text,
                 onValueChange = onChange,
-                modifier = Modifier.weight(1f).then(fieldModifier),
+                modifier = Modifier.weight(1f),
                 minLines = 2,
             )
-            Spacer(Modifier.width(Spacing.xs))
-            IconButton(onClick = onRemove) {
-                Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.review_remove))
+            Column(
+                modifier = Modifier.height(120.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                DragHandle(startDrag)
+                IconButton(onClick = onRemove) {
+                    Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.review_remove))
+                }
             }
         }
     }
@@ -939,174 +934,25 @@ fun SummaryStep(
 /* ------------------------------------------------------------------------- */
 
 /* ------------------------------------------------------------------------- */
-/* Reordering ingredients / steps                                             */
+/* List sorting handle                                                        */
 /* ------------------------------------------------------------------------- */
 
-// Same mechanics as the shopping list's drag-to-recategorize and the meal planner's
-// drag-to-reschedule: a long press lifts a card as a platform drag source, the list is
-// the single drop target (with edge auto-scroll), and the card under the finger is lit.
-
-private const val REORDER_LABEL = "opencook-reorder"
-private const val FRAME_60HZ_NANOS = 1_000_000_000f / 60f
-
-// Deliberately not text/plain: the cards are mostly text fields, and a text field accepts
-// dropped text — it would take over the drag under the finger (no highlight, no edge
-// auto-scroll) and could even paste the payload into itself.
-private const val REORDER_MIME = "application/x-opencook-reorder"
-
-private class ListReorder {
-    /** Card bounds in root coordinates, by list position. */
-    val rows = HashMap<Int, Rect>()
-    var bounds = Rect.Zero
-    var dragged by mutableIntStateOf(-1)
-    var hovered by mutableIntStateOf(-1)
-    val scrollSpeed = mutableFloatStateOf(0f)
-    var onMove: (from: Int, to: Int) -> Unit = { _, _ -> }
-    var size = 0
-
-    /** Set by a text field on touch-down so a long press there keeps selecting text. */
-    var fieldTouched = false
-
-    fun rowAt(y: Float): Int {
-        // boundsInRoot is clipped to the scroll viewport: a card scrolled out of view has an
-        // empty rect pinned to the edge, which must not win the nearest-card fallback. Rows
-        // of since-deleted cards linger in the map, hence the size check.
-        val visible = rows.entries.filter { it.key < size && it.value.height > 0f }
-        return visible.firstOrNull { y >= it.value.top && y < it.value.bottom }?.key
-            ?: visible.minByOrNull { kotlin.math.abs(it.value.center.y - y) }?.key
-            ?: -1
-    }
-
-    fun reset() {
-        scrollSpeed.floatValue = 0f
-        hovered = -1
-        dragged = -1
-    }
-}
-
 @Composable
-private fun rememberListReorder(scroll: ScrollState, onMove: (from: Int, to: Int) -> Unit): ListReorder {
-    val reorder = remember { ListReorder() }
-    reorder.onMove = onMove
-    // scrollSpeed is px per 60 Hz frame; scaling it by the real frame time keeps the speed the
-    // same on a 90/120 Hz display, where a per-frame step would race through a list of
-    // small ingredient cards twice as fast.
-    LaunchedEffect(reorder) {
-        var last = withFrameNanos { it }
-        while (true) {
-            val now = withFrameNanos { it }
-            val frames = ((now - last) / FRAME_60HZ_NANOS).coerceAtMost(3f)
-            last = now
-            val v = reorder.scrollSpeed.floatValue
-            if (v != 0f) scroll.scrollBy(v * frames)
-        }
-    }
-    return reorder
-}
-
-@Composable
-private fun Modifier.reorderTarget(reorder: ListReorder): Modifier {
-    val edgeZonePx = with(LocalDensity.current) { 72.dp.toPx() }
-    val maxStepPx = with(LocalDensity.current) { 18.dp.toPx() }
-    val target = remember(reorder) {
-        object : DragAndDropTarget {
-            override fun onMoved(event: DragAndDropEvent) {
-                val e = event.toAndroidDragEvent()
-                val b = reorder.bounds
-                reorder.scrollSpeed.floatValue = when {
-                    e.y < b.top + edgeZonePx ->
-                        -maxStepPx * ((b.top + edgeZonePx - e.y) / edgeZonePx).coerceIn(0f, 1f)
-                    e.y > b.bottom - edgeZonePx ->
-                        maxStepPx * ((e.y - (b.bottom - edgeZonePx)) / edgeZonePx).coerceIn(0f, 1f)
-                    else -> 0f
-                }
-                reorder.hovered = reorder.rowAt(e.y)
-            }
-            override fun onDrop(event: DragAndDropEvent): Boolean {
-                val from = reorder.dragged
-                val to = reorder.rowAt(event.toAndroidDragEvent().y)
-                reorder.reset()
-                if (from < 0 || to < 0 || from == to) return false
-                reorder.onMove(from, to)
-                return true
-            }
-            override fun onExited(event: DragAndDropEvent) {
-                reorder.scrollSpeed.floatValue = 0f
-                reorder.hovered = -1
-            }
-            override fun onEnded(event: DragAndDropEvent) = reorder.reset()
-        }
-    }
-    return this
-        .onGloballyPositioned { reorder.bounds = it.boundsInRoot() }
-        .dragAndDropTarget(
-            shouldStartDragAndDrop = { it.toAndroidDragEvent().clipDescription?.hasMimeType(REORDER_MIME) == true },
-            target = target,
-        )
-}
-
-/**
- * A long press on the card's free area lifts it. Block-based dragAndDropSource is deprecated
- * but is the only variant that triggers on a real long-press — same as the shopping list.
- * TalkBack users get "move up"/"move down" actions instead.
- */
-@Suppress("DEPRECATION")
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun Modifier.reorderSource(reorder: ListReorder, i: Int, size: Int): Modifier {
-    val moveUp = stringResource(R.string.wizard_step_move_up)
-    val moveDown = stringResource(R.string.wizard_step_move_down)
-    // Captured here because the drag-shadow lambda below runs in DrawScope (no theme access).
-    val shadowColor = MaterialTheme.colorScheme.surfaceContainerHighest
-    return this
-        .onGloballyPositioned { reorder.rows[i] = it.boundsInRoot() }
-        // The lifted card stays in the list, faded, so its old slot remains readable.
-        .alpha(if (reorder.dragged == i) 0.4f else 1f)
-        .semantics {
-            customActions = buildList {
-                if (i > 0) add(CustomAccessibilityAction(moveUp) { reorder.onMove(i, i - 1); true })
-                if (i < size - 1) add(CustomAccessibilityAction(moveDown) { reorder.onMove(i, i + 1); true })
-            }
-        }
-        .dragAndDropSource(
-            drawDragDecoration = {
-                drawRoundRect(color = shadowColor, cornerRadius = CornerRadius(12.dp.toPx()))
-            },
-            block = {
+private fun DragHandle(startDrag: () -> Unit) {
+    Icon(
+        Icons.Outlined.DragIndicator,
+        contentDescription = stringResource(R.string.review_drag_handle),
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .size(40.dp)
+            .pointerInput(startDrag) {
                 awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    if (reorder.fieldTouched) {
-                        reorder.fieldTouched = false
-                        return@awaitEachGesture
-                    }
-                    awaitLongPressOrCancellation(down.id) ?: return@awaitEachGesture
-                    reorder.dragged = i
-                    reorder.size = size
-                    startTransfer(
-                        DragAndDropTransferData(
-                            ClipData(ClipDescription(REORDER_LABEL, arrayOf(REORDER_MIME)), ClipData.Item(i.toString())),
-                        ),
-                    )
+                    awaitFirstDown(requireUnconsumed = false)
+                    startDrag()
                 }
             },
-        )
+    )
 }
-
-/**
- * Marks a text field as not a drag area: it sees the touch-down (initial pass, before the
- * card) and flags it, so a long press there keeps selecting text instead of lifting the card.
- */
-private fun Modifier.keepsLongPress(reorder: ListReorder): Modifier = pointerInput(reorder) {
-    awaitEachGesture {
-        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-        reorder.fieldTouched = true
-    }
-}
-
-/** Card colour of a reorderable card: lit while a dragged card hovers over it. */
-@Composable
-private fun reorderCardColor(highlighted: Boolean) =
-    if (highlighted) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
 
 @Composable
 private fun StepScroll(
@@ -1114,10 +960,8 @@ private fun StepScroll(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    // [modifier] goes on a non-scrolling box around the scrolling column, not on the column
-    // itself: Compose hit-tests a drop target by its layout node's inner coordinates, which
-    // on the column would move with the scroll — after scrolling N px the list's drop target
-    // would "end" N px too high, and a drag held at the bottom edge would drop out of it.
+    // Measure the stationary viewport separately from the scrolling cards, so edge scrolling
+    // always uses the visible bounds even after the column has moved.
     Box(modifier.fillMaxSize()) {
         Column(
             Modifier

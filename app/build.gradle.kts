@@ -165,6 +165,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
+    implementation("androidx.recyclerview:recyclerview:1.4.0")
 
     // Navigation + Lifecycle
     implementation(libs.androidx.navigation.compose)

@@ -66,6 +66,7 @@
     <string name="review_notes">Notes</string>
     <string name="review_add_ingredient">Add ingredient</string>
     <string name="review_add_step">Add step</string>
+    <string name="review_drag_handle">Drag to reorder</string>
     <string name="review_save">Save</string>
     <string name="review_image_take">Take photo</string>
     <string name="review_image_gallery">Gallery</string>
