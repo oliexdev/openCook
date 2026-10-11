@@ -127,6 +127,8 @@ class LocalizedLists @Inject constructor(
             // stay in the active content language — they seed a new household's pantry rows.
             pantry = res.getStringArray(R.array.pantry_defaults).toList(),
         )
+        IngredientLineParser.setUnits(unionLower(R.array.ingredient_units).toSet())
+
         // Main-protein keywords for meal-planner variety. Fixed canonical group keys (also shown
         // in the reason), translated keyword lists unioned across languages — priority order kept.
         ProteinGroups.setGroups(
