@@ -18,6 +18,7 @@
 
 package com.food.opencook.ui
 
+import androidx.annotation.VisibleForTesting
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -100,11 +101,16 @@ import com.food.opencook.ui.status.ActiveJobsViewModel
 import com.food.opencook.ui.status.StatusStrip
 import kotlinx.coroutines.launch
 
+/** Whether the "DEV BUILD" strip shows. The store screenshots (androidTest
+ *  StoreScreenshotTest) run on the debug build and switch it off. */
+@VisibleForTesting
+var showInstanceBanner: Boolean = BuildConfig.DEBUG
+
 /** Debug-only "DEV BUILD" banner so the dev install is unmistakable. Hidden in release.
  *  The ② variant marks the second side-by-side identity (.dev2) used for sync E2E tests. */
 @Composable
 private fun InstanceBanner() {
-    if (!BuildConfig.DEBUG) return
+    if (!showInstanceBanner) return
     val isSecond = BuildConfig.APPLICATION_ID.endsWith(".dev2")
     Surface(
         color = if (isSecond) MaterialTheme.colorScheme.errorContainer

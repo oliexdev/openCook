@@ -142,6 +142,17 @@ contribute code, fork the repository and send a pull request.
   </tr>
 </table>
 
+<table>
+  <tr>
+    <th><img src='fastlane/metadata/android/en-US/images/tenInchScreenshots/1_recipes.png' width='410px' alt='Recipes on a tablet' /></th>
+    <th><img src='fastlane/metadata/android/en-US/images/tenInchScreenshots/2_recipe_detail.png' width='410px' alt='Recipe detail on a tablet' /></th>
+  </tr>
+  <tr>
+    <th><img src='fastlane/metadata/android/en-US/images/tenInchScreenshots/3_meal_planner.png' width='410px' alt='Meal planner on a tablet' /></th>
+    <th><img src='fastlane/metadata/android/en-US/images/tenInchScreenshots/4_shopping_list.png' width='410px' alt='Shopping list on a tablet' /></th>
+  </tr>
+</table>
+
 # License :page_facing_up:
 
 openCook is licensed under the GPL v3 (see the `LICENSE` file for the full notice).

@@ -39,7 +39,8 @@ android {
         versionCode = 3
         versionName = "0.3"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Hilt-aware runner for the store screenshots (androidTest StoreScreenshotTest).
+        testInstrumentationRunner = "com.food.opencook.ScreenshotTestRunner"
 
         // Launcher label as a generated resource so the second test identity can
         // override it (see the debug2 build type).
@@ -232,6 +233,10 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    // Store screenshots (./gradlew connectedDebugAndroidTest, see StoreScreenshotTest)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.hilt.android.testing)
+    kspAndroidTest(libs.hilt.compiler)
 
     // Debug tooling
     debugImplementation(libs.androidx.compose.ui.tooling)

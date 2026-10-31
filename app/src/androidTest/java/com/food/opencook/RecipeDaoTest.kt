@@ -67,7 +67,7 @@ class RecipeDaoTest {
     @Test
     fun insertsAndReadsRelations() = runBlocking {
         dao.insertRecipe(recipe("r1"))
-        dao.insertIngredients(listOf(IngredientEntity("i1", "r1", 0, "400 g", null, "Nudeln")))
+        dao.insertIngredients(listOf(IngredientEntity("i1", "r1", 0, 400.0, "g", "Nudeln")))
         dao.insertInstructions(listOf(InstructionEntity("s1", "r1", 0, "Kochen")))
         dao.insertNutrition(NutritionEntity(recipeId = "r1", calories = "560 kcal"))
         dao.insertImages(listOf(ImageEntity("img1", "r1", 0, "crop.jpg", null, true)))
