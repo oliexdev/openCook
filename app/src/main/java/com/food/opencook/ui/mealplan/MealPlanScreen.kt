@@ -45,6 +45,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -280,9 +281,14 @@ fun MealPlanScreen(
             }
         },
     ) { innerPadding ->
-        Column(Modifier.fillMaxSize().padding(innerPadding).padding(horizontal = Spacing.screen).padding(top = Spacing.sm)) {
+        // Capped and centred like the shopping list, so a landscape tablet doesn't stretch
+        // the day cards across the whole screen.
+        Column(
+            Modifier.fillMaxSize().padding(innerPadding).padding(horizontal = Spacing.screen).padding(top = Spacing.sm),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
             if (generating) {
-                LinearProgressIndicator(Modifier.fillMaxWidth().padding(bottom = Spacing.sm))
+                LinearProgressIndicator(Modifier.widthIn(max = 640.dp).fillMaxWidth().padding(bottom = Spacing.sm))
             }
 
             // Drag-to-reschedule. The platform drag-and-drop never auto-scrolls a list, so a
@@ -376,7 +382,7 @@ fun MealPlanScreen(
 
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.widthIn(max = 640.dp).fillMaxSize()
                     .onGloballyPositioned { listBounds.value = it.boundsInRoot() }
                     .dragAndDropTarget(
                         shouldStartDragAndDrop = { it.mimeTypes().contains(ClipDescription.MIMETYPE_TEXT_PLAIN) },

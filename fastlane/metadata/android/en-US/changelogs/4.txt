@@ -1,0 +1,6 @@
+* openCook now speaks Spanish and Arabic.
+* Recipes: reorder ingredients and steps, start timers from a step, edit several at once, pick more than one category.
+* Meal plan: several dishes per meal; the shopping list scales with servings.
+* New aisles for snacks, household and pets — drag items into any aisle, even an empty one.
+* Ready for Android 17: openCook asks for access to devices on your home network.
+* Server: works with any OpenAI-compatible vision API.

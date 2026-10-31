@@ -36,8 +36,8 @@ android {
         applicationId = "com.food.opencook"
         minSdk = 30
         targetSdk = 37
-        versionCode = 3
-        versionName = "0.3"
+        versionCode = 4
+        versionName = "0.4"
 
         // Hilt-aware runner for the store screenshots (androidTest StoreScreenshotTest).
         testInstrumentationRunner = "com.food.opencook.ScreenshotTestRunner"
