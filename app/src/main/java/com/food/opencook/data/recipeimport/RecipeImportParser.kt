@@ -264,11 +264,11 @@ object RecipeImportParser {
         val el = obj.first("openCookTags", "keywords", "recipeCategory", "recipeCuisine") ?: return emptyList()
         // Drop the word that became the category — "Dessert" as both is noise. Anything we did
         // not recognise ("Plat principal") stays a tag, so nothing from the page is lost.
-        val key = RecipeCategories.matchKeyOrNull(category) ?: return wordList(el)
-        return wordList(el).filterNot { RecipeCategories.matchKeyOrNull(it) == key }
+        val keys = RecipeCategories.fromStored(category).ifEmpty { return wordList(el) }
+        return wordList(el).filterNot { RecipeCategories.matchKeyOrNull(it) in keys }
     }
 
-    /** The site's schema.org `recipeCategory` as one of our keys, or null. Sites write this
+    /** The site's schema.org `recipeCategory` as our keys (stored form), or null. Sites write this
      *  field freely ("Dessert", "Plat principal", "Hauptspeise, Vegetarisch"), so only a value
      *  the localized alias lists actually know becomes the category — an unrecognised one leaves
      *  the recipe uncategorized rather than pretending it is "other". `recipeCuisine`
@@ -276,7 +276,8 @@ object RecipeImportParser {
     private fun schemaCategory(obj: JsonObject): String? =
         obj.first("recipeCategory")
             ?.let(::wordList)
-            ?.firstNotNullOfOrNull { RecipeCategories.matchKeyOrNull(it) }
+            ?.mapNotNull { RecipeCategories.matchKeyOrNull(it) }
+            ?.let { RecipeCategories.toStored(it) }
 
     /** A schema.org keyword-ish field as a list: an array, or one string holding a comma list. */
     private fun wordList(el: JsonElement): List<String> = when (el) {

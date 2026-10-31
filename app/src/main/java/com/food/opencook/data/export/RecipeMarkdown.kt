@@ -117,7 +117,7 @@ object RecipeMarkdown {
         val servings = r.servings?.takeIf { it > 0 }?.toString()
             ?: r.recipeYield?.takeIf { it.isNotBlank() }
         val pairs = listOfNotNull(
-            r.category?.takeIf { it.isNotBlank() }?.let { labels.category to it },
+            r.category?.takeIf { it.isNotBlank() }?.let { labels.category to it.lines().filter(String::isNotBlank).joinToString(", ") },
             servings?.let { labels.servings to it },
             time(r.prepTime)?.let { labels.prep to it },
             time(r.cookTime)?.let { labels.cook to it },

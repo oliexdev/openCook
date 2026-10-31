@@ -105,7 +105,7 @@ internal object RecipeSearchFilter {
         val matchesMeal = filters.mealTypes.isEmpty() ||
             MealTypes.fromStored(item.recipe.mealTypes).any { it in filters.mealTypes }
         val matchesCategory = filters.categories.isEmpty() ||
-            RecipeCategories.normalizeKey(item.recipe.category) in filters.categories
+            filters.categories.any { RecipeCategories.matches(item.recipe.category, it) }
         val matchesCookbook = filters.cookbooks.isEmpty() || item.recipe.cookbook in filters.cookbooks
         val matchesLiked = !filters.likedOnly || item.recipe.id in likedIds
         val matchesCookable = !filters.cookableOnly || RecipeAvailability.isStocked(item, pantry)

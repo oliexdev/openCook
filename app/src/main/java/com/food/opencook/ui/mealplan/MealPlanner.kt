@@ -326,11 +326,9 @@ object MealPlanner {
     ): Pair<Double, List<ReasonContribution>> {
         var s = 0.0
         val reasons = mutableListOf<ReasonContribution>()
-        // Only a real (non-default) category drives the variety penalty — two uncategorised
-        // dishes ("Sonstiges") are unrelated and must not penalise each other.
-        val category = recipe.recipe.category
-            ?.let { RecipeCategories.normalizeKey(it) }
-            ?.takeIf { it != RecipeCategories.DEFAULT }
+        // Only a real dish-kind category drives the variety penalty — two uncategorised
+        // dishes ("Sonstiges") are unrelated, and a shared diet key (vegetarian) is no repeat.
+        val categories = RecipeCategories.varietyKeys(recipe.recipe.category)
         val coreIngredients = coreByRecipe[recipe.recipe.id].orEmpty()
 
         // Variety: recency penalty (closer = larger).
@@ -357,13 +355,17 @@ object MealPlanner {
             reasons += ReasonContribution(ReasonCode.LIKED, w.likedBonus)
         }
         // Variety: same (real) category as a neighbouring day.
-        if (category != null) {
+        if (categories.isNotEmpty()) {
             listOf(date.minusDays(1), date.plusDays(1)).forEach { neighbour ->
-                val neighbourCategory = placed[neighbour]?.let { byId[it]?.recipe?.category }
-                    ?.let { RecipeCategories.normalizeKey(it) }
-                if (neighbourCategory == category) {
+                val shared = categories intersect RecipeCategories.varietyKeys(
+                    placed[neighbour]?.let { byId[it]?.recipe?.category },
+                )
+                if (shared.isNotEmpty()) {
                     s -= w.sameCategoryPenalty
-                    reasons += ReasonContribution(ReasonCode.SAME_CATEGORY_NEIGHBOUR, -w.sameCategoryPenalty, detail = category)
+                    reasons += ReasonContribution(
+                        ReasonCode.SAME_CATEGORY_NEIGHBOUR, -w.sameCategoryPenalty,
+                        detail = RecipeCategories.toStored(shared),
+                    )
                 }
             }
         }

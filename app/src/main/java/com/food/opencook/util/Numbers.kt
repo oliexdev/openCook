@@ -56,6 +56,10 @@ object Numbers {
  * Fixed coarse categories the AI assigns; drives meal-plan variety. Stored as
  * language-independent **keys** (e.g. "meat"); the UI shows a localized label.
  * Legacy/AI values in any language are mapped to a key on read via [normalizeKey].
+ *
+ * Multi-value: a recipe may carry several keys ("soup" + "vegetarian"), stored
+ * newline-joined in the one `category` column (the [MealTypes] pattern). A single
+ * legacy value is simply a one-element list, so no migration is needed.
  */
 object RecipeCategories {
     /** Stable keys persisted in the DB + sync log. */
@@ -113,13 +117,51 @@ object RecipeCategories {
     /** Map a stored/legacy/AI category (any language) to a stable key; unknown → [DEFAULT]. */
     fun normalizeKey(raw: String?): String = matchKeyOrNull(raw) ?: DEFAULT
 
+    /** Deliberately the only diet key: it is a planner signal ("meat yesterday, vegetarian
+     *  today"). Finer diets (vegan, gluten-free, …) are tags, so this list doesn't grow. */
+    private const val DIET_KEY = "vegetarian"
+
+    /** Stored column → known keys in [KEYS] order; null/blank/unknown → empty. */
+    fun fromStored(stored: String?): List<String> {
+        val keys = stored?.split("\n")?.mapNotNull { matchKeyOrNull(it) }.orEmpty()
+        return KEYS.filter { it in keys }
+    }
+
+    /** Key list → stored column; empty → null (uncategorized). */
+    fun toStored(keys: Collection<String>): String? =
+        KEYS.filter { it in keys }.takeIf { it.isNotEmpty() }?.joinToString("\n")
+
+    /** Normalize any stored/AI/import value (one word or a newline list) to the stored form. */
+    fun normalizeStored(raw: String?): String? =
+        raw?.split("\n")?.filter { it.isNotBlank() }?.takeIf { it.isNotEmpty() }
+            ?.let { lines -> toStored(lines.map { normalizeKey(it) }) }
+
+    /** Toggle [key] in a stored value — what a category chip does. */
+    fun toggle(stored: String?, key: String): String {
+        val keys = fromStored(stored)
+        return toStored(if (key in keys) keys - key else keys + key).orEmpty()
+    }
+
+    /** Whether a recipe's [stored] categories include [key]; uncategorized counts as [DEFAULT]. */
+    fun matches(stored: String?, key: String): Boolean =
+        key in fromStored(stored).ifEmpty { listOf(DEFAULT) }
+
+    /** Keys the meal planner's "same category as yesterday" penalty compares. The diet key
+     *  counts only on its own: a vegetarian soup next to a vegetarian pasta is still variety,
+     *  but two plain "vegetarian" dishes in a row are a repeat, as before. */
+    fun varietyKeys(stored: String?): Set<String> {
+        val keys = fromStored(stored).filter { it != DEFAULT }
+        return (if (keys.size > 1) keys - DIET_KEY else keys).toSet()
+    }
+
     /** Display label: localized for known/legacy values; a custom free-text value is kept verbatim. */
     fun displayLabel(context: Context, raw: String?): String {
         if (raw.isNullOrBlank()) return context.getString(R.string.cat_other)
         // "Other" is a real answer, not a miss — matchKeyOrNull tells the two apart, so the
         // user's own free text survives instead of collapsing into the "Other" label.
-        val key = matchKeyOrNull(raw) ?: return raw.trim()
-        return context.getString(labelRes(key))
+        return raw.split("\n").map { it.trim() }.filter { it.isNotEmpty() }.joinToString(", ") { line ->
+            matchKeyOrNull(line)?.let { context.getString(labelRes(it)) } ?: line
+        }
     }
 }
 

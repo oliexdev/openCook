@@ -1122,11 +1122,12 @@ internal fun MealTypeChips(
     }
 }
 
-/** Coarse-category picker: the fixed [RecipeCategories.KEYS] as toggleable chips (stores the key). */
+/** Coarse-category picker: the fixed [RecipeCategories.KEYS] as toggleable chips. Multi-select —
+ *  [current] and the value handed to [onPick] are the newline-joined stored form. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun CategoryChips(current: String, onPick: (String) -> Unit, showLabel: Boolean = true) {
-    val selected = current.takeIf { it.isNotBlank() }?.let { RecipeCategories.normalizeKey(it) }
+    val selected = RecipeCategories.fromStored(current)
     Column {
         if (showLabel) {
             Text(
@@ -1139,8 +1140,8 @@ internal fun CategoryChips(current: String, onPick: (String) -> Unit, showLabel:
         FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
             RecipeCategories.KEYS.forEach { key ->
                 FilterChip(
-                    selected = selected == key,
-                    onClick = { onPick(if (selected == key) "" else key) },
+                    selected = key in selected,
+                    onClick = { onPick(RecipeCategories.toggle(current, key)) },
                     label = { Text(stringResource(RecipeCategories.labelRes(key))) },
                 )
             }

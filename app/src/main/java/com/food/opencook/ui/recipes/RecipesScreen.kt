@@ -493,8 +493,8 @@ private fun BulkEditSheet(
     val addMeals = wanted.filterValues { it }.keys - inAll
     val removeMeals = wanted.filterValues { !it }.keys.filter { it in inAll || it in inSome }.toSet()
 
-    // Category: single choice; deselecting goes back to "untouched".
-    val currentCategories = picked.map { RecipeCategories.normalizeKey(it.recipe.category) }.distinct()
+    // Category: the picked set replaces each recipe's set; nothing picked = "untouched".
+    val currentCategories = picked.map { RecipeCategories.normalizeStored(it.recipe.category).orEmpty() }.distinct()
     val commonCategory = currentCategories.singleOrNull().orEmpty()
     var category by remember { mutableStateOf(commonCategory) }
     val categoryChange = category.takeIf { it.isNotEmpty() && it != commonCategory }

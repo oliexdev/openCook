@@ -182,6 +182,14 @@ class RecipeSearchFilterTest {
     }
 
     @Test
+    fun multiCategoryRecipeMatchesEachOfItsCategories() {
+        val vegSoup = recipe(category = "soup\nvegetarian")
+        assertTrue(matches(vegSoup, filters = RecipeFilters(categories = setOf("soup"))))
+        assertTrue(matches(vegSoup, filters = RecipeFilters(categories = setOf("vegetarian"))))
+        assertFalse(matches(vegSoup, filters = RecipeFilters(categories = setOf("salad"))))
+    }
+
+    @Test
     fun cookbooksAreMultiSelect() {
         val oma = recipe()                                    // cookbook "Omas Küche"
         val jamie = recipe(id = "r2", cookbook = "Jamie")

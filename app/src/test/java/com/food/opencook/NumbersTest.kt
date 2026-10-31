@@ -89,6 +89,21 @@ class NumbersTest {
     }
 
     @Test
+    fun recipeCategoriesAreMultiValue() {
+        // Legacy single values stay valid; lists come back in KEYS order, unknowns dropped.
+        assertEquals(listOf("soup"), RecipeCategories.fromStored("soup"))
+        assertEquals(listOf("soup", "vegetarian"), RecipeCategories.fromStored("vegan\nSuppe\nHauptspeise"))
+        assertEquals(emptyList<String>(), RecipeCategories.fromStored(null))
+        assertEquals("soup\nvegetarian", RecipeCategories.toggle("soup", "vegetarian"))
+        assertEquals("vegetarian", RecipeCategories.toggle("soup\nvegetarian", "soup"))
+        assertEquals("", RecipeCategories.toggle("soup", "soup"))
+        assertEquals("soup\nvegetarian", RecipeCategories.normalizeStored("vegetarian\nsoup"))
+        assertNull(RecipeCategories.normalizeStored(" "))
+        assertEquals(setOf("soup"), RecipeCategories.varietyKeys("soup\nvegetarian"))
+        assertEquals(setOf("vegetarian"), RecipeCategories.varietyKeys("vegetarian"))
+    }
+
+    @Test
     fun durationMinutes() {
         assertEquals(25, DurationFormat.minutes("PT25M"))
         assertEquals(70, DurationFormat.minutes("PT1H10M"))

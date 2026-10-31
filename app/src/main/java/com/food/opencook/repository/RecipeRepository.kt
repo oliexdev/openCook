@@ -444,7 +444,7 @@ class RecipeRepository @Inject constructor(
         editField(recipeIds, "cookbook", { it.cookbook }) { it.copy(cookbook = value) }
     }
 
-    /** Give every one of [recipeIds] the category [key] (one of `RecipeCategories.KEYS`). */
+    /** Give every one of [recipeIds] the category set [key] (stored form, see `RecipeCategories`). */
     suspend fun setCategory(recipeIds: Collection<String>, key: String) {
         editField(recipeIds, "category", { it.category }) { it.copy(category = key) }
     }

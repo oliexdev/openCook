@@ -101,7 +101,7 @@ fun RecipeDto.toMappedRecipe(
             // and let the UI render a localized "N servings" label from the numeric servings.
             recipeYield = recipeYield,
             servings = openCookServings,
-            category = openCookCategory?.let { RecipeCategories.normalizeKey(it) },
+            category = RecipeCategories.normalizeStored(openCookCategory),
             mealTypes = MealTypes.toStored(openCookMealTypes.mapNotNull { MealTypes.normalizeKey(it) }),
             notes = openCookNotes.filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }?.joinToString("\n"),
             tags = openCookTags.filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }?.joinToString("\n"),

@@ -203,6 +203,30 @@ class MealPlannerTest {
     }
 
     @Test
+    fun multiCategoryOverlapInTheDishKindIsPenalised() {
+        // Pinned vegetarian soup; a liked plain soup still shares "soup" (−3 beats +2 liked).
+        val result = MealPlanner.generateWeek(
+            dates = week(2), skipped = emptySet(), pinned = mapOf(today to "P"),
+            candidates = listOf(recipe("P", "soup\nvegetarian"), recipe("X", "soup"), recipe("Y", "meat")),
+            recentlyPlanned = emptyMap(), pantry = emptySet(),
+            householdSize = 2, today = today, seed = 1, liked = setOf("X"), weights = NO_JITTER,
+        )
+        assertEquals("Y", result[today.plusDays(1)]?.recipeId)
+    }
+
+    @Test
+    fun sharedDietKeyIsNoRepeat() {
+        // Vegetarian soup next to vegetarian pasta is variety — the diet key must not penalise.
+        val result = MealPlanner.generateWeek(
+            dates = week(2), skipped = emptySet(), pinned = mapOf(today to "P"),
+            candidates = listOf(recipe("P", "soup\nvegetarian"), recipe("X", "pasta\nvegetarian"), recipe("Y", "meat")),
+            recentlyPlanned = emptyMap(), pantry = emptySet(),
+            householdSize = 2, today = today, seed = 1, liked = setOf("X"), weights = NO_JITTER,
+        )
+        assertEquals("X", result[today.plusDays(1)]?.recipeId)
+    }
+
+    @Test
     fun leftoverNotPlacedWhenGapTooBig() {
         val big = recipe("Big", "Suppe", servings = 4)
         val result = MealPlanner.generateWeek(
