@@ -19,6 +19,7 @@
 package com.food.opencook.ui.onboarding
 
 import androidx.activity.compose.BackHandler
+import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -35,6 +36,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
@@ -72,17 +74,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.food.opencook.R
 import com.food.opencook.data.discovery.DiscoveredRole
 import com.food.opencook.data.remote.dto.HouseholdSummaryDto
+import com.food.opencook.ui.components.openAppSettings
+import com.food.opencook.ui.components.rememberLocalNetworkRequest
 import com.food.opencook.ui.theme.Spacing
 
 @Composable
@@ -92,6 +96,22 @@ fun OnboardingScreen(viewModel: OnboardingViewModel = hiltViewModel()) {
     // Reset transient state each time onboarding appears (the VM is host-scoped and
     // reused after leaving a household).
     LaunchedEffect(Unit) { viewModel.onEnter() }
+
+    // Android 17: the server and peer paths need LAN access. Ask when such a mode is
+    // picked, then continue either way — a denial shows the explanation in that step.
+    val lanGranted by viewModel.localNetworkGranted.collectAsStateWithLifecycle()
+    var afterLanPrompt by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val requestLan = rememberLocalNetworkRequest {
+        viewModel.refreshLocalNetwork()
+        afterLanPrompt?.invoke()
+        afterLanPrompt = null
+    }
+    val withLan: (() -> Unit) -> Unit = { next ->
+        if (lanGranted) next() else {
+            afterLanPrompt = next
+            requestLan()
+        }
+    }
 
     // Hardware back walks the steps backwards instead of leaving the app.
     BackHandler(enabled = state.step != OnboardingStep.MODE) { viewModel.back() }
@@ -114,9 +134,13 @@ fun OnboardingScreen(viewModel: OnboardingViewModel = hiltViewModel()) {
             Hero()
 
             when (state.step) {
-                OnboardingStep.MODE -> ModeStep(viewModel)
-                OnboardingStep.SERVER -> ServerStep(viewModel)
-                OnboardingStep.PEERS -> PeersStep(viewModel)
+                OnboardingStep.MODE -> ModeStep(viewModel, withLan)
+                OnboardingStep.SERVER ->
+                    if (lanGranted) ServerStep(viewModel)
+                    else LanPermissionStep(R.string.onboarding_server_step_title, requestLan)
+                OnboardingStep.PEERS ->
+                    if (lanGranted) PeersStep(viewModel)
+                    else LanPermissionStep(R.string.onboarding_peers_step_title, requestLan)
                 OnboardingStep.HOUSEHOLD -> HouseholdStep(state, viewModel)
                 OnboardingStep.CREATE -> CreateStep(state, viewModel)
             }
@@ -188,7 +212,7 @@ private fun StepHeader(title: String) {
 
 /** First step: pick how to use openCook — offline-only on this phone, or with a home server. */
 @Composable
-private fun ModeStep(viewModel: OnboardingViewModel) {
+private fun ModeStep(viewModel: OnboardingViewModel, withLan: (() -> Unit) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
         StepHeader(stringResource(R.string.onboarding_mode_step_title))
         ChoiceCard(
@@ -201,14 +225,34 @@ private fun ModeStep(viewModel: OnboardingViewModel) {
             icon = Icons.Outlined.Dns,
             title = stringResource(R.string.onboarding_mode_server_title),
             subtitle = stringResource(R.string.onboarding_mode_server_subtitle),
-            onClick = viewModel::chooseServerMode,
+            onClick = { withLan(viewModel::chooseServerMode) },
         )
         ChoiceCard(
             icon = Icons.Outlined.Devices,
             title = stringResource(R.string.onboarding_mode_serverless_title),
             subtitle = stringResource(R.string.onboarding_mode_serverless_subtitle),
-            onClick = viewModel::chooseServerlessMode,
+            onClick = { withLan(viewModel::chooseServerlessMode) },
         )
+    }
+}
+
+/** Stands in for the server/peer step while Android 17's LAN access is missing: says why
+ *  it is needed, and offers the settings page for when the dialog no longer appears. */
+@Composable
+private fun LanPermissionStep(@StringRes titleRes: Int, onAllow: () -> Unit) {
+    val context = LocalContext.current
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+        StepHeader(stringResource(titleRes))
+        Text(
+            stringResource(R.string.onboarding_lan_permission_body),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Button(onClick = onAllow, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.onboarding_lan_permission_allow))
+        }
+        TextButton(onClick = { openAppSettings(context) }, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.local_network_open_settings))
+        }
     }
 }
 

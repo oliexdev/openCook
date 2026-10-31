@@ -19,21 +19,23 @@
 package com.food.opencook.ui.components
 
 import android.text.format.DateUtils
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.SyncDisabled
 import androidx.compose.material.icons.outlined.SyncProblem
+import androidx.compose.material.icons.outlined.WifiLock
 import androidx.compose.material.icons.outlined.WifiOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -46,7 +48,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
@@ -164,6 +165,14 @@ fun SyncStatusIcon(status: SyncStatus, onSync: () -> Unit) {
         }
         is SyncStatus.Syncing -> IconButton(onClick = onClick, enabled = false) {
             SpinningSyncIcon()
+        }
+        SyncStatus.LocalNetworkDenied -> IconButton(onClick = LocalRequestLocalNetwork.current) {
+            // Actionable (one tap fixes it), so it gets the error tint like HouseholdMissing.
+            Icon(
+                Icons.Outlined.WifiLock,
+                contentDescription = stringResource(R.string.sync_status_local_network_denied),
+                tint = MaterialTheme.colorScheme.error,
+            )
         }
         SyncStatus.OffHomeNetwork -> IconButton(onClick = onClick) {
             // Wrong network is a different story from "server is down": not a sync

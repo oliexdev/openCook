@@ -313,6 +313,8 @@
     <string name="onboarding_peer_subtitle">Phone on this Wi-Fi</string>
     <string name="onboarding_server_step_title">Choose a server</string>
     <string name="onboarding_searching">Searching the network…</string>
+    <string name="onboarding_lan_permission_body">openCook finds your server and the other phones in your household on your Wi-Fi. For that, Android asks for access to nearby devices. Nothing leaves your home network.</string>
+    <string name="onboarding_lan_permission_allow">Allow access</string>
     <string name="onboarding_peers_step_title">Join through a phone that already has the household — or start a new one</string>
     <string name="onboarding_peers_searching">Looking for phones on this Wi-Fi… openCook must be open on the other phone.</string>
     <string name="onboarding_peers_create_subtitle">Start on this phone — the others join afterwards.</string>
@@ -453,6 +455,12 @@
     <string name="sync_status_household_missing">Household not found on the server – it may have been re-set up. Re-join in settings.</string>
     <string name="sync_error_offline">Server unreachable – will retry automatically once it\'s available.</string>
     <string name="sync_error_off_home_network">Sync only works on your home Wi-Fi (or via VPN) – it continues by itself as soon as you\'re back.</string>
+    <string name="sync_status_local_network_denied">No access to your home network – tap to allow</string>
+    <string name="sync_error_local_network_denied">Without access to nearby devices openCook can\'t reach your server or other phones. You can allow it in the app settings under Permissions.</string>
+    <string name="local_network_open_settings">Open settings</string>
+    <string name="local_network_rationale_title">Access to your home network</string>
+    <string name="local_network_rationale_continue">Continue</string>
+    <string name="local_network_rationale_later">Not now</string>
     <string name="sync_status_last_success">Everything in sync – last exchange %1$s</string>
     <string name="sync_progress_recipes">Syncing recipes … %1$d</string>
     <string name="sync_progress_images">Loading images … %1$d / %2$d</string>

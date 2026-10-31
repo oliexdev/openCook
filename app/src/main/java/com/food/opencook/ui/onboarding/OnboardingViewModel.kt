@@ -23,6 +23,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.food.opencook.R
 import com.food.opencook.data.discovery.DiscoveredServer
+import com.food.opencook.data.discovery.LocalNetworkAccess
 import com.food.opencook.data.discovery.ServerDiscovery
 import com.food.opencook.data.remote.BaseUrlInterceptor
 import com.food.opencook.data.remote.SyncApi
@@ -73,6 +74,7 @@ class OnboardingViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val settings: SettingsRepository,
     private val serverDiscovery: ServerDiscovery,
+    private val localNetwork: LocalNetworkAccess,
     private val syncApi: SyncApi,
     @param:Named("peer") private val peerSyncApi: SyncApi,
     private val baseUrlInterceptor: BaseUrlInterceptor,
@@ -84,6 +86,12 @@ class OnboardingViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(OnboardingUiState())
     val state: StateFlow<OnboardingUiState> = _state.asStateFlow()
+
+    /** Android 17: whether openCook may reach the LAN — the server and peer steps need it. */
+    val localNetworkGranted: StateFlow<Boolean> = localNetwork.granted
+
+    /** The permission dialog returned. */
+    fun refreshLocalNetwork() = localNetwork.refresh()
 
     /** Cold discovery flow — collected by the server step so it stops with the screen. */
     val discovered: Flow<List<DiscoveredServer>> = serverDiscovery.discover()

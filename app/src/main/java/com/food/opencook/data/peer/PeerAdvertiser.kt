@@ -27,6 +27,7 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import com.food.opencook.data.discovery.LanMonitor
+import com.food.opencook.data.discovery.LocalNetworkAccess
 import com.food.opencook.data.discovery.ServerDiscovery
 import com.food.opencook.data.settings.SettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -66,6 +67,7 @@ class PeerAdvertiser @Inject constructor(
     private val settings: SettingsRepository,
     private val serverDiscovery: ServerDiscovery,
     private val lanMonitor: LanMonitor,
+    private val localNetwork: LocalNetworkAccess,
 ) : DefaultLifecycleObserver {
 
     // Plain IO pool. (A limitedParallelism(1) lane looked attractive for strict
@@ -84,7 +86,9 @@ class PeerAdvertiser @Inject constructor(
     fun install() {
         ProcessLifecycleOwner.get().lifecycle.addObserver(this)
         scope.launch {
-            combine(foreground, standby, lanMonitor.onLocalWifi(), settings.householdCode, settings.p2pEnabled) { fg, sb, wifi, code, p2p ->
+            // Android 17: without LAN access the responder could neither be found nor reached.
+            val lan = combine(lanMonitor.onLocalWifi(), localNetwork.granted) { wifi, granted -> wifi && granted }
+            combine(foreground, standby, lan, settings.householdCode, settings.p2pEnabled) { fg, sb, wifi, code, p2p ->
                 p2p && (fg || sb) && wifi && !code.isNullOrBlank()
             }
                 .distinctUntilChanged()
@@ -96,8 +100,10 @@ class PeerAdvertiser @Inject constructor(
                 }
         }
         scope.launch {
-            combine(settings.p2pEnabled, settings.householdCode, foreground) { p2p, code, fg ->
-                (p2p && !code.isNullOrBlank()) to fg
+            combine(settings.p2pEnabled, settings.householdCode, foreground, localNetwork.granted) { p2p, code, fg, lan ->
+                // No standby service while LAN access is missing — it would hold a
+                // notification for a responder nobody can reach.
+                (p2p && lan && !code.isNullOrBlank()) to fg
             }
                 // Deduped on the *pair*, not on the desired state alone: a foreground flip
                 // is a real value change and still re-emits (that is the retry window for a

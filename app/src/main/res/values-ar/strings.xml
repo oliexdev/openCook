@@ -345,6 +345,8 @@
     <string name="onboarding_peer_subtitle">هاتف على شبكة Wi-Fi هذه</string>
     <string name="onboarding_server_step_title">اختر خادمًا</string>
     <string name="onboarding_searching">جارٍ البحث في الشبكة…</string>
+    <string name="onboarding_lan_permission_body">يعثر openCook على الخادم وعلى هواتف أفراد المنزل الأخرى عبر شبكة Wi-Fi لديك. لذلك يطلب Android الوصول إلى الأجهزة المجاورة. لا يغادر أي شيء شبكتك المنزلية.</string>
+    <string name="onboarding_lan_permission_allow">السماح بالوصول</string>
     <string name="onboarding_peers_step_title">انضم عبر هاتف يملك الأسرة بالفعل — أو ابدأ أسرة جديدة</string>
     <string name="onboarding_peers_searching">جارٍ البحث عن هواتف على شبكة Wi-Fi هذه… يجب أن يكون openCook مفتوحًا على الهاتف الآخر.</string>
     <string name="onboarding_peers_create_subtitle">ابدأ من هذا الهاتف — وينضم الآخرون لاحقًا.</string>
@@ -509,6 +511,12 @@
     <string name="sync_status_household_missing">لم يتم العثور على الأسرة على الخادم – ربما أُعيد إعداده. أعد الانضمام من الإعدادات.</string>
     <string name="sync_error_offline">الخادم غير متاح – ستتم إعادة المحاولة تلقائيًا عند توفره.</string>
     <string name="sync_error_off_home_network">تعمل المزامنة فقط على شبكة Wi-Fi المنزلية (أو عبر VPN) – وتستأنف تلقائيًا بمجرد عودتك.</string>
+    <string name="sync_status_local_network_denied">لا وصول إلى شبكتك المنزلية – اضغط للسماح</string>
+    <string name="sync_error_local_network_denied">بدون الوصول إلى الأجهزة المجاورة لا يستطيع openCook الوصول إلى الخادم أو إلى الهواتف الأخرى. يمكنك السماح بذلك من إعدادات التطبيق ضمن الأذونات.</string>
+    <string name="local_network_open_settings">فتح الإعدادات</string>
+    <string name="local_network_rationale_title">الوصول إلى شبكتك المنزلية</string>
+    <string name="local_network_rationale_continue">متابعة</string>
+    <string name="local_network_rationale_later">ليس الآن</string>
     <string name="sync_status_last_success">كل شيء متزامن – آخر تبادل %1$s</string>
     <string name="sync_progress_recipes">مزامنة الوصفات … %1$d</string>
     <string name="sync_progress_images">تحميل الصور … %1$d / %2$d</string>

@@ -19,6 +19,7 @@
 package com.food.opencook.sync
 
 import com.food.opencook.data.discovery.LanMonitor
+import com.food.opencook.data.discovery.LocalNetworkAccess
 import com.food.opencook.data.settings.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +34,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -77,6 +79,7 @@ class SyncManager @Inject constructor(
     private val importInboxSyncer: Provider<ImportInboxSyncer>,
     private val settings: SettingsRepository,
     private val lanMonitor: LanMonitor,
+    private val localNetwork: LocalNetworkAccess,
 ) : SyncTrigger {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -122,6 +125,10 @@ class SyncManager @Inject constructor(
                 if (!available) markPaused()
             }
         }
+        scope.launch {
+            // Permission granted (dialog or system settings): sync right away.
+            localNetwork.granted.drop(1).collect { granted -> if (granted) runSync() }
+        }
         scope.launch { triggers.debounce(DEBOUNCE_MS).collect { runSync() } }
         scope.launch {
             while (isActive) {
@@ -152,6 +159,7 @@ class SyncManager @Inject constructor(
     /** Show the paused state right away when Wi-Fi drops, without waiting for a run. */
     private suspend fun markPaused() {
         if (settings.householdCodeOnce().isNullOrBlank()) return
+        if (!localNetwork.isGranted()) return // that state stays the one worth explaining
         _serverReachable.value = false
         _status.value = SyncStatus.OffHomeNetwork
     }
@@ -173,6 +181,12 @@ class SyncManager @Inject constructor(
     private suspend fun runRound(manual: Boolean) {
         if (settings.householdCodeOnce().isNullOrBlank()) {
             _status.value = SyncStatus.NotConfigured
+            return
+        }
+        if (!localNetwork.isGranted()) {
+            // Android 17: no LAN access at all — every attempt would only time out.
+            _serverReachable.value = false
+            _status.value = SyncStatus.LocalNetworkDenied
             return
         }
         if (!onHomeNetwork) {

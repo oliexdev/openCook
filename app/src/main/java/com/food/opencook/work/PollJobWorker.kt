@@ -22,6 +22,7 @@ import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.food.opencook.data.discovery.LocalNetworkAccess
 import com.food.opencook.data.notification.JobNotifier
 import com.food.opencook.repository.JobOutcome
 import com.food.opencook.repository.RecipeRepository
@@ -42,10 +43,13 @@ class PollJobWorker @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val repository: RecipeRepository,
     private val notifier: JobNotifier,
+    private val localNetwork: LocalNetworkAccess,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
         val localJobId = inputData.getString(UploadJobWorker.KEY_LOCAL_JOB_ID) ?: return Result.failure()
+        // No LAN access (Android 17): keep waiting instead of timing out.
+        if (!localNetwork.isGranted()) return Result.retry()
         return try {
             when (val outcome = repository.refreshJob(localJobId)) {
                 is JobOutcome.Done -> {

@@ -11,6 +11,9 @@
          transport the phone is on instead of timing out against LAN addresses over
          mobile data. Pulled in transitively by WorkManager too; declared for clarity. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Android 17+: required for any LAN traffic (server, NSD discovery, peer sync).
+         A runtime permission in the "Nearby devices" group, see LocalNetworkAccess. -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
     <!-- mDNS/NSD server discovery needs a multicast lock on many devices. -->
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
     <!-- Phone-to-phone sync standby: keeps the peer responder reachable while the app

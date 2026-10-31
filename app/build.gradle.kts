@@ -26,8 +26,8 @@ val sharedDebugKeystore: File? = run {
 
 android {
     namespace = "com.food.opencook"
-    // compileSdk 37 (supported by AGP 9.2.1) — required by the latest androidx core/lifecycle.
-    // targetSdk stays 36 (a deliberate runtime-behaviour choice, bumped separately).
+    // compileSdk/targetSdk 37 (Android 17). Targeting 37 gates all LAN traffic behind the
+    // ACCESS_LOCAL_NETWORK runtime permission — see data/discovery/LocalNetworkAccess.kt.
     compileSdk {
         version = release(37)
     }
@@ -35,7 +35,7 @@ android {
     defaultConfig {
         applicationId = "com.food.opencook"
         minSdk = 30
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 3
         versionName = "0.3"
 

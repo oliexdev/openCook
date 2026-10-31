@@ -21,6 +21,7 @@ package com.food.opencook
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.food.opencook.data.discovery.LocalNetworkAccess
 import com.food.opencook.data.localization.LocalizedLists
 import com.food.opencook.data.notification.JobNotifier
 import com.food.opencook.data.peer.PeerAdvertiser
@@ -48,6 +49,7 @@ class OpenCookApplication : Application(), Configuration.Provider {
     @Inject lateinit var syncManager: SyncManager
     @Inject lateinit var localizedLists: LocalizedLists
     @Inject lateinit var peerAdvertiser: PeerAdvertiser
+    @Inject lateinit var localNetworkAccess: LocalNetworkAccess
     @Inject lateinit var ingredientLinkRepository: IngredientLinkRepository
     @Inject lateinit var workScheduler: WorkScheduler
 
@@ -83,6 +85,7 @@ class OpenCookApplication : Application(), Configuration.Provider {
             }
             .launchIn(appScope)
         // Auto-sync while the app is alive: initial + periodic + after local changes.
+        localNetworkAccess.install()
         syncManager.start()
         // Answer peer-to-peer sync (embedded server + mDNS) while foregrounded on Wi-Fi.
         peerAdvertiser.install()

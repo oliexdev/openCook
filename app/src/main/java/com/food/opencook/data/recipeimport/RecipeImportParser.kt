@@ -231,7 +231,6 @@ object RecipeImportParser {
                         }
                     }
                 }
-                else -> {}
             }
         }
         add(el)
@@ -311,7 +310,6 @@ object RecipeImportParser {
             )
             is JsonPrimitive ->
                 listOfNotNull(e.str()?.trim()?.takeIf { it.isNotEmpty() }?.let(::resolve))
-            else -> emptyList()
         }
         return (obj.first("image", "images", "photo") ?: return emptyList()).let(::refs)
     }

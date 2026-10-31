@@ -134,6 +134,7 @@ private fun syncStatusLabel(status: SyncStatus): String = when (status) {
     is SyncStatus.Syncing -> stringResource(R.string.sync_status_syncing)
     is SyncStatus.Failed -> stringResource(R.string.sync_status_failed)
     SyncStatus.OffHomeNetwork -> stringResource(R.string.sync_status_off_home_network)
+    SyncStatus.LocalNetworkDenied -> stringResource(R.string.sync_status_local_network_denied)
     SyncStatus.HouseholdMissing -> stringResource(R.string.sync_status_household_missing)
     is SyncStatus.Idle -> when (val via = status.via) {
         // Name the peer phone so it's visible the data came phone-to-phone, not via server.

@@ -20,6 +20,7 @@ package com.food.opencook.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.food.opencook.data.discovery.LocalNetworkAccess
 import com.food.opencook.sync.ImportInboxSyncer
 import com.food.opencook.sync.SyncManager
 import com.food.opencook.sync.SyncStatus
@@ -37,6 +38,7 @@ import javax.inject.Inject
 @HiltViewModel
 class AppBarViewModel @Inject constructor(
     private val syncManager: SyncManager,
+    private val localNetwork: LocalNetworkAccess,
 ) : ViewModel() {
 
     val status: StateFlow<SyncStatus> =
@@ -46,4 +48,15 @@ class AppBarViewModel @Inject constructor(
     val importedEvents: SharedFlow<ImportInboxSyncer.Result> = syncManager.importedEvents
 
     fun sync() = syncManager.syncNow()
+
+    /** The permission dialog returned — re-read it (a grant then starts a sync by itself). */
+    fun onLocalNetworkResult() = localNetwork.refresh()
+
+    /** True exactly once per process: the automatic prompt for households that existed
+     *  before the Android 17 update. Later prompts only come from tapping the icon. */
+    fun claimAutoPrompt(): Boolean {
+        if (localNetwork.autoPrompted) return false
+        localNetwork.autoPrompted = true
+        return true
+    }
 }

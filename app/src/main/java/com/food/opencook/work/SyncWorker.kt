@@ -22,6 +22,7 @@ import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.food.opencook.data.discovery.LocalNetworkAccess
 import com.food.opencook.sync.SyncEngine
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -39,11 +40,14 @@ class SyncWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
     private val syncEngine: SyncEngine,
+    private val localNetwork: LocalNetworkAccess,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
         // Always succeed: a server-down failure must NOT trigger backoff — the next
         // periodic run (or connectivity trigger) retries on schedule.
+        // Android 17 without LAN access: every attempt would only time out.
+        if (!localNetwork.isGranted()) return Result.success()
         runCatching { syncEngine.sync() }
         return Result.success()
     }

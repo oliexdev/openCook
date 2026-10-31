@@ -315,6 +315,8 @@
     <string name="onboarding_peer_subtitle">Handy in diesem WLAN</string>
     <string name="onboarding_server_step_title">Server wählen</string>
     <string name="onboarding_searching">Suche im Netzwerk…</string>
+    <string name="onboarding_lan_permission_body">openCook findet deinen Server und die anderen Handys im Haushalt über dein WLAN. Dafür fragt Android nach dem Zugriff auf Geräte in der Nähe. Dabei verlässt nichts dein Heimnetz.</string>
+    <string name="onboarding_lan_permission_allow">Zugriff erlauben</string>
     <string name="onboarding_peers_step_title">Über ein Handy beitreten, das den Haushalt schon hat — oder neu gründen</string>
     <string name="onboarding_peers_searching">Suche Handys in diesem WLAN… Auf dem anderen Handy muss openCook geöffnet sein.</string>
     <string name="onboarding_peers_create_subtitle">Auf diesem Handy starten — die anderen treten danach bei.</string>
@@ -455,6 +457,12 @@
     <string name="sync_status_household_missing">Haushalt auf dem Server nicht gefunden – evtl. wurde er neu aufgesetzt. In den Einstellungen neu beitreten.</string>
     <string name="sync_error_offline">Server nicht erreichbar – wird automatisch erneut versucht, sobald er verfügbar ist.</string>
     <string name="sync_error_off_home_network">Sync funktioniert nur im heimischen WLAN (oder per VPN) – es geht von allein weiter, sobald du wieder verbunden bist.</string>
+    <string name="sync_status_local_network_denied">Kein Zugriff aufs Heimnetz – tippen zum Erlauben</string>
+    <string name="sync_error_local_network_denied">Ohne Zugriff auf Geräte in der Nähe erreicht openCook weder deinen Server noch andere Handys. Du kannst ihn in den App-Einstellungen unter Berechtigungen erlauben.</string>
+    <string name="local_network_open_settings">Einstellungen öffnen</string>
+    <string name="local_network_rationale_title">Zugriff aufs Heimnetz</string>
+    <string name="local_network_rationale_continue">Weiter</string>
+    <string name="local_network_rationale_later">Später</string>
     <string name="sync_status_last_success">Alles synchron – zuletzt ausgetauscht %1$s</string>
     <string name="sync_progress_recipes">Rezepte synchronisieren … %1$d</string>
     <string name="sync_progress_images">Bilder laden … %1$d / %2$d</string>

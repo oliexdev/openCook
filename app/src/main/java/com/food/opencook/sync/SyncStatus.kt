@@ -67,6 +67,13 @@ sealed interface SyncStatus {
     data object OffHomeNetwork : SyncStatus
 
     /**
+     * Android 17+: the user hasn't allowed openCook onto the local network
+     * (`ACCESS_LOCAL_NETWORK`). Every LAN connection would silently time out, so sync
+     * pauses and the top bar offers the permission instead of blaming the server.
+     */
+    data object LocalNetworkDenied : SyncStatus
+
+    /**
      * The server rejected our household credential (HTTP 404): the household no
      * longer exists there — typically the server DB was reset/reinstalled. Unlike
      * [Failed] this won't fix itself by retrying; the user must re-join or create a

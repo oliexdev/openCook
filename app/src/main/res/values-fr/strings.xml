@@ -321,6 +321,8 @@
     <string name="onboarding_peer_subtitle">Téléphone sur ce Wi-Fi</string>
     <string name="onboarding_server_step_title">Choisir un serveur</string>
     <string name="onboarding_searching">Recherche sur le réseau…</string>
+    <string name="onboarding_lan_permission_body">openCook trouve votre serveur et les autres téléphones du foyer via votre Wi-Fi. Pour cela, Android demande l\'accès aux appareils à proximité. Rien ne quitte votre réseau domestique.</string>
+    <string name="onboarding_lan_permission_allow">Autoriser l\'accès</string>
     <string name="onboarding_peers_step_title">Rejoignez un téléphone qui possède déjà le foyer — ou créez-en un nouveau</string>
     <string name="onboarding_peers_searching">Recherche de téléphones sur ce Wi-Fi… openCook doit être ouvert sur l\'autre téléphone.</string>
     <string name="onboarding_peers_create_subtitle">Commencez sur ce téléphone — les autres rejoindront ensuite.</string>
@@ -468,6 +470,12 @@
     <string name="sync_status_household_missing">Foyer introuvable sur le serveur – il a peut-être été reconfiguré. Rejoignez-le à nouveau dans les paramètres.</string>
     <string name="sync_error_offline">Serveur injoignable – nouvelle tentative automatique dès qu\'il sera disponible.</string>
     <string name="sync_error_off_home_network">La synchro ne fonctionne que sur le Wi-Fi domestique (ou via VPN) – elle reprend d\'elle-même dès votre retour.</string>
+    <string name="sync_status_local_network_denied">Pas d\'accès à votre réseau domestique – touchez pour autoriser</string>
+    <string name="sync_error_local_network_denied">Sans accès aux appareils à proximité, openCook ne peut joindre ni votre serveur ni les autres téléphones. Vous pouvez l\'autoriser dans les paramètres de l\'application, sous Autorisations.</string>
+    <string name="local_network_open_settings">Ouvrir les paramètres</string>
+    <string name="local_network_rationale_title">Accès à votre réseau domestique</string>
+    <string name="local_network_rationale_continue">Continuer</string>
+    <string name="local_network_rationale_later">Plus tard</string>
     <string name="sync_status_last_success">Tout est synchronisé – dernier échange %1$s</string>
     <string name="sync_progress_recipes">Synchronisation des recettes … %1$d</string>
     <string name="sync_progress_images">Chargement des images … %1$d / %2$d</string>

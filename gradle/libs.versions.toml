@@ -1,41 +1,42 @@
 [versions]
-agp = "9.2.1"
-# Kotlin version is provided built-in by AGP 9 (KGP 2.2.10). The Compose compiler
-# plugin and KSP must match this exact version.
-kotlin = "2.2.10"
-ksp = "2.2.10-2.0.2"
+agp = "9.5.0"
+# AGP 9 has built-in Kotlin but only pulls KGP 2.2.10; the root build.gradle.kts puts
+# this newer KGP on the buildscript classpath. The Compose compiler and serialization
+# plugins must match it exactly. KSP 2.3+ is versioned independently of Kotlin.
+kotlin = "2.4.21"
+ksp = "2.3.13"
 
 # AndroidX core
-coreKtx = "1.19.0"
+coreKtx = "1.19.1"
 splashscreen = "1.2.0"
-appcompat = "1.7.1"
+appcompat = "1.8.0"
 activityCompose = "1.13.0"
 
 # Compose
-composeBom = "2026.06.00"
-navigationCompose = "2.9.8"
+composeBom = "2026.09.00"
+navigationCompose = "2.10.2"
 lifecycle = "2.11.0"
 
 # DI — Hilt 2.59+ is required for AGP 9 Gradle plugin compatibility
-hilt = "2.59.2"
-hiltNavigationCompose = "1.3.0"
-hiltWork = "1.3.0"
+hilt = "2.60.1"
+hiltNavigationCompose = "1.4.0"
+hiltWork = "1.4.0"
 
 # Persistence
-room = "2.8.4"
-datastore = "1.2.1"
+room = "2.8.5"
+datastore = "1.3.0"
 
 # Networking
 retrofit = "3.0.0"
-okhttp = "5.4.0"
-kotlinxSerialization = "1.11.0"
+okhttp = "5.5.1"
+kotlinxSerialization = "1.12.0"
 retrofitKotlinxConverter = "1.0.0"
 
-# Images — 3.4.0 is the last build with Kotlin <=2.3; 3.5.0 needs Kotlin 2.4 (AGP 9.3)
-coil = "3.4.0"
+# Images — 3.5+ needs Kotlin 2.4
+coil = "3.6.3"
 
 # Camera
-camerax = "1.6.1"
+camerax = "1.6.2"
 
 # Drag-to-reorder for Compose lazy lists — Apache-2.0 (GPLv3-compatible)
 reorderable = "3.1.0"
@@ -44,10 +45,10 @@ reorderable = "3.1.0"
 zxing = "3.5.4"
 
 # Background work
-workManager = "2.11.2"
+workManager = "2.12.0"
 
 # Embedded HTTP server for phone-to-phone LAN sync — pure-Kotlin CIO engine, Apache-2.0
-ktor = "3.2.3"
+ktor = "3.6.1"
 
 # Coroutines
 coroutines = "1.11.0"
@@ -58,6 +59,9 @@ junitVersion = "1.3.0"
 espressoCore = "3.7.0"
 
 [libraries]
+# Build-script classpath only (see root build.gradle.kts)
+kotlin-gradle-plugin = { group = "org.jetbrains.kotlin", name = "kotlin-gradle-plugin", version.ref = "kotlin" }
+
 # Core
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "splashscreen" }

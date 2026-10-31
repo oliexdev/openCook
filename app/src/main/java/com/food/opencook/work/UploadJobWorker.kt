@@ -22,6 +22,7 @@ import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.food.opencook.data.discovery.LocalNetworkAccess
 import com.food.opencook.repository.RecipeRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -37,10 +38,13 @@ class UploadJobWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
     private val repository: RecipeRepository,
+    private val localNetwork: LocalNetworkAccess,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
         val localJobId = inputData.getString(KEY_LOCAL_JOB_ID) ?: return Result.failure()
+        // No LAN access (Android 17): keep the scan pending instead of timing out.
+        if (!localNetwork.isGranted()) return Result.retry()
         return try {
             repository.uploadJob(localJobId)
             Result.success()

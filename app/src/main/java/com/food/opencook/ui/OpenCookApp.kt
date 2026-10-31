@@ -24,6 +24,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Wifi
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -33,7 +36,8 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
@@ -41,21 +45,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.food.opencook.BuildConfig
-import com.food.opencook.R
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.food.opencook.ui.backup.BackupScreen
-import com.food.opencook.ui.barcode.BarcodeScanScreen
-import com.food.opencook.ui.onboarding.OnboardingScreen
-import com.food.opencook.ui.scan.ScanViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -65,20 +66,30 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
+import com.food.opencook.BuildConfig
+import com.food.opencook.R
 import com.food.opencook.data.notification.JobNotifier
+import com.food.opencook.sync.SyncStatus
+import com.food.opencook.ui.backup.BackupScreen
+import com.food.opencook.ui.barcode.BarcodeScanScreen
 import com.food.opencook.ui.capture.CameraCaptureScreen
-import com.food.opencook.ui.mealplan.MealPlanPickScreen
-import com.food.opencook.ui.mealplan.MealPlanScreen
+import com.food.opencook.ui.components.LocalRequestLocalNetwork
+import com.food.opencook.ui.components.openAppSettings
+import com.food.opencook.ui.components.rememberLocalNetworkRequest
 import com.food.opencook.ui.discover.DiscoverScreen
 import com.food.opencook.ui.discover.WebImportScreen
+import com.food.opencook.ui.mealplan.MealPlanPickScreen
+import com.food.opencook.ui.mealplan.MealPlanScreen
 import com.food.opencook.ui.navigation.Routes
 import com.food.opencook.ui.navigation.TopLevelDestination
+import com.food.opencook.ui.onboarding.OnboardingScreen
 import com.food.opencook.ui.recipeimport.ImportViewModel
 import com.food.opencook.ui.recipeimport.ShareImportState
 import com.food.opencook.ui.recipes.RecipeDetailScreen
 import com.food.opencook.ui.recipes.RecipesScreen
 import com.food.opencook.ui.retrospect.RetrospectScreen
 import com.food.opencook.ui.review.ReviewScreen
+import com.food.opencook.ui.scan.ScanViewModel
 import com.food.opencook.ui.settings.AboutScreen
 import com.food.opencook.ui.settings.AppearanceSettingsScreen
 import com.food.opencook.ui.settings.HouseholdSettingsScreen
@@ -87,6 +98,7 @@ import com.food.opencook.ui.settings.SyncSettingsScreen
 import com.food.opencook.ui.shoppinglist.ShoppingHubScreen
 import com.food.opencook.ui.status.ActiveJobsViewModel
 import com.food.opencook.ui.status.StatusStrip
+import kotlinx.coroutines.launch
 
 /** Debug-only "DEV BUILD" banner so the dev install is unmistakable. Hidden in release.
  *  The ② variant marks the second side-by-side identity (.dev2) used for sync E2E tests. */
@@ -170,6 +182,52 @@ private fun MainScaffold() {
         }
     }
 
+    // Android 17 local-network permission. Households set up before the update get one
+    // explained prompt per app start — our own words first, since the system dialog alone
+    // ("…determine the relative position of nearby devices?") reads scarier than it is.
+    // After that the red top-bar icon asks again on tap (straight to the system dialog).
+    // A denial explains itself and offers the settings page (the system stops showing
+    // the dialog after the second "Don't allow").
+    val lanScope = rememberCoroutineScope()
+    val lanDeniedMsg = stringResource(R.string.sync_error_local_network_denied)
+    val lanSettingsAction = stringResource(R.string.local_network_open_settings)
+    val requestLocalNetwork = rememberLocalNetworkRequest { granted ->
+        appBarViewModel.onLocalNetworkResult()
+        if (!granted) {
+            lanScope.launch {
+                snackbarHostState.currentSnackbarData?.dismiss()
+                val result = snackbarHostState.showSnackbar(
+                    lanDeniedMsg, lanSettingsAction, withDismissAction = true, duration = SnackbarDuration.Long,
+                )
+                if (result == SnackbarResult.ActionPerformed) openAppSettings(context)
+            }
+        }
+    }
+    val syncStatus by appBarViewModel.status.collectAsStateWithLifecycle()
+    var showLanRationale by remember { mutableStateOf(false) }
+    LaunchedEffect(syncStatus) {
+        if (syncStatus == SyncStatus.LocalNetworkDenied && appBarViewModel.claimAutoPrompt()) showLanRationale = true
+    }
+    if (showLanRationale) {
+        AlertDialog(
+            onDismissRequest = { showLanRationale = false },
+            icon = { Icon(Icons.Outlined.Wifi, contentDescription = null) },
+            title = { Text(stringResource(R.string.local_network_rationale_title)) },
+            text = { Text(stringResource(R.string.onboarding_lan_permission_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLanRationale = false
+                    requestLocalNetwork()
+                }) { Text(stringResource(R.string.local_network_rationale_continue)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLanRationale = false }) {
+                    Text(stringResource(R.string.local_network_rationale_later))
+                }
+            },
+        )
+    }
+
     // Recipe shared into the app from a browser ("Teilen → openCook"): import it, then confirm.
     // A URL shared before onboarding is buffered in the bus and picked up here once joined.
     val importViewModel: ImportViewModel = hiltViewModel()
@@ -221,12 +279,15 @@ private fun MainScaffold() {
 
     // Adaptive: bar (compact) / rail (medium) / drawer (expanded); hidden on full-screen flows.
     val layoutType = if (showShell) {
-        NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(currentWindowAdaptiveInfo())
+        NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(currentWindowAdaptiveInfoV2())
     } else {
         NavigationSuiteType.None
     }
 
-    CompositionLocalProvider(LocalSnackbarHostState provides snackbarHostState) {
+    CompositionLocalProvider(
+        LocalSnackbarHostState provides snackbarHostState,
+        LocalRequestLocalNetwork provides requestLocalNetwork,
+    ) {
         NavigationSuiteScaffold(
             layoutType = layoutType,
             navigationSuiteItems = {
