@@ -532,6 +532,9 @@
     <string name="grocery_cat_drinks">Bebidas</string>
     <string name="grocery_cat_spices">Especias, aceites y salsas</string>
     <string name="grocery_cat_pantry">Pasta, arroz y conservas</string>
+    <string name="grocery_cat_snacks">Snacks y dulces</string>
+    <string name="grocery_cat_household">Droguería y limpieza</string>
+    <string name="grocery_cat_pets">Mascotas</string>
     <string name="grocery_cat_other">Otros</string>
 
     <!-- Onboarding validation / connection errors -->

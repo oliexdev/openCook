@@ -22,6 +22,7 @@ import com.food.opencook.util.GroceryCategories
 import com.food.opencook.util.GroceryCategory
 import com.food.opencook.util.TextFold
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class GroceryCategoriesTest {
@@ -44,7 +45,64 @@ class GroceryCategoriesTest {
 
     @Test
     fun unknownFallsBackToOther() {
-        assertEquals(GroceryCategory.OTHER, GroceryCategories.categorize("Klopapier"))
+        assertEquals(GroceryCategory.OTHER, GroceryCategories.categorize("Batterien"))
+    }
+
+    @Test
+    fun nonFoodAndSnackAislesWinOverFoodWords() {
+        assertEquals(GroceryCategory.HOUSEHOLD, GroceryCategories.categorize("Klopapier"))
+        assertEquals(GroceryCategory.HOUSEHOLD, GroceryCategories.categorize("Zahnpasta")) // not PANTRY "pasta"
+        assertEquals(GroceryCategory.HOUSEHOLD, GroceryCategories.categorize("Spülmaschinensalz")) // not SPICES
+        assertEquals(GroceryCategory.HOUSEHOLD, GroceryCategories.categorize("Deospray"))
+        assertEquals(GroceryCategory.PETS, GroceryCategories.categorize("Katzenfutter"))
+        assertEquals(GroceryCategory.SNACKS, GroceryCategories.categorize("Kartoffelchips")) // not PRODUCE
+        assertEquals(GroceryCategory.SNACKS, GroceryCategories.categorize("Salzstangen"))
+        // Food that merely looks similar stays where it was.
+        assertEquals(GroceryCategory.PRODUCE, GroceryCategories.categorize("Snacktomaten"))
+        assertTrue(GroceryCategories.categorize("Fideos") != GroceryCategory.HOUSEHOLD) // " deo" is anchored
+    }
+
+    @Test
+    fun learnedNameCoversWholeWordVariants() {
+        val overrides = mapOf("zahnpasta" to GroceryCategory.HOUSEHOLD, "salz" to GroceryCategory.OTHER)
+        assertEquals(GroceryCategory.HOUSEHOLD, GroceryCategories.categorize("Zahnpasta sensitiv", overrides))
+        assertEquals(GroceryCategory.HOUSEHOLD, GroceryCategories.categorize("Sensitiv-Zahnpasta, 75 ml", overrides))
+        // Whole words only: "salz" must not reach into "Salzstangen".
+        assertEquals(GroceryCategory.SNACKS, GroceryCategories.categorize("Salzstangen", overrides))
+    }
+
+    @Test
+    fun learnedNameCarriesAcrossArabicSpellingVariants() {
+        // Lesson without article/hamza; the item has both — same words after folding.
+        val overrides = mapOf("معجون اسنان" to GroceryCategory.HOUSEHOLD)
+        assertEquals(GroceryCategory.HOUSEHOLD, GroceryCategories.categorize("معجون الأسنان بالنعناع", overrides))
+    }
+
+    @Test
+    fun exactThenLongestLessonWins() {
+        val overrides = mapOf(
+            "tomaten" to GroceryCategory.PRODUCE,
+            "passierte tomaten" to GroceryCategory.PANTRY,
+            "passierte tomaten bio" to GroceryCategory.OTHER,
+        )
+        assertEquals(GroceryCategory.PRODUCE, GroceryCategories.categorize("Tomaten gehackt", overrides))
+        assertEquals(GroceryCategory.PANTRY, GroceryCategories.categorize("Passierte Tomaten 500 g", overrides))
+        assertEquals(GroceryCategory.OTHER, GroceryCategories.categorize("passierte Tomaten bio", overrides))
+    }
+
+    @Test
+    fun sectionsListEmptyAislesOnlyWhileDragging() {
+        val grouped = mapOf(
+            GroceryCategory.DAIRY to listOf("Milch"),
+            GroceryCategory.PRODUCE to listOf("Lauch"),
+        )
+        assertEquals(
+            listOf(GroceryCategory.PRODUCE, GroceryCategory.DAIRY),
+            GroceryCategories.sections(grouped, includeEmpty = false).map { it.first },
+        )
+        val all = GroceryCategories.sections(grouped, includeEmpty = true)
+        assertEquals(GroceryCategory.entries.toList(), all.map { it.first })
+        assertEquals(emptyList<String>(), all.first { it.first == GroceryCategory.PETS }.second)
     }
 
     @Test

@@ -165,10 +165,14 @@ fun PantryBody(
             var basicsOpen by rememberSaveable { mutableStateOf(false) }
             val basicsForced = !searchQuery.isNullOrBlank() || stock.isEmpty()
             val showBasics = basicsOpen || basicsForced
-            val grouped = stock.groupBy { GroceryCategories.categorize(it.name, overrides) }
-                .toList().sortedBy { it.first.ordinal }
+            // While an item is dragged every aisle is shown, so an empty one can be a target (#41).
+            val dragging = remember { mutableStateOf(false) }
+            val grouped = GroceryCategories.sections(
+                stock.groupBy { GroceryCategories.categorize(it.name, overrides) },
+                includeEmpty = dragging.value,
+            )
             // The very first row peeks its swipe action once (one-time discoverability hint).
-            val firstRowId = grouped.firstOrNull()?.second?.firstOrNull()?.id
+            val firstRowId = grouped.firstNotNullOfOrNull { it.second.firstOrNull() }?.id
                 ?: basics.firstOrNull()?.id?.takeIf { showBasics }
             // Every list key (headers + rows) → the drop target its section is, for hit-testing.
             val keyTarget: Map<Any, PantryDrop> = buildMap {
@@ -200,16 +204,23 @@ fun PantryBody(
             val toBasicsTemplate = stringResource(R.string.pantry_moved_to_basics)
             val fromBasicsTemplate = stringResource(R.string.pantry_moved_from_basics)
             val categoryLabels = GroceryCategory.entries.associateWith { stringResource(it.labelRes) }
-            val dropTarget = remember(listState, keyTarget) {
+            // Read through updated state, not as remember keys: the aisles change the moment a
+            // drag starts, and a new target object would cut the running drag session.
+            val currentKeyTarget by rememberUpdatedState(keyTarget)
+            val currentOverrides by rememberUpdatedState(overrides)
+            val dropTarget = remember(listState) {
                 fun targetAtY(y: Float): PantryDrop? {
                     val localY = y - listBounds.value.top
                     val rows = listState.layoutInfo.visibleItemsInfo
                     if (rows.isEmpty()) return null
                     val hit = rows.firstOrNull { localY >= it.offset && localY < it.offset + it.size }
                         ?: rows.minByOrNull { kotlin.math.abs((it.offset + it.size / 2f) - localY) }
-                    return hit?.key?.let { keyTarget[it] }
+                    return hit?.key?.let { currentKeyTarget[it] }
                 }
                 object : DragAndDropTarget {
+                    override fun onStarted(event: DragAndDropEvent) {
+                        dragging.value = true
+                    }
                     override fun onMoved(event: DragAndDropEvent) {
                         val e = event.toAndroidDragEvent()
                         val b = listBounds.value
@@ -238,7 +249,7 @@ fun PantryBody(
                             is PantryDrop.Aisle -> {
                                 // Out of the basics onto an aisle: back to regular
                                 // stock — and, if it's another aisle, learned like any move.
-                                val moved = target.category != GroceryCategories.categorize(name, overrides)
+                                val moved = target.category != GroceryCategories.categorize(name, currentOverrides)
                                 if (!wasBasic && !moved) return false
                                 if (wasBasic) viewModel.setBasic(name, false)
                                 if (moved) viewModel.recategorize(name, target.category)
@@ -253,7 +264,7 @@ fun PantryBody(
                         scrollSpeed.floatValue = 0f; hovered.value = null
                     }
                     override fun onEnded(event: DragAndDropEvent) {
-                        scrollSpeed.floatValue = 0f; hovered.value = null
+                        scrollSpeed.floatValue = 0f; hovered.value = null; dragging.value = false
                     }
                 }
             }
@@ -297,6 +308,7 @@ fun PantryBody(
                     item(key = "h_${category.name}") {
                         CategoryHeader(
                             category,
+                            empty = list.isEmpty(),
                             modifier = Modifier.fillMaxWidth().background(
                                 if (hovered.value == PantryDrop.Aisle(category)) {
                                     // Transient drag feedback: the app pointing at a target,

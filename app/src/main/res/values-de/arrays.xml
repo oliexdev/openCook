@@ -22,6 +22,15 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="InconsistentArrays">
     <!-- Grocery-aisle keyword lists (substring match, lower-case). Order of aisles is fixed
          in code; first matching aisle wins. Items with leading/trailing spaces are quoted. -->
+    <string-array name="grocery_kw_household">
+        <item>spülmittel</item><item>waschmittel</item><item>weichspüler</item><item>spültabs</item><item>spülmaschine</item><item>putzmittel</item><item>reiniger</item><item>klopapier</item><item>toilettenpapier</item><item>küchenrolle</item><item>taschentücher</item><item>müllbeutel</item><item>alufolie</item><item>frischhaltefolie</item><item>backpapier</item><item>gefrierbeutel</item><item>zahnpasta</item><item>zahnbürste</item><item>zahnseide</item><item>shampoo</item><item>duschgel</item><item>seife</item><item>" deo"</item><item>rasier</item><item>windel</item><item>wattepads</item>
+    </string-array>
+    <string-array name="grocery_kw_pets">
+        <item>futter</item><item>katzenstreu</item><item>leckerli</item><item>kauknochen</item>
+    </string-array>
+    <string-array name="grocery_kw_snacks">
+        <item>chips</item><item>flips</item><item>salzstangen</item><item>gummibärchen</item><item>süßigkeit</item><item>praline</item><item>knabber</item><item>popcorn</item><item>keks</item><item>riegel</item>
+    </string-array>
     <string-array name="grocery_kw_frozen">
         <item>tiefkühl</item><item>"tk "</item><item>gefroren</item><item>" eis"</item><item>eiscreme</item>
     </string-array>

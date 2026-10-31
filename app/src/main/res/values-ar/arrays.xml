@@ -22,6 +22,15 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="InconsistentArrays">
     <!-- Default (English) grocery-aisle keyword lists. Substring match, lower-case; aisle order
          is fixed in code (first match wins). Items with spaces are quoted to keep them. -->
+    <string-array name="grocery_kw_household">
+        <item>"سائل الجلي"</item><item>منظف</item><item>"مسحوق الغسيل"</item><item>"منعم الأقمشة"</item><item>مبيض</item><item>"ورق تواليت"</item><item>مناديل</item><item>"مناشف ورقية"</item><item>"أكياس قمامة"</item><item>"ورق ألمنيوم"</item><item>"ورق قصدير"</item><item>"غلاف بلاستيكي"</item><item>"ورق زبدة"</item><item>"معجون أسنان"</item><item>"فرشاة أسنان"</item><item>شامبو</item><item>"جل استحمام"</item><item>صابون</item><item>"مزيل عرق"</item><item>"شفرة حلاقة"</item><item>حفاضات</item>
+    </string-array>
+    <string-array name="grocery_kw_pets">
+        <item>"طعام القطط"</item><item>"طعام الكلاب"</item><item>"أكل قطط"</item><item>"أكل كلاب"</item><item>"رمل القطط"</item>
+    </string-array>
+    <string-array name="grocery_kw_snacks">
+        <item>شيبس</item><item>"رقائق البطاطس"</item><item>بسكويت</item><item>حلوى</item><item>سكاكر</item><item>فشار</item><item>سناك</item><item>"ألواح الحبوب"</item>
+    </string-array>
     <string-array name="grocery_kw_frozen">
         <item>مجمد</item><item>"آيس كريم"</item><item>بوظة</item>
     </string-array>

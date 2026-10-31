@@ -24,6 +24,15 @@
          in code; first matching aisle wins. Items with leading/trailing spaces are quoted.
          Short French words need a trailing space so they only match as a whole word:
          "vin " must not swallow "vinaigre", "eau " must not swallow "beaufort". -->
+    <string-array name="grocery_kw_household">
+        <item>"liquide vaisselle"</item><item>lessive</item><item>adoucissant</item><item>"tablettes lave-vaisselle"</item><item>nettoyant</item><item>javel</item><item>"papier toilette"</item><item>essuie-tout</item><item>mouchoirs</item><item>"sac poubelle"</item><item>"papier aluminium"</item><item>"film alimentaire"</item><item>"papier cuisson"</item><item>"sac congélation"</item><item>dentifrice</item><item>"brosse à dents"</item><item>"fil dentaire"</item><item>shampoing</item><item>"gel douche"</item><item>savon</item><item>déodorant</item><item>rasoir</item><item>couches</item><item>cotons</item>
+    </string-array>
+    <string-array name="grocery_kw_pets">
+        <item>pâtée</item><item>"nourriture pour chat"</item><item>"nourriture pour chien"</item><item>"croquettes pour"</item><item>litière</item><item>"friandises pour"</item>
+    </string-array>
+    <string-array name="grocery_kw_snacks">
+        <item>chips</item><item>bretzel</item><item>bonbon</item><item>confiserie</item><item>biscuit</item><item>"gâteaux apéritif"</item><item>pop-corn</item><item>popcorn</item><item>"barre de céréales"</item>
+    </string-array>
     <string-array name="grocery_kw_frozen">
         <item>surgelé</item><item>congelé</item><item>glace</item><item>glacée</item><item>sorbet</item>
     </string-array>

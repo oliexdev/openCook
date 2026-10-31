@@ -533,6 +533,9 @@
     <string name="grocery_cat_drinks">Boissons</string>
     <string name="grocery_cat_spices">Épices, huiles et sauces</string>
     <string name="grocery_cat_pantry">Garde-manger et produits secs</string>
+    <string name="grocery_cat_snacks">Snacks et sucreries</string>
+    <string name="grocery_cat_household">Droguerie et entretien</string>
+    <string name="grocery_cat_pets">Animaux</string>
     <string name="grocery_cat_other">Autre</string>
 
     <!-- Onboarding validation / connection errors -->

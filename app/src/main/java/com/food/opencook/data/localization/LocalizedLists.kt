@@ -104,6 +104,10 @@ class LocalizedLists @Inject constructor(
         // and "salt", "Hähnchen" and "chicken", "EL" and "tbsp" are recognised regardless of locale.
         GroceryCategories.setRules(
             listOf(
+                // Non-food + snacks first (see GroceryCategories.DEFAULT_RULES_DE for why).
+                GroceryCategory.HOUSEHOLD to unionFolded(R.array.grocery_kw_household),
+                GroceryCategory.PETS to unionFolded(R.array.grocery_kw_pets),
+                GroceryCategory.SNACKS to unionFolded(R.array.grocery_kw_snacks),
                 GroceryCategory.FROZEN to unionFolded(R.array.grocery_kw_frozen),
                 GroceryCategory.MEAT_FISH to unionFolded(R.array.grocery_kw_meat_fish),
                 GroceryCategory.PRODUCE to unionFolded(R.array.grocery_kw_produce),

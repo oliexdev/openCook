@@ -518,6 +518,9 @@
     <string name="grocery_cat_drinks">Drinks</string>
     <string name="grocery_cat_spices">Spices, Oil &amp; Sauces</string>
     <string name="grocery_cat_pantry">Pantry &amp; Dry Goods</string>
+    <string name="grocery_cat_snacks">Snacks &amp; Sweets</string>
+    <string name="grocery_cat_household">Household &amp; Toiletries</string>
+    <string name="grocery_cat_pets">Pet Supplies</string>
     <string name="grocery_cat_other">Other</string>
 
     <!-- Onboarding validation / connection errors -->

@@ -71,6 +71,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -213,12 +214,16 @@ fun ShoppingListBody(
             // Remembered: sorting an item into an aisle scans it against every keyword of
             // every language, so re-deriving this for the whole list on each tick, keystroke
             // or drag frame is the difference between a smooth list and a sticky one.
-            val grouped = remember(visible, overrides) {
-                visible.groupBy { GroceryCategories.categorize(it.item.text, overrides) }
-                    .toList().sortedBy { it.first.ordinal }
+            // While an item is dragged every aisle is shown, so an empty one can be a target (#41).
+            val dragging = remember { mutableStateOf(false) }
+            val grouped = remember(visible, overrides, dragging.value) {
+                GroceryCategories.sections(
+                    visible.groupBy { GroceryCategories.categorize(it.item.text, overrides) },
+                    includeEmpty = dragging.value,
+                )
             }
             // The very first row peeks its swipe action once (one-time discoverability hint).
-            val firstRowId = grouped.firstOrNull()?.second?.firstOrNull()?.item?.id
+            val firstRowId = grouped.firstNotNullOfOrNull { it.second.firstOrNull() }?.item?.id
             // Every list key (headers + rows) → its section's category, for drop hit-testing.
             val keyCategory = remember(grouped) {
                 buildMap {
@@ -247,16 +252,23 @@ fun ShoppingListBody(
             }
             val learnedTemplate = stringResource(R.string.shopping_category_learned)
             val categoryLabels = GroceryCategory.entries.associateWith { stringResource(it.labelRes) }
-            val dropTarget = remember(listState, keyCategory) {
+            // Read through updated state, not as remember keys: the aisles change the moment a
+            // drag starts, and a new target object would cut the running drag session.
+            val currentKeyCategory by rememberUpdatedState(keyCategory)
+            val currentOverrides by rememberUpdatedState(overrides)
+            val dropTarget = remember(listState) {
                 fun categoryAtY(y: Float): GroceryCategory? {
                     val localY = y - listBounds.value.top
                     val items = listState.layoutInfo.visibleItemsInfo
                     if (items.isEmpty()) return null
                     val hit = items.firstOrNull { localY >= it.offset && localY < it.offset + it.size }
                         ?: items.minByOrNull { kotlin.math.abs((it.offset + it.size / 2f) - localY) }
-                    return hit?.key?.let { keyCategory[it] }
+                    return hit?.key?.let { currentKeyCategory[it] }
                 }
                 object : DragAndDropTarget {
+                    override fun onStarted(event: DragAndDropEvent) {
+                        dragging.value = true
+                    }
                     override fun onMoved(event: DragAndDropEvent) {
                         val e = event.toAndroidDragEvent()
                         val b = listBounds.value
@@ -276,7 +288,7 @@ fun ShoppingListBody(
                         val name = e.clipData?.takeIf { it.itemCount > 0 }
                             ?.getItemAt(0)?.text?.toString() ?: return false
                         val target = categoryAtY(e.y) ?: return false
-                        if (target == GroceryCategories.categorize(name, overrides)) return false
+                        if (target == GroceryCategories.categorize(name, currentOverrides)) return false
                         viewModel.recategorize(name, target)
                         scope.launch {
                             snackbar.showSnackbar(learnedTemplate.format(name, categoryLabels[target] ?: ""))
@@ -287,7 +299,7 @@ fun ShoppingListBody(
                         scrollSpeed.floatValue = 0f; hoveredCategory.value = null
                     }
                     override fun onEnded(event: DragAndDropEvent) {
-                        scrollSpeed.floatValue = 0f; hoveredCategory.value = null
+                        scrollSpeed.floatValue = 0f; hoveredCategory.value = null; dragging.value = false
                     }
                 }
             }
@@ -315,6 +327,7 @@ fun ShoppingListBody(
                     item(key = "h_${category.name}") {
                         CategoryHeader(
                             category,
+                            empty = list.isEmpty(),
                             modifier = Modifier.fillMaxWidth().background(
                                 if (hoveredCategory.value == category) {
                                     // Transient drag feedback: the app pointing at a target,

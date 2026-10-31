@@ -29,8 +29,11 @@ enum class GroceryCategory(@StringRes val labelRes: Int, val emoji: String) {
     BAKERY(R.string.grocery_cat_bakery, "🍞"),
     FROZEN(R.string.grocery_cat_frozen, "❄️"),
     DRINKS(R.string.grocery_cat_drinks, "🥤"),
+    SNACKS(R.string.grocery_cat_snacks, "🍿"),
     SPICES(R.string.grocery_cat_spices, "🧂"),
     PANTRY(R.string.grocery_cat_pantry, "🥫"),
+    HOUSEHOLD(R.string.grocery_cat_household, "🧴"),
+    PETS(R.string.grocery_cat_pets, "🐾"),
     OTHER(R.string.grocery_cat_other, "🧺"),
 }
 
@@ -42,7 +45,20 @@ enum class GroceryCategory(@StringRes val labelRes: Int, val emoji: String) {
 object GroceryCategories {
 
     // Checked in order; first category with a matching keyword (substring, case-insensitive) wins.
+    // Non-food aisles and snacks go first: "Zahnpasta" must not land in PANTRY ("pasta"),
+    // "Spülmaschinensalz" not in SPICES, "Kartoffelchips" not in PRODUCE.
     private val DEFAULT_RULES_DE: List<Pair<GroceryCategory, List<String>>> = listOf(
+        GroceryCategory.HOUSEHOLD to listOf(
+            "spülmittel", "waschmittel", "weichspüler", "spültabs", "spülmaschine", "putzmittel", "reiniger",
+            "klopapier", "toilettenpapier", "küchenrolle", "taschentücher", "müllbeutel", "alufolie",
+            "frischhaltefolie", "backpapier", "gefrierbeutel", "zahnpasta", "zahnbürste", "zahnseide",
+            "shampoo", "duschgel", "seife", " deo", "rasier", "windel", "wattepads",
+        ),
+        GroceryCategory.PETS to listOf("futter", "katzenstreu", "leckerli", "kauknochen"),
+        GroceryCategory.SNACKS to listOf(
+            "chips", "flips", "salzstangen", "gummibärchen", "süßigkeit", "praline", "knabber", "popcorn",
+            "keks", "riegel",
+        ),
         GroceryCategory.FROZEN to listOf("tiefkühl", "tk ", "gefroren", " eis", "eiscreme"),
         GroceryCategory.MEAT_FISH to listOf(
             "hähnchen", "huhn", "pute", "hack", "rind", "schwein", "speck", "schinken", "wurst", "salami",
@@ -98,7 +114,57 @@ object GroceryCategories {
      * Like [categorize], but a household-taught override (normalized name → aisle,
      * from [com.food.opencook.repository.GroceryOverrideRepository]) beats the
      * keyword heuristic — the user knows their supermarket better than our rules.
+     *
+     * A lesson also covers variants that contain it as whole words: "Zahnpasta" moved to
+     * HOUSEHOLD takes "Zahnpasta sensitiv" along, while "Salz" never reaches "Salzstangen".
+     * The exact name wins, then the longest contained lesson — so moving a variant makes
+     * it the strongest match and corrects an over-eager generalization.
      */
-    fun categorize(name: String, overrides: Map<String, GroceryCategory>): GroceryCategory =
-        overrides[name.trim().lowercase()] ?: categorize(name)
+    fun categorize(name: String, overrides: Map<String, GroceryCategory>): GroceryCategory {
+        if (overrides.isEmpty()) return categorize(name)
+        val key = name.trim().lowercase()
+        overrides[key]?.let { return it }
+        val tokens = words(key)
+        if (tokens.size > 1) {
+            lessonsOf(overrides)
+                .firstOrNull { (lesson, _) -> lesson.size < tokens.size && tokens.containsRun(lesson) }
+                ?.let { return it.second }
+        }
+        return categorize(name)
+    }
+
+    private val NON_WORD = Regex("[^\\p{L}\\p{N}]+")
+
+    /** Words folded like the keyword lists ([TextFold.forMatch]): Arabic "معجون الأسنان" and
+     *  "معجون اسنان" yield the same words, so a lesson carries across spelling variants. */
+    private fun words(s: String): List<String> =
+        s.split(NON_WORD).map(TextFold::forMatch).filter { it.isNotEmpty() }
+
+    private fun List<String>.containsRun(run: List<String>): Boolean =
+        (0..size - run.size).any { start -> run.indices.all { this[start + it] == run[it] } }
+
+    /** Tokenized lessons, longest first; cached per overrides map — categorize runs per row. */
+    @Volatile
+    private var lessonCache: Pair<Map<String, GroceryCategory>, List<Pair<List<String>, GroceryCategory>>>? = null
+
+    private fun lessonsOf(overrides: Map<String, GroceryCategory>): List<Pair<List<String>, GroceryCategory>> {
+        lessonCache?.takeIf { it.first === overrides }?.let { return it.second }
+        val lessons = overrides.map { (k, v) -> words(k) to v }
+            .filter { it.first.isNotEmpty() }
+            .sortedWith(compareByDescending<Pair<List<String>, GroceryCategory>> { it.first.size }
+                .thenByDescending { it.first.sumOf(String::length) })
+        lessonCache = overrides to lessons
+        return lessons
+    }
+
+    /** Grouped items as aisle sections in display order. With [includeEmpty] (while dragging)
+     *  every aisle is listed, empty ones too, so an item can be moved into an aisle that has
+     *  nothing in it yet (GitHub #41). */
+    fun <T> sections(
+        grouped: Map<GroceryCategory, List<T>>,
+        includeEmpty: Boolean,
+    ): List<Pair<GroceryCategory, List<T>>> =
+        GroceryCategory.entries.mapNotNull { c ->
+            (grouped[c] ?: emptyList<T>().takeIf { includeEmpty })?.let { c to it }
+        }
 }

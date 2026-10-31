@@ -22,6 +22,15 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="InconsistentArrays">
     <!-- Default (English) grocery-aisle keyword lists. Substring match, lower-case; aisle order
          is fixed in code (first match wins). Items with spaces are quoted to keep them. -->
+    <string-array name="grocery_kw_household">
+        <item>"dish soap"</item><item>dishwashing</item><item>detergent</item><item>"fabric softener"</item><item>dishwasher</item><item>cleaner</item><item>bleach</item><item>"toilet paper"</item><item>"paper towel"</item><item>tissues</item><item>"trash bag"</item><item>"garbage bag"</item><item>"bin bag"</item><item>"aluminum foil"</item><item>"aluminium foil"</item><item>"cling film"</item><item>"plastic wrap"</item><item>parchment</item><item>"freezer bag"</item><item>toothpaste</item><item>toothbrush</item><item>floss</item><item>shampoo</item><item>conditioner</item><item>"shower gel"</item><item>"body wash"</item><item>soap</item><item>deodorant</item><item>razor</item><item>diaper</item><item>nappies</item><item>"cotton pads"</item>
+    </string-array>
+    <string-array name="grocery_kw_pets">
+        <item>"cat food"</item><item>"dog food"</item><item>"pet food"</item><item>"cat litter"</item><item>"kitty litter"</item><item>"dog treats"</item><item>"cat treats"</item>
+    </string-array>
+    <string-array name="grocery_kw_snacks">
+        <item>chips</item><item>crisps</item><item>pretzel</item><item>candy</item><item>sweets</item><item>gummy</item><item>cookie</item><item>biscuit</item><item>popcorn</item><item>"granola bar"</item><item>"cereal bar"</item>
+    </string-array>
     <string-array name="grocery_kw_frozen">
         <item>frozen</item><item>"ice cream"</item><item>ice-cream</item>
     </string-array>

@@ -28,6 +28,15 @@
          "paté", " res " not "fresas". Common words are listed with and without the accent
          (limón/limon) because matching does not fold accents; Latin American variants
          (papa, jugo, camarón…) are included so imported recipes from those sites group too. -->
+    <string-array name="grocery_kw_household">
+        <item>lavavajillas</item><item>detergente</item><item>suavizante</item><item>lejía</item><item>limpiador</item><item>"papel higiénico"</item><item>"papel de cocina"</item><item>pañuelos</item><item>"bolsa de basura"</item><item>"papel de aluminio"</item><item>"papel film"</item><item>"papel de horno"</item><item>"bolsa de congelación"</item><item>"pasta de dientes"</item><item>dentífrico</item><item>"cepillo de dientes"</item><item>"hilo dental"</item><item>champú</item><item>"gel de ducha"</item><item>jabón</item><item>desodorante</item><item>cuchilla</item><item>pañal</item><item>"discos de algodón"</item>
+    </string-array>
+    <string-array name="grocery_kw_pets">
+        <item>pienso</item><item>"comida para perro"</item><item>"comida para gato"</item><item>"arena para gato"</item><item>"premios para perro"</item>
+    </string-array>
+    <string-array name="grocery_kw_snacks">
+        <item>"patatas fritas de bolsa"</item><item>galleta</item><item>golosina</item><item>chuche</item><item>gominola</item><item>palomitas</item><item>barrita</item>
+    </string-array>
     <string-array name="grocery_kw_frozen">
         <item>congelado</item><item>helado</item><item>sorbete</item><item>polo</item>
     </string-array>

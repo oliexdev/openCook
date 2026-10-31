@@ -574,6 +574,9 @@
     <string name="grocery_cat_drinks">المشروبات</string>
     <string name="grocery_cat_spices">التوابل والزيوت والصلصات</string>
     <string name="grocery_cat_pantry">المؤن والمواد الجافة</string>
+    <string name="grocery_cat_snacks">الوجبات الخفيفة والحلويات</string>
+    <string name="grocery_cat_household">المنظفات والعناية الشخصية</string>
+    <string name="grocery_cat_pets">مستلزمات الحيوانات</string>
     <string name="grocery_cat_other">أخرى</string>
 
     <!-- Onboarding validation / connection errors -->

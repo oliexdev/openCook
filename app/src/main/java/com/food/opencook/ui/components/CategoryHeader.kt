@@ -23,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import com.food.opencook.ui.theme.Spacing
 import com.food.opencook.util.GroceryCategory
@@ -30,13 +31,14 @@ import com.food.opencook.util.GroceryCategory
 /**
  * A grocery-aisle section header (emoji + name) shared by the shopping list and the
  * pantry, so both group their items by the same [GroceryCategory] and look like siblings.
+ * [empty] dims an aisle that only shows up as a drop target while an item is dragged.
  */
 @Composable
-fun CategoryHeader(category: GroceryCategory, modifier: Modifier = Modifier) {
+fun CategoryHeader(category: GroceryCategory, modifier: Modifier = Modifier, empty: Boolean = false) {
     Text(
         "${category.emoji}  ${stringResource(category.labelRes)}",
         style = MaterialTheme.typography.titleSmall,
         color = MaterialTheme.colorScheme.primary,
-        modifier = modifier.padding(top = Spacing.md, bottom = Spacing.xs),
+        modifier = modifier.padding(top = Spacing.md, bottom = Spacing.xs).alpha(if (empty) 0.5f else 1f),
     )
 }
