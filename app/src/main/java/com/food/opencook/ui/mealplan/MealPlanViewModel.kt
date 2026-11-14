@@ -403,6 +403,12 @@ class MealPlanViewModel @Inject constructor(
         viewModelScope.launch {
             syncTrigger.awaitFirstRound()
             mealPlanRepository.purgeOrphanEntries()
+            if (!settingsRepository.multiDishMealsOnce()) {
+                mealPlanRepository.settleHandOverPlanner(
+                    PlanWindow.futureDays().map(LocalDate::toString),
+                    settingsRepository.plannedMealsOnce(),
+                )
+            }
             reconcilePastDays().join()
             autoFillWindow().join()
         }
@@ -525,6 +531,12 @@ class MealPlanViewModel @Inject constructor(
         if (entryId != null) {
             mealPlanRepository.replaceEntry(entryId, recipeId, reasons)
         } else {
+            // The chip may have been tapped while the meal was still empty and the rolling
+            // fill was waiting for the first sync; in a single-dish meal the user's choice
+            // then replaces the pick that arrived meanwhile instead of joining it.
+            if (!settingsRepository.multiDishMealsOnce()) {
+                mealPlanRepository.clearPlannerPick(dateKey, slot, settingsRepository.plannedMealsOnce())
+            }
             mealPlanRepository.addToCell(dateKey, slot, recipeId, reasons)
         }
         onDone()

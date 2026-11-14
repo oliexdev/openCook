@@ -385,6 +385,11 @@ class RecipeDetailViewModel @Inject constructor(
 
     /** Add the current recipe to a cell as a fresh entry (used when the cell is empty). */
     fun assignToMealPlan(date: String, slot: String, onDone: () -> Unit) = viewModelScope.launch {
+        // The sheet showed the meal empty; if the planner filled it since, a single-dish
+        // meal takes the hand-picked dish instead of carrying both.
+        if (!settings.multiDishMealsOnce()) {
+            mealPlanRepository.clearPlannerPick(date, slot, settings.plannedMealsOnce())
+        }
         mealPlanRepository.addEntry(date, recipeId, slot)
         onDone()
     }

@@ -285,6 +285,43 @@ class MealPlanRepository @Inject constructor(
         insertGenerated(date, slot, recipeId, encodeReasons(reasons))
     }
 
+    /**
+     * Make room for a hand-placed dish in a single-dish meal: the planner's own pick in that
+     * meal steps aside. Without it a pick that landed while the user was choosing — the
+     * rolling fill runs a moment after the plan opens — sat next to theirs as a second dinner.
+     * Only the planner's untouched rows go; anything the household placed, pinned or cooked
+     * stays.
+     */
+    suspend fun clearPlannerPick(date: String, slot: String, planned: List<String>) {
+        mealPlanDao.getForDates(listOf(date))
+            .filter { MealPlanSlots.resolve(it.slot, planned) == slot && isPlannerPick(it, planned) }
+            .forEach { deleteEntry(it.id) }
+    }
+
+    /**
+     * Same rule after the fact, for single-dish meals: where a planner pick and a dish the
+     * household placed ended up in one meal — two phones out of contact, one filling, one
+     * choosing — the hand-placed dish wins and the pick is tombstoned, so every device
+     * settles the same way. Returns how many picks went.
+     */
+    suspend fun settleHandOverPlanner(dates: List<String>, planned: List<String>): Int {
+        val byMeal = mealPlanDao.getForDates(dates)
+            .groupBy { it.date to MealPlanSlots.resolve(it.slot, planned) }
+        var removed = 0
+        byMeal.values.forEach { meal ->
+            val (picks, placed) = meal.partition { isPlannerPick(it, planned) }
+            if (picks.isEmpty() || placed.isEmpty()) return@forEach
+            picks.forEach { deleteEntry(it.id); removed++ }
+        }
+        return removed
+    }
+
+    /** The rolling planner's row, still as it left it: its id is derived from the cell it
+     *  sits in (a dragged one no longer matches), and nobody has pinned or cooked it. */
+    private fun isPlannerPick(entry: MealPlanEntity, planned: List<String>): Boolean =
+        !entry.pinned && entry.cookedAt == null &&
+            entry.id == autoEntryId(entry.date, MealPlanSlots.resolve(entry.slot, planned))
+
     private suspend fun clearNonPinned(entries: List<MealPlanEntity>) {
         entries.filter { !it.pinned }.forEach { e ->
             mealPlanDao.deleteById(e.id)

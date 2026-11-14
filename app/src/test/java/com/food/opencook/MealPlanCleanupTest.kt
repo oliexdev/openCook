@@ -175,4 +175,64 @@ class MealPlanCleanupTest {
         val dinner = planDao.entries.values.filter { it.date == "2026-10-04" && it.slot == "dinner" }
         assertEquals(setOf("lasagne", "salad"), dinner.map { it.recipeId }.toSet())
     }
+
+    // --- A hand-placed dish always beats the rolling planner's pick in a single-dish meal.
+
+    private val planned = listOf("dinner")
+
+    @Test
+    fun aHandPickReplacesThePlannerPickThatLandedMeanwhile() = runTest {
+        val (planDao, messageDao, repo) = fixture()
+        repo.autoFillCell("2026-10-04", "dinner", "lasagne", planned)
+
+        repo.clearPlannerPick("2026-10-04", "dinner", planned)
+        repo.addToCell("2026-10-04", "dinner", "salad")
+
+        assertEquals(listOf("salad"), planDao.entries.values.map { it.recipeId })
+        val autoId = MealPlanRepository.autoEntryId("2026-10-04", "dinner")
+        assertTrue(messageDao.messages.any {
+            it.rowId == autoId && it.column == SyncDatasets.COLUMN_DELETED && it.value == "true"
+        })
+    }
+
+    @Test
+    fun clearingThePlannerPickLeavesHandPlacedPinnedAndCookedDishes() = runTest {
+        val (planDao, _, repo) = fixture()
+        val autoId = MealPlanRepository.autoEntryId("2026-10-04", "dinner")
+        planDao.entries["hand"] = planEntry("hand", "salad", "2026-10-04")
+        planDao.entries[autoId] = planEntry(autoId, "lasagne", "2026-10-04").copy(pinned = true)
+
+        repo.clearPlannerPick("2026-10-04", "dinner", planned)
+
+        assertEquals(setOf("hand", autoId), planDao.entries.keys)
+    }
+
+    @Test
+    fun afterSyncTheHandPlacedDishWinsOverThePlannerPick() = runTest {
+        val (planDao, _, repo) = fixture()
+        val autoId = MealPlanRepository.autoEntryId("2026-10-04", "dinner")
+        planDao.entries[autoId] = planEntry(autoId, "lasagne", "2026-10-04")
+        planDao.entries["hand"] = planEntry("hand", "salad", "2026-10-04")
+        // Another day with only the planner's pick stays as it is.
+        val otherAuto = MealPlanRepository.autoEntryId("2026-10-05", "dinner")
+        planDao.entries[otherAuto] = planEntry(otherAuto, "curry", "2026-10-05")
+
+        assertEquals(1, repo.settleHandOverPlanner(listOf("2026-10-04", "2026-10-05"), planned))
+
+        assertEquals(setOf("hand", otherAuto), planDao.entries.keys)
+    }
+
+    @Test
+    fun aPlannerPickDraggedToAnotherDayCountsAsHandPlaced() = runTest {
+        val (planDao, _, repo) = fixture()
+        // Dragged from the 3rd: its id no longer matches the cell it now sits in.
+        val dragged = MealPlanRepository.autoEntryId("2026-10-03", "dinner")
+        planDao.entries[dragged] = planEntry(dragged, "lasagne", "2026-10-04")
+        val autoId = MealPlanRepository.autoEntryId("2026-10-04", "dinner")
+        planDao.entries[autoId] = planEntry(autoId, "curry", "2026-10-04")
+
+        repo.settleHandOverPlanner(listOf("2026-10-04"), planned)
+
+        assertEquals(setOf(dragged), planDao.entries.keys)
+    }
 }
